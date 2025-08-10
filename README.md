@@ -13,9 +13,9 @@ The A2A Registry solves the critical problem of agent discovery in the AI ecosys
 ## Key Features
 
 - **Open Source**: Fully transparent, community-driven development
-- **A2A Protocol Compliant**: Follows the Agent-to-Agent protocol standards
+- **A2A Protocol Compliant**: Uses official A2A Protocol AgentCard specification
 - **Simple Submission**: Submit agents via GitHub Pull Requests
-- **Automatic Validation**: CI/CD pipeline validates all submissions
+- **Automatic Validation**: CI/CD pipeline validates both A2A compliance and registry requirements
 - **Multiple Access Methods**: Web UI, JSON API, and Python client
 - **No Backend Required**: Static hosting via GitHub Pages
 
@@ -25,27 +25,37 @@ The A2A Registry solves the critical problem of agent discovery in the AI ecosys
 
 1. Fork this repository
 2. Create a new JSON file in `/agents/` directory (e.g., `/agents/my-agent.json`)
-3. Follow the [Agent Schema](schemas/agent.schema.json) specification
-4. Submit a Pull Request
-5. Our CI will validate your submission automatically
+3. Follow the [Official A2A AgentCard specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure)
+4. Include required registry fields: `author` and `wellKnownURI`
+5. Submit a Pull Request
+6. Our CI will validate your submission for both A2A compliance and registry requirements
 
-Example agent entry:
+Example agent entry (A2A Protocol compliant):
 ```json
 {
+  "protocolVersion": "0.3.0",
   "name": "WeatherBot",
-  "description": "Provides real-time weather information and forecasts for any location",
-  "author": "Weather Services Inc",
-  "wellKnownURI": "https://weatherbot.example.com/.well-known/agent.json",
+  "description": "Provides real-time weather information and forecasts",
+  "url": "https://api.weatherbot.example.com/a2a",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
   "skills": [
     {
       "id": "current-weather",
       "name": "Current Weather",
-      "description": "Get current weather conditions for a location",
-      "inputModes": ["text", "application/json"],
-      "outputModes": ["text", "application/json"]
+      "description": "Get current weather conditions",
+      "tags": ["weather", "current"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
     }
   ],
-  "version": "1.0.0"
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "author": "Weather Services Inc",
+  "wellKnownURI": "https://weatherbot.example.com/.well-known/agent.json"
 }
 ```
 
@@ -108,10 +118,12 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## Validation Requirements
 
 All agent submissions must:
-1. Conform to the [Agent JSON Schema](schemas/agent.schema.json)
-2. Include a valid `wellKnownURI` pointing to `.well-known/agent.json`
-3. Match key fields between submission and the well-known endpoint
-4. Pass all automated validation checks
+1. Conform to the [Official A2A Protocol AgentCard specification](schemas/a2a-official.schema.json)
+2. Include all required A2A fields: `protocolVersion`, `name`, `description`, `url`, `version`, `capabilities`, `skills`, `defaultInputModes`, `defaultOutputModes`
+3. Include registry-specific fields: `author` and `wellKnownURI`
+4. Skills must have: `id`, `name`, `description`, and `tags`
+5. Match key fields between submission and the `.well-known/agent.json` endpoint
+6. Pass all automated validation checks
 
 ## API Documentation
 
@@ -121,7 +133,9 @@ All agent submissions must:
 - **Response**: JSON array of all registered agents
 
 ### Agent Schema
-See [schemas/agent.schema.json](schemas/agent.schema.json) for the complete specification.
+- **A2A Protocol Schema**: [schemas/a2a-official.schema.json](schemas/a2a-official.schema.json)
+- **Registry Extensions**: [schemas/registry-agent.schema.json](schemas/registry-agent.schema.json)
+- **Official A2A Docs**: [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
 
 ## Development
 

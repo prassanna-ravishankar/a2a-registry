@@ -32,21 +32,32 @@ Your agent must have a valid A2A Protocol Agent Card accessible at:
 https://your-domain.com/.well-known/agent.json
 ```
 
-The Agent Card should follow the A2A Protocol specification and include:
-- Basic information (name, description, version)
-- Skills array with detailed descriptions
-- Supported capabilities
-- Authentication requirements (if any)
+The Agent Card must follow the [Official A2A Protocol specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure) and include:
+- **Required A2A fields**: protocolVersion, name, description, url, version, capabilities, skills, defaultInputModes, defaultOutputModes
+- **Skills structure**: Each skill must have id, name, description, and tags
+- **Capabilities object**: Declare support for streaming, pushNotifications, etc.
+- **Provider information** (optional but recommended)
 
 #### 2. JSON Schema Compliance
 
-Your submission file must validate against our [Agent Schema](schemas/agent.schema.json). Required fields:
+Your submission file must validate against both:
+- [Official A2A Protocol AgentCard schema](schemas/a2a-official.schema.json)
+- [Registry-specific requirements](schemas/registry-agent.schema.json)
 
-- `name`: Your agent's display name (max 100 characters)
-- `description`: Clear description of what your agent does (10-500 characters)
+Required A2A Protocol fields:
+- `protocolVersion`: A2A protocol version (e.g., "0.3.0")
+- `name`: Your agent's display name
+- `description`: Clear description of what your agent does
+- `url`: The A2A endpoint URL for your agent
+- `version`: Your agent's version
+- `capabilities`: Object declaring protocol capabilities
+- `skills`: Array of skills (each with id, name, description, tags)
+- `defaultInputModes`: Default input MIME types
+- `defaultOutputModes`: Default output MIME types
+
+Required registry fields:
 - `author`: Your name or organization
 - `wellKnownURI`: Full URL to your `.well-known/agent.json` endpoint
-- `skills`: Array of skills with `id`, `name`, and `description` for each
 
 #### 3. Ownership Verification
 
@@ -65,38 +76,49 @@ Create a new JSON file in the `/agents/` directory. Name it descriptively:
 agents/your-agent-name.json
 ```
 
-Example agent file:
+Example agent file (A2A Protocol compliant):
 ```json
 {
+  "protocolVersion": "0.3.0",
   "name": "TranslateBot Pro",
-  "description": "Advanced multi-language translation agent supporting 100+ languages with context awareness",
-  "author": "Language Services Inc",
-  "wellKnownURI": "https://translatebot.example.com/.well-known/agent.json",
+  "description": "Advanced multi-language translation agent supporting 100+ languages",
+  "url": "https://api.translatebot.example.com/a2a",
+  "version": "2.1.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
   "skills": [
     {
       "id": "translate-text",
       "name": "Text Translation",
       "description": "Translate text between any supported languages",
+      "tags": ["translation", "language", "text"],
       "inputModes": ["text/plain", "application/json"],
       "outputModes": ["text/plain", "application/json"],
-      "tags": ["translation", "language", "text"]
+      "examples": ["Translate 'Hello' to Spanish", "Convert this text to French"]
     },
     {
       "id": "detect-language",
       "name": "Language Detection",
       "description": "Automatically detect the language of input text",
+      "tags": ["detection", "language", "analysis"],
       "inputModes": ["text/plain"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": ["What language is 'Bonjour'?"]
     }
   ],
-  "capabilities": {
-    "streaming": true,
-    "pushNotifications": false
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "Language Services Inc",
+    "url": "https://languageservices.example.com"
   },
-  "version": "2.1.0",
+  "documentationUrl": "https://docs.translatebot.example.com/api",
+  "author": "Language Services Inc",
+  "wellKnownURI": "https://translatebot.example.com/.well-known/agent.json",
   "homepage": "https://translatebot.example.com",
-  "documentation": "https://docs.translatebot.example.com/api",
-  "tags": ["translation", "language", "nlp"]
+  "registryTags": ["translation", "language", "nlp"]
 }
 ```
 
@@ -108,8 +130,8 @@ Test your submission locally:
 # Install dependencies
 pip install -r requirements.txt
 
-# Validate your agent file
-python scripts/validate_agent.py agents/your-agent-name.json
+# Validate your agent file (checks both A2A compliance and registry requirements)
+python scripts/validate_agent_v2.py agents/your-agent-name.json
 ```
 
 ### Step 4: Submit Pull Request

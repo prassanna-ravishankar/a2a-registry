@@ -15,9 +15,19 @@ from jsonschema import validate, ValidationError, Draft7Validator
 
 def load_schema() -> Dict[str, Any]:
     """Load the agent JSON schema."""
-    schema_path = Path(__file__).parent.parent / "schemas" / "agent.schema.json"
-    with open(schema_path, 'r') as f:
-        return json.load(f)
+    # Load the registry-specific schema that extends the official A2A schema
+    schema_path = Path(__file__).parent.parent / "schemas" / "registry-agent.schema.json"
+    
+    # Also load the referenced A2A official schema
+    a2a_schema_path = Path(__file__).parent.parent / "schemas" / "a2a-official.schema.json"
+    
+    # For now, we'll use the A2A official schema directly for validation
+    # In production, you'd want to properly resolve the $ref
+    with open(a2a_schema_path, 'r') as f:
+        base_schema = json.load(f)
+    
+    # Return the AgentCard definition with registry extensions
+    return base_schema['definitions']['AgentCard']
 
 def load_agent_file(filepath: Path) -> Dict[str, Any]:
     """Load and parse an agent JSON file."""

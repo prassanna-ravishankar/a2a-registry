@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://a2aregistry.org/schemas/registry-agent.schema.json",
+  "title": "A2A Registry Agent Entry",
+  "description": "Schema for an agent entry in the A2A Registry, extending the official A2A AgentCard with registry-specific metadata",
+  "type": "object",
+  "allOf": [
+    {
+      "$comment": "Inherit all properties from the official A2A AgentCard",
+      "$ref": "a2a-official.schema.json#/definitions/AgentCard"
+    },
+    {
+      "$comment": "Registry-specific required fields and additions",
+      "type": "object",
+      "required": ["author", "wellKnownURI"],
+      "properties": {
+        "author": {
+          "type": "string",
+          "description": "The name or organization that created and maintains this agent",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "wellKnownURI": {
+          "type": "string",
+          "format": "uri",
+          "description": "The /.well-known/agent.json URI for this agent (A2A Protocol standard)",
+          "pattern": "^https?://.+/\\.well-known/agent\\.json$"
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri",
+          "description": "Homepage or marketing website for the agent (distinct from documentationUrl)"
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri",
+          "description": "Source code repository URL if the agent is open source"
+        },
+        "license": {
+          "type": "string",
+          "description": "License identifier for open source agents (e.g., MIT, Apache-2.0)",
+          "maxLength": 50
+        },
+        "pricing": {
+          "type": "object",
+          "description": "Pricing information for the agent",
+          "properties": {
+            "model": {
+              "type": "string",
+              "enum": ["free", "freemium", "subscription", "pay-per-use", "enterprise"],
+              "description": "The pricing model"
+            },
+            "details": {
+              "type": "string",
+              "description": "Additional pricing details or link to pricing page",
+              "maxLength": 500
+            }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "description": "Contact information for support",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "support": {
+              "type": "string",
+              "format": "uri"
+            },
+            "discord": {
+              "type": "string",
+              "format": "uri"
+            },
+            "slack": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "registryTags": {
+          "type": "array",
+          "description": "Additional tags for registry categorization (separate from skill tags)",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 30,
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "uniqueItems": true,
+          "maxItems": 10
+        },
+        "apiEndpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Explicit API endpoint if different from the A2A 'url' field"
+        },
+        "_registryMetadata": {
+          "type": "object",
+          "description": "Internal registry metadata (auto-generated, not user-provided)",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Registry-assigned ID based on filename"
+            },
+            "source": {
+              "type": "string",
+              "description": "Path to the source file in the repository"
+            },
+            "addedDate": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the agent was added to the registry"
+            },
+            "lastModified": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last modification date in the registry"
+            },
+            "verified": {
+              "type": "boolean",
+              "description": "Whether the agent has been verified by maintainers"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
