@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2A Registry - AI Agent Directory</title>
+    <meta name="description" content="A community-driven, open-source directory of AI agents using the A2A Protocol">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #667eea;
+        }
+        
+        .hero {
+            padding: 4rem 0;
+            text-align: center;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            margin-bottom: 2rem;
+        }
+        
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            opacity: 0.9;
+        }
+        
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem 0;
+        }
+        
+        .agent-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+        }
+        
+        .agent-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        
+        .agent-author {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .agent-description {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        
+        .agent-skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .skill-tag {
+            background: #f0f2ff;
+            color: #667eea;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: white;
+        }
+        
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        footer {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+        
+        footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">🤖 A2A Registry</div>
+            <ul class="nav-links">
+                <li><a href="#agents">Browse Agents</a></li>
+                <li><a href="https://github.com/a2aregistry/a2a-registry" target="_blank">GitHub</a></li>
+                <li><a href="https://github.com/a2aregistry/a2a-registry/blob/main/CONTRIBUTING.md" target="_blank">Submit Agent</a></li>
+                <li><a href="https://pypi.org/project/a2a-registry-client/" target="_blank">Python Client</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>A2A Registry</h1>
+                <p>Discover and Connect with AI Agents Using the A2A Protocol</p>
+                
+                <div class="search-container">
+                    <input type="text" class="search-box" id="searchBox" placeholder="Search agents by name, skill, or description...">
+                </div>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number" id="agentCount">0</div>
+                        <div class="stat-label">Registered Agents</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="skillCount">0</div>
+                        <div class="stat-label">Total Skills</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="authorCount">0</div>
+                        <div class="stat-label">Contributors</div>
+                    </div>
+                </div>
+                
+                <div class="cta-buttons">
+                    <a href="https://github.com/a2aregistry/a2a-registry/blob/main/CONTRIBUTING.md" class="btn btn-primary">Submit Your Agent</a>
+                    <a href="#agents" class="btn btn-secondary">Browse Registry</a>
+                </div>
+            </div>
+        </section>
+        
+        <section id="agents" class="container">
+            <div id="agentsContainer" class="agents-grid">
+                <div class="loading">Loading agents...</div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>A2A Registry is an open-source project. <a href="https://github.com/a2aregistry/a2a-registry">Contribute on GitHub</a></p>
+            <p>© 2025 A2A Registry Community | Built with the <a href="https://a2aprotocol.ai/">A2A Protocol</a></p>
+        </div>
+    </footer>
+    
+    <script>
+        let allAgents = [];
+        
+        async function loadAgents() {
+            const container = document.getElementById('agentsContainer');
+            
+            try {
+                const response = await fetch('/registry.json');
+                if (!response.ok) {
+                    throw new Error('Registry not found');
+                }
+                
+                const data = await response.json();
+                allAgents = data.agents || [];
+                
+                // Update stats
+                updateStats(allAgents);
+                
+                // Display agents
+                displayAgents(allAgents);
+                
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="error">
+                        <h3>Registry Loading Error</h3>
+                        <p>The agent registry is being initialized. Please check back soon!</p>
+                        <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 1rem;">
+                            Want to be the first? <a href="https://github.com/a2aregistry/a2a-registry/blob/main/CONTRIBUTING.md" style="color: white;">Submit your agent now!</a>
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateStats(agents) {
+            // Count unique skills
+            const allSkills = new Set();
+            const authors = new Set();
+            
+            agents.forEach(agent => {
+                if (agent.author) authors.add(agent.author);
+                if (agent.skills && Array.isArray(agent.skills)) {
+                    agent.skills.forEach(skill => {
+                        if (skill.id) allSkills.add(skill.id);
+                    });
+                }
+            });
+            
+            document.getElementById('agentCount').textContent = agents.length;
+            document.getElementById('skillCount').textContent = allSkills.size;
+            document.getElementById('authorCount').textContent = authors.size;
+        }
+        
+        function displayAgents(agents) {
+            const container = document.getElementById('agentsContainer');
+            
+            if (agents.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: white; border-radius: 10px;">
+                        <h3 style="color: #667eea; margin-bottom: 1rem;">No Agents Found</h3>
+                        <p>Be the first to register your agent!</p>
+                        <a href="https://github.com/a2aregistry/a2a-registry/blob/main/CONTRIBUTING.md" class="btn btn-primary" style="margin-top: 1rem;">Submit Agent</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = agents.map(agent => `
+                <div class="agent-card">
+                    <div class="agent-name">${escapeHtml(agent.name)}</div>
+                    <div class="agent-author">by ${escapeHtml(agent.author)}</div>
+                    <div class="agent-description">${escapeHtml(agent.description)}</div>
+                    <div class="agent-skills">
+                        ${agent.skills ? agent.skills.slice(0, 5).map(skill => 
+                            `<span class="skill-tag">${escapeHtml(skill.name || skill.id)}</span>`
+                        ).join('') : ''}
+                    </div>
+                    ${agent.wellKnownURI ? `
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                            <a href="${escapeHtml(agent.wellKnownURI)}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 0.9rem;">
+                                🔗 View Agent Card
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+        
+        // Search functionality
+        document.getElementById('searchBox').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            
+            if (!query) {
+                displayAgents(allAgents);
+                return;
+            }
+            
+            const filtered = allAgents.filter(agent => {
+                const searchableText = [
+                    agent.name,
+                    agent.description,
+                    agent.author,
+                    ...(agent.skills || []).map(s => s.name || s.id),
+                    ...(agent.skills || []).map(s => s.description || '')
+                ].join(' ').toLowerCase();
+                
+                return searchableText.includes(query);
+            });
+            
+            displayAgents(filtered);
+        });
+        
+        // Load agents on page load
+        loadAgents();
+    </script>
+</body>
+</html>

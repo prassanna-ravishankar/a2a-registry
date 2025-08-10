@@ -1,0 +1,3 @@
+# Core dependencies for A2A Registry scripts
+jsonschema>=4.20.0
+requests>=2.31.0

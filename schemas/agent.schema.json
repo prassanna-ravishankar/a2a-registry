@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://a2aregistry.org/schemas/agent.schema.json",
+  "title": "A2A Registry Agent",
+  "description": "Schema for an AI agent entry in the A2A Registry",
+  "type": "object",
+  "required": ["name", "description", "author", "wellKnownURI", "skills"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The display name of the agent",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "A brief explanation of the agent's purpose",
+      "minLength": 10,
+      "maxLength": 500
+    },
+    "author": {
+      "type": "string",
+      "description": "The name or handle of the creator",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "wellKnownURI": {
+      "type": "string",
+      "format": "uri",
+      "description": "The /.well-known/agent.json URI for validation (A2A Protocol standard)",
+      "pattern": "^https?://.+/\\.well-known/agent\\.json$"
+    },
+    "skills": {
+      "type": "array",
+      "description": "List of specific skills/capabilities the agent can perform (A2A Protocol compliant)",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the skill",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name of the skill"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of what the skill does"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inputModes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Supported input MIME types"
+          },
+          "outputModes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Supported output MIME types"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "A2A Protocol capabilities",
+      "properties": {
+        "streaming": {
+          "type": "boolean",
+          "description": "If the agent supports SSE streaming"
+        },
+        "pushNotifications": {
+          "type": "boolean",
+          "description": "If the agent can push update notifications"
+        },
+        "stateTransitionHistory": {
+          "type": "boolean",
+          "description": "If the agent exposes task state change history"
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of the agent",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Homepage or documentation URL for the agent"
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source code repository URL"
+    },
+    "license": {
+      "type": "string",
+      "description": "License identifier (e.g., MIT, Apache-2.0)",
+      "maxLength": 50
+    },
+    "tags": {
+      "type": "array",
+      "description": "Additional tags for categorization",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 30,
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "maxItems": 10
+    },
+    "pricing": {
+      "type": "object",
+      "description": "Pricing information",
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["free", "freemium", "subscription", "pay-per-use", "enterprise"],
+          "description": "Pricing model"
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional pricing details",
+          "maxLength": 200
+        }
+      }
+    },
+    "apiEndpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "Primary API endpoint for the agent"
+    },
+    "documentation": {
+      "type": "string",
+      "format": "uri",
+      "description": "Link to API documentation"
+    },
+    "contact": {
+      "type": "object",
+      "description": "Contact information",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "support": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

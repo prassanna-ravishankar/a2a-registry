@@ -1,0 +1,112 @@
+name: Publish Registry
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'agents/**.json'
+      - 'docs/**'
+      - 'client-python/**'
+      - '.github/workflows/publish.yml'
+      - 'scripts/generate_registry.py'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-registry:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Generate registry.json
+      run: |
+        echo "🔄 Generating registry.json..."
+        python scripts/generate_registry.py agents/ --output docs/registry.json --pretty
+        
+        # Display statistics
+        agent_count=$(python -c "import json; print(json.load(open('docs/registry.json'))['count'])")
+        echo "✅ Generated registry with $agent_count agents"
+    
+    - name: Upload registry artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: registry
+        path: docs/registry.json
+    
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/
+
+  deploy-pages:
+    needs: build-registry
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  publish-client:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[publish-client]') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build Python client
+      run: |
+        cd client-python
+        python -m build
+    
+    - name: Check package
+      run: |
+        cd client-python
+        twine check dist/*
+    
+    - name: Publish to PyPI
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        cd client-python
+        twine upload dist/*
+    
+    - name: Display package info
+      if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+      run: |
+        echo "📦 Python client package built successfully"
+        echo "To publish, ensure PYPI_API_TOKEN secret is set and push to main branch"

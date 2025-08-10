@@ -1,0 +1,60 @@
+{
+  "name": "WeatherBot Pro",
+  "description": "Comprehensive weather information and forecasting agent providing real-time data for any global location",
+  "author": "Weather Services Inc",
+  "wellKnownURI": "https://weatherbot.example.com/.well-known/agent.json",
+  "skills": [
+    {
+      "id": "current-weather",
+      "name": "Current Weather",
+      "description": "Get real-time weather conditions for any location worldwide",
+      "tags": ["weather", "current", "realtime"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "weather-forecast",
+      "name": "Weather Forecast",
+      "description": "Get detailed weather forecasts up to 14 days for any location",
+      "tags": ["weather", "forecast", "prediction"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "weather-alerts",
+      "name": "Weather Alerts",
+      "description": "Receive severe weather alerts and warnings for specified locations",
+      "tags": ["weather", "alerts", "safety", "warnings"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "historical-weather",
+      "name": "Historical Weather Data",
+      "description": "Access historical weather data for analysis and comparison",
+      "tags": ["weather", "historical", "data", "analytics"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json", "text/csv"]
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": false
+  },
+  "version": "3.2.1",
+  "homepage": "https://weatherbot.example.com",
+  "repository": "https://github.com/weatherservices/weatherbot",
+  "documentation": "https://docs.weatherbot.example.com/api",
+  "apiEndpoint": "https://api.weatherbot.example.com/v3",
+  "license": "MIT",
+  "tags": ["weather", "forecast", "climate", "meteorology", "alerts"],
+  "pricing": {
+    "model": "freemium",
+    "details": "Free tier: 100 requests/day. Pro tier: Unlimited requests starting at $29/month"
+  },
+  "contact": {
+    "email": "support@weatherbot.example.com",
+    "support": "https://weatherbot.example.com/support"
+  }
+}
