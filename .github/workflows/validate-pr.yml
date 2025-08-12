@@ -63,7 +63,7 @@ jobs:
           echo "Validating: $file"
           echo "----------------------------------------"
           
-          if python scripts/validate_agent_v2.py "$file"; then
+          if python scripts/validate_agent.py "$file"; then
             echo "✅ $file passed validation"
           else
             echo "❌ $file failed validation"

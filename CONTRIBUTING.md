@@ -131,7 +131,7 @@ Test your submission locally:
 pip install -r requirements.txt
 
 # Validate your agent file (checks both A2A compliance and registry requirements)
-python scripts/validate_agent_v2.py agents/your-agent-name.json
+python scripts/validate_agent.py agents/your-agent-name.json
 ```
 
 ### Step 4: Submit Pull Request

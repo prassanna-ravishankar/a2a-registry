@@ -1,153 +1,245 @@
 #!/usr/bin/env python3
 """
-Validate an agent JSON file against the A2A Registry schema and verify ownership.
+Validate an agent JSON file against both A2A Protocol and Registry requirements.
 """
 
 import json
 import sys
 import argparse
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 import urllib.request
 import urllib.error
 import ssl
 from jsonschema import validate, ValidationError, Draft7Validator
 
-def load_schema() -> Dict[str, Any]:
-    """Load the agent JSON schema."""
-    # Load the registry-specific schema that extends the official A2A schema
-    schema_path = Path(__file__).parent.parent / "schemas" / "registry-agent.schema.json"
+class AgentValidator:
+    """Validates agent entries against A2A Protocol and Registry requirements."""
     
-    # Also load the referenced A2A official schema
-    a2a_schema_path = Path(__file__).parent.parent / "schemas" / "a2a-official.schema.json"
+    def __init__(self):
+        self.a2a_schema = self._load_a2a_schema()
+        self.registry_requirements = self._load_registry_requirements()
     
-    # For now, we'll use the A2A official schema directly for validation
-    # In production, you'd want to properly resolve the $ref
-    with open(a2a_schema_path, 'r') as f:
-        base_schema = json.load(f)
+    def _load_a2a_schema(self) -> Dict[str, Any]:
+        """Load the official A2A AgentCard schema."""
+        schema_path = Path(__file__).parent.parent / "schemas" / "a2a-official.schema.json"
+        with open(schema_path, 'r') as f:
+            schema = json.load(f)
+        # Return the full schema with definitions so $ref works
+        return schema
     
-    # Return the AgentCard definition with registry extensions
-    return base_schema['definitions']['AgentCard']
+    def _load_registry_requirements(self) -> Dict[str, List[str]]:
+        """Define registry-specific requirements."""
+        return {
+            "required_fields": ["author", "wellKnownURI"],
+            "recommended_fields": ["homepage", "repository", "license", "pricing", "contact"]
+        }
+    
+    def validate_a2a_compliance(self, agent_data: Dict[str, Any]) -> List[str]:
+        """Validate against A2A Protocol requirements."""
+        errors = []
+        
+        # Check required A2A fields
+        required_a2a = [
+            "protocolVersion", "name", "description", "url", "version",
+            "capabilities", "skills", "defaultInputModes", "defaultOutputModes"
+        ]
+        
+        for field in required_a2a:
+            if field not in agent_data:
+                errors.append(f"Missing required A2A field: {field}")
+        
+        # Validate skills structure
+        if "skills" in agent_data:
+            for i, skill in enumerate(agent_data["skills"]):
+                required_skill_fields = ["id", "name", "description", "tags"]
+                for field in required_skill_fields:
+                    if field not in skill:
+                        errors.append(f"Skill {i} missing required field: {field}")
+        
+        # Validate against schema (use the AgentCard definition)
+        try:
+            # Create a schema that references the AgentCard definition
+            agent_card_schema = {
+                "$ref": "#/definitions/AgentCard",
+                "definitions": self.a2a_schema.get("definitions", {})
+            }
+            validate(instance=agent_data, schema=agent_card_schema)
+        except ValidationError as e:
+            errors.append(f"A2A Schema validation: {e.message}")
+        
+        return errors
+    
+    def validate_registry_requirements(self, agent_data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """Validate registry-specific requirements."""
+        errors = []
+        warnings = []
+        
+        # Check required registry fields
+        for field in self.registry_requirements["required_fields"]:
+            if field not in agent_data:
+                errors.append(f"Missing required registry field: {field}")
+        
+        # Check recommended fields
+        for field in self.registry_requirements["recommended_fields"]:
+            if field not in agent_data:
+                warnings.append(f"Missing recommended field: {field}")
+        
+        # Validate wellKnownURI format
+        if "wellKnownURI" in agent_data:
+            uri = agent_data["wellKnownURI"]
+            allowed_suffixes = ("/.well-known/agent.json", "/.well-known/agent-card.json")
+            if not any(uri.endswith(suffix) for suffix in allowed_suffixes):
+                errors.append("wellKnownURI must end with '/.well-known/agent.json' or '/.well-known/agent-card.json'")
+        
+        return errors, warnings
+    
+    def verify_ownership(self, agent_data: Dict[str, Any]) -> Tuple[bool, str]:
+        """Verify agent ownership via well-known endpoint."""
+        wellknown_uri = agent_data.get('wellKnownURI')
+        if not wellknown_uri:
+            return True, "No wellKnownURI to verify"
+        
+        try:
+            # Create SSL context that doesn't verify certificates (for dev)
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            req = urllib.request.Request(
+                wellknown_uri,
+                headers={'User-Agent': 'A2A-Registry-Validator/2.0'}
+            )
+            
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+                if response.status == 200:
+                    content = response.read().decode('utf-8')
+                    remote_agent = json.loads(content)
+                    
+                    # Compare key fields
+                    mismatches = []
+                    for field in ['name', 'description']:
+                        if agent_data.get(field) != remote_agent.get(field):
+                            mismatches.append(field)
+                    
+                    if mismatches:
+                        return False, f"Mismatches in fields: {', '.join(mismatches)}"
+                    return True, "Ownership verified"
+                    
+        except Exception as e:
+            return False, f"Could not verify: {str(e)}"
+    
+    def validate(self, filepath: Path, verify_remote: bool = True) -> Dict[str, Any]:
+        """
+        Perform complete validation of an agent file.
+        
+        Returns a dict with:
+        - valid: bool
+        - a2a_errors: List[str]
+        - registry_errors: List[str]
+        - warnings: List[str]
+        - ownership_verified: bool
+        - ownership_message: str
+        """
+        result = {
+            "valid": False,
+            "a2a_errors": [],
+            "registry_errors": [],
+            "warnings": [],
+            "ownership_verified": False,
+            "ownership_message": ""
+        }
+        
+        try:
+            # Load agent file
+            with open(filepath, 'r') as f:
+                agent_data = json.load(f)
+            
+            # Validate A2A compliance
+            result["a2a_errors"] = self.validate_a2a_compliance(agent_data)
+            
+            # Validate registry requirements
+            reg_errors, reg_warnings = self.validate_registry_requirements(agent_data)
+            result["registry_errors"] = reg_errors
+            result["warnings"] = reg_warnings
+            
+            # Verify ownership if requested
+            if verify_remote:
+                verified, message = self.verify_ownership(agent_data)
+                result["ownership_verified"] = verified
+                result["ownership_message"] = message
+            
+            # Determine overall validity
+            result["valid"] = len(result["a2a_errors"]) == 0 and len(result["registry_errors"]) == 0
+            
+        except json.JSONDecodeError as e:
+            result["registry_errors"].append(f"Invalid JSON: {e}")
+        except FileNotFoundError:
+            result["registry_errors"].append(f"File not found: {filepath}")
+        except Exception as e:
+            result["registry_errors"].append(f"Unexpected error: {e}")
+        
+        return result
 
-def load_agent_file(filepath: Path) -> Dict[str, Any]:
-    """Load and parse an agent JSON file."""
-    try:
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in {filepath}: {e}")
-    except FileNotFoundError:
-        raise ValueError(f"File not found: {filepath}")
-
-def validate_schema(agent_data: Dict[str, Any], schema: Dict[str, Any]) -> None:
-    """Validate agent data against the schema."""
-    try:
-        validate(instance=agent_data, schema=schema)
-    except ValidationError as e:
-        raise ValueError(f"Schema validation failed: {e.message}")
-
-def fetch_wellknown_agent(url: str) -> Optional[Dict[str, Any]]:
-    """Fetch the agent.json from the well-known URI."""
-    try:
-        # Create SSL context that doesn't verify certificates (for dev environments)
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        req = urllib.request.Request(
-            url,
-            headers={'User-Agent': 'A2A-Registry-Validator/1.0'}
-        )
-        
-        with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
-            if response.status == 200:
-                content = response.read().decode('utf-8')
-                return json.loads(content)
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as e:
-        print(f"Warning: Could not fetch or parse {url}: {e}")
-    except Exception as e:
-        print(f"Warning: Unexpected error fetching {url}: {e}")
+def print_validation_result(result: Dict[str, Any], filepath: Path) -> None:
+    """Pretty print validation results."""
+    print(f"\n{'='*60}")
+    print(f"Validation Report for: {filepath.name}")
+    print(f"{'='*60}")
     
-    return None
-
-def verify_ownership(agent_data: Dict[str, Any]) -> bool:
-    """Verify agent ownership by comparing with well-known endpoint."""
-    wellknown_uri = agent_data.get('wellKnownURI')
-    if not wellknown_uri:
-        print("Warning: No wellKnownURI specified")
-        return True  # Allow for now during development
+    if result["valid"]:
+        print("✅ VALID - Agent passes all requirements")
+    else:
+        print("❌ INVALID - Agent has validation errors")
     
-    remote_agent = fetch_wellknown_agent(wellknown_uri)
-    if not remote_agent:
-        print(f"Warning: Could not fetch agent data from {wellknown_uri}")
-        return True  # Allow for now during development
+    print(f"\nA2A Protocol Compliance:")
+    if result["a2a_errors"]:
+        for error in result["a2a_errors"]:
+            print(f"  ❌ {error}")
+    else:
+        print("  ✅ Fully compliant with A2A Protocol")
     
-    # Compare key fields
-    fields_to_check = ['name', 'description']
-    mismatches = []
+    print(f"\nRegistry Requirements:")
+    if result["registry_errors"]:
+        for error in result["registry_errors"]:
+            print(f"  ❌ {error}")
+    else:
+        print("  ✅ Meets all registry requirements")
     
-    for field in fields_to_check:
-        local_value = agent_data.get(field)
-        remote_value = remote_agent.get(field)
-        
-        if local_value != remote_value:
-            mismatches.append(f"{field}: local='{local_value}' vs remote='{remote_value}'")
+    if result["warnings"]:
+        print(f"\n⚠️  Warnings (non-blocking):")
+        for warning in result["warnings"]:
+            print(f"  - {warning}")
     
-    if mismatches:
-        print("Warning: Mismatches found between local and remote agent data:")
-        for mismatch in mismatches:
-            print(f"  - {mismatch}")
-        return False
+    print(f"\nOwnership Verification:")
+    if result["ownership_verified"]:
+        print(f"  ✅ {result['ownership_message']}")
+    else:
+        print(f"  ⚠️  {result['ownership_message']}")
     
-    print(f"✓ Ownership verified via {wellknown_uri}")
-    return True
-
-def validate_agent(filepath: Path, verify_remote: bool = True) -> bool:
-    """
-    Validate an agent JSON file.
-    
-    Args:
-        filepath: Path to the agent JSON file
-        verify_remote: Whether to verify ownership via well-known URI
-    
-    Returns:
-        True if validation passes, False otherwise
-    """
-    try:
-        # Load schema
-        schema = load_schema()
-        print(f"✓ Loaded schema")
-        
-        # Load agent file
-        agent_data = load_agent_file(filepath)
-        print(f"✓ Loaded agent file: {filepath}")
-        
-        # Validate against schema
-        validate_schema(agent_data, schema)
-        print(f"✓ Schema validation passed")
-        
-        # Verify ownership if requested
-        if verify_remote:
-            if not verify_ownership(agent_data):
-                print("⚠ Ownership verification failed (non-blocking during development)")
-        
-        print(f"\n✅ Agent '{agent_data['name']}' validation successful!")
-        return True
-        
-    except Exception as e:
-        print(f"\n❌ Validation failed: {e}")
-        return False
+    print(f"{'='*60}\n")
 
 def main():
-    parser = argparse.ArgumentParser(description='Validate an A2A Registry agent JSON file')
+    parser = argparse.ArgumentParser(
+        description='Validate an A2A Registry agent against Protocol and Registry requirements'
+    )
     parser.add_argument('filepath', type=Path, help='Path to the agent JSON file')
     parser.add_argument('--no-remote', action='store_true', 
                        help='Skip remote ownership verification')
+    parser.add_argument('--json', action='store_true',
+                       help='Output results as JSON')
     
     args = parser.parse_args()
     
-    success = validate_agent(args.filepath, verify_remote=not args.no_remote)
-    sys.exit(0 if success else 1)
+    validator = AgentValidator()
+    result = validator.validate(args.filepath, verify_remote=not args.no_remote)
+    
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print_validation_result(result, args.filepath)
+    
+    sys.exit(0 if result["valid"] else 1)
 
 if __name__ == '__main__':
     main()
