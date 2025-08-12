@@ -70,8 +70,10 @@ class Agent:
     author: str
     wellKnownURI: str
     skills: List[Skill]
-    capabilities: Optional[Dict[str, bool]]
+    capabilities: Optional[Capabilities]
     version: Optional[str]
+    registryTags: Optional[List[str]]
+    documentationUrl: Optional[str]
     # ... additional fields
 ```
 
@@ -120,7 +122,7 @@ all_agents = registry.get_all()
 # Filter for agents that support streaming and have specific skills
 filtered = [
     agent for agent in all_agents
-    if agent.capabilities and agent.capabilities.get("streaming")
+    if agent.capabilities and agent.capabilities.streaming
     and any(s.id == "real-time-data" for s in agent.skills)
 ]
 ```

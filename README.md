@@ -156,7 +156,7 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 
 # Run validation locally
-python scripts/validate_agent.py agents/example.json
+python scripts/validate_agent.py agents/example-weather-bot.json
 
 # Generate registry.json
 python scripts/generate_registry.py agents/ > docs/registry.json
@@ -171,10 +171,10 @@ cd docs && python -m http.server 8000
 - [x] Repository structure
 - [x] Agent JSON Schema
 - [ ] GitHub Actions validation
-- [ ] Basic website
+- [x] Basic website
 
 ### Phase 2: Usability
-- [ ] Python client library
+- [x] Python client library
 - [ ] Searchable website UI
 - [ ] Comprehensive documentation
 
@@ -195,4 +195,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-Built with ❤️ by the A2A community, leveraging the [A2A Protocol](https://a2aprotocol.ai/) for agent interoperability.
+Built with ❤️ by the A2A community, leveraging the [A2A Protocol](https://a2a-protocol.org/) for agent interoperability.

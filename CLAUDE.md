@@ -80,7 +80,7 @@ python scripts/generate_registry.py agents/ > docs/registry.json
 
 ### Data Flow
 1. **Agent Submission**: Developer creates PR with new JSON file in `/agents/`
-2. **Validation**: GitHub Action validates JSON schema and verifies ownership via `/.well-known/agent-card.json`
+2. **Validation**: GitHub Action validates JSON schema and verifies ownership via `/.well-known/agent.json` (or `/.well-known/agent-card.json`)
 3. **Publishing**: On merge, GitHub Action consolidates all agents into `registry.json` and deploys
 4. **Consumption**: Users access via website, API endpoint, or Python client
 
@@ -90,7 +90,7 @@ Required fields for each agent:
 - `description`: Purpose explanation
 - `author`: Creator name/handle
 - `wellKnownURI`: Validation endpoint
-- `capabilities`: Array of task strings
+- `capabilities`: Object of A2A capability flags (e.g., `streaming`, `pushNotifications`, `stateTransitionHistory`)
 
 ### Key Endpoints
 - Website: `https://www.a2aregistry.org`

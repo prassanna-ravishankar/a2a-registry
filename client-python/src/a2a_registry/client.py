@@ -165,12 +165,17 @@ class Registry:
                     result.append(agent)
                     break
             
-            # Search in tags
-            if agent.tags:
-                for tag in agent.tags:
-                    if query_lower in tag.lower():
-                        result.append(agent)
-                        break
+            # Search in registry tags (preferred) and legacy tags
+            combined_tags = []
+            if getattr(agent, "registryTags", None):
+                combined_tags.extend(agent.registryTags or [])
+            if getattr(agent, "tags", None):
+                combined_tags.extend(agent.tags or [])
+
+            for tag in combined_tags:
+                if query_lower in tag.lower():
+                    result.append(agent)
+                    break
         
         return result
     

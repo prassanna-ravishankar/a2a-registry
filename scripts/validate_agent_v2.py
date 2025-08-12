@@ -7,7 +7,7 @@ import json
 import sys
 import argparse
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import urllib.request
 import urllib.error
 import ssl
@@ -70,7 +70,7 @@ class AgentValidator:
         
         return errors
     
-    def validate_registry_requirements(self, agent_data: Dict[str, Any]) -> tuple[List[str], List[str]]:
+    def validate_registry_requirements(self, agent_data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         """Validate registry-specific requirements."""
         errors = []
         warnings = []
@@ -88,12 +88,13 @@ class AgentValidator:
         # Validate wellKnownURI format
         if "wellKnownURI" in agent_data:
             uri = agent_data["wellKnownURI"]
-            if not uri.endswith("/.well-known/agent.json"):
-                errors.append("wellKnownURI must end with '/.well-known/agent.json'")
+            allowed_suffixes = ("/.well-known/agent.json", "/.well-known/agent-card.json")
+            if not any(uri.endswith(suffix) for suffix in allowed_suffixes):
+                errors.append("wellKnownURI must end with '/.well-known/agent.json' or '/.well-known/agent-card.json'")
         
         return errors, warnings
     
-    def verify_ownership(self, agent_data: Dict[str, Any]) -> tuple[bool, str]:
+    def verify_ownership(self, agent_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Verify agent ownership via well-known endpoint."""
         wellknown_uri = agent_data.get('wellKnownURI')
         if not wellknown_uri:

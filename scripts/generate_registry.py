@@ -21,9 +21,14 @@ def load_agent_files(agents_dir: Path) -> List[Dict[str, Any]]:
         try:
             with open(filepath, 'r') as f:
                 agent_data = json.load(f)
-                # Add metadata
+                # Add metadata (back-compat top-level fields)
                 agent_data['_id'] = filepath.stem  # filename without extension
                 agent_data['_source'] = f"agents/{filepath.name}"
+                # Add structured registry metadata preferred by schema
+                agent_data['_registryMetadata'] = {
+                    'id': filepath.stem,
+                    'source': f"agents/{filepath.name}"
+                }
                 agents.append(agent_data)
                 print(f"✓ Loaded: {filepath.name}", file=sys.stderr)
         except Exception as e:

@@ -23,8 +23,8 @@
         "wellKnownURI": {
           "type": "string",
           "format": "uri",
-          "description": "The /.well-known/agent.json URI for this agent (A2A Protocol standard)",
-          "pattern": "^https?://.+/\\.well-known/agent\\.json$"
+          "description": "The /.well-known/agent.json (or agent-card.json) URI for this agent (A2A Protocol standard)",
+          "pattern": "^https?://.+/\\.well-known/(agent|agent-card)\\.json$"
         },
         "homepage": {
           "type": "string",
