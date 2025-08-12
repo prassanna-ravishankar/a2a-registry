@@ -67,7 +67,7 @@ The `name` and `description` in your submission must match those in your `.well-
 
 ### Step 1: Fork the Repository
 
-Fork the [A2A Registry repository](https://github.com/a2aregistry/a2a-registry) to your GitHub account.
+Fork the [A2A Registry repository](https://github.com/prassanna-ravishankar/a2a-registry) to your GitHub account.
 
 ### Step 2: Create Your Agent File
 
@@ -176,7 +176,7 @@ We welcome contributions to improve the registry infrastructure!
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/a2aregistry/a2a-registry.git
+   git clone https://github.com/prassanna-ravishankar/a2a-registry.git
    cd a2a-registry
    ```
 
@@ -224,7 +224,7 @@ done
 
 ### Communication
 
-- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/a2aregistry/a2a-registry/issues)
+- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
 - **Discussions**: General questions and discussions in [GitHub Discussions](https://github.com/a2aregistry/a2a-registry/discussions)
 - **Pull Requests**: Submit code changes with clear descriptions
 
@@ -241,8 +241,8 @@ done
 ## Questions?
 
 If you have questions:
-1. Check existing [issues](https://github.com/a2aregistry/a2a-registry/issues)
+1. Check existing [issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
 2. Read the [documentation](README.md)
-3. Ask in [discussions](https://github.com/a2aregistry/a2a-registry/discussions)
+3. Ask in [discussions](https://github.com/prassanna-ravishankar/a2a-registry/discussions)
 
 Thank you for contributing to the A2A Registry! Together we're building a comprehensive, open directory of AI agents.

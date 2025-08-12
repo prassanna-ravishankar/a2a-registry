@@ -138,7 +138,7 @@ registry.refresh()  # Force reload from the API
 
 ## Contributing
 
-Contributions are welcome! Please see the main [A2A Registry repository](https://github.com/a2aregistry/a2a-registry) for contribution guidelines.
+Contributions are welcome! Please see the main [A2A Registry repository](https://github.com/prassanna-ravishankar/a2a-registry) for contribution guidelines.
 
 ## License
 

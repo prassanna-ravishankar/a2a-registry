@@ -147,7 +147,7 @@ All agent submissions must:
 ### Local Setup
 ```bash
 # Clone the repository
-git clone https://github.com/a2aregistry/a2a-registry.git
+git clone https://github.com/prassanna-ravishankar/a2a-registry.git
 cd a2a-registry
 
 # Set up Python environment with uv
@@ -189,8 +189,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/a2aregistry/a2a-registry/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/a2aregistry/a2a-registry/discussions)
+- **Issues**: [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/prassanna-ravishankar/a2a-registry/discussions)
 - **Website**: [a2aregistry.org](https://www.a2aregistry.org)
 
 ## Acknowledgments

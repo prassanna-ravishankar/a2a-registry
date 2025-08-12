@@ -42,9 +42,9 @@ dev = [
 
 [project.urls]
 Homepage = "https://www.a2aregistry.org"
-Documentation = "https://github.com/a2aregistry/a2a-registry"
-Repository = "https://github.com/a2aregistry/a2a-registry"
-Issues = "https://github.com/a2aregistry/a2a-registry/issues"
+Documentation = "https://github.com/prassanna-ravishankar/a2a-registry"
+Repository = "https://github.com/prassanna-ravishankar/a2a-registry"
+Issues = "https://github.com/prassanna-ravishankar/a2a-registry/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
