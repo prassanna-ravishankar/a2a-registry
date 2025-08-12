@@ -140,7 +140,7 @@ All agent submissions must:
 ## Development
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 - uv (for Python package management)
 - Node.js 16+ (for website development)
 
