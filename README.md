@@ -72,6 +72,7 @@ curl https://www.a2aregistry.org/registry.json
 #### Via Python Client
 ```bash
 uv pip install a2a-registry-client
+# Or using pip: pip install a2a-registry-client
 ```
 
 ```python
@@ -153,6 +154,9 @@ cd a2a-registry
 uv venv
 source .venv/bin/activate
 uv pip install -r requirements.txt
+
+# Note: uv provides automatic dependency caching for faster installs
+# For users who prefer pip: pip install -r requirements.txt
 
 # Run validation locally
 python scripts/validate_agent.py agents/example-weather-bot.json
