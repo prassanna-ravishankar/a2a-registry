@@ -128,7 +128,7 @@ Test your submission locally:
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Validate your agent file (checks both A2A compliance and registry requirements)
 python scripts/validate_agent.py agents/your-agent-name.json

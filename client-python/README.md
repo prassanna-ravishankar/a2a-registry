@@ -5,7 +5,9 @@ Official Python client library for the A2A Registry - a community-driven directo
 ## Installation
 
 ```bash
-pip install a2a-registry-client
+uv pip install a2a-registry-client
+# Or using pip:
+# pip install a2a-registry-client
 ```
 
 ## Quick Start

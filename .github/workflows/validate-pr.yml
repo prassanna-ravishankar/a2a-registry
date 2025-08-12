@@ -15,23 +15,14 @@ jobs:
       with:
         fetch-depth: 0  # Fetch all history for proper diff
     
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
       with:
-        python-version: '3.11'
-    
-    - name: Cache pip packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        enable-cache: true
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        uv pip install -r requirements.txt
     
     - name: Get changed files
       id: changed-files
