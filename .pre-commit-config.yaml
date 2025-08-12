@@ -1,0 +1,61 @@
+# Pre-commit hooks for A2A Registry
+# Install with: uv run pre-commit install
+
+repos:
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=100]
+
+  # Python linting and import sorting  
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Type checking with ty
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: Type check with ty
+        entry: uvx ty check
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+
+  # JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-json
+        files: \.(json)$
+      - id: pretty-format-json
+        args: [--autofix, --indent=2]
+        files: \.(json)$
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+
+  # Validate agents using our custom script
+  - repo: local
+    hooks:
+      - id: validate-agents
+        name: Validate agent JSON files
+        entry: python scripts/validate_agent.py
+        language: system
+        files: ^agents/.*\.json$
+        pass_filenames: true

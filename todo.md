@@ -86,9 +86,9 @@ Ordered by priority and logical workflow.
   - [x] Update client to prefer _registryMetadata.id when available
 
 ## 8. Development Tooling
-- [ ] Add uv.lock file for reproducible builds (optional, for full uv adoption)
-- [ ] Consider adding pyproject.toml at root for scripts/ dependencies
-- [ ] Add pre-commit hooks using uv for linting and formatting
+- [x] Add uv.lock file for reproducible builds (optional, for full uv adoption)
+- [x] Consider adding pyproject.toml at root for scripts/ dependencies
+- [x] Add pre-commit hooks using uv for linting and formatting
 
 ## 9. Security Enhancements
 - [ ] Add SSL verification flag to validators (default on)
