@@ -77,7 +77,7 @@ class Registry:
         """
         agents = self.get_all()
         for agent in agents:
-            if agent._id == agent_id:
+            if agent.registry_id == agent_id:
                 return agent
         return None
     
