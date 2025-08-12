@@ -32,6 +32,8 @@ Your agent must have a valid A2A Protocol Agent Card accessible at:
 https://your-domain.com/.well-known/agent.json or https://your-domain.com/.well-known/agent-card.json
 ```
 
+**Note**: `.well-known/agent-card.json` is preferred per the A2A Protocol specification.
+
 The Agent Card must follow the [Official A2A Protocol specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure) and include:
 - **Required A2A fields**: protocolVersion, name, description, url, version, capabilities, skills, defaultInputModes, defaultOutputModes
 - **Skills structure**: Each skill must have id, name, description, and tags

@@ -61,29 +61,29 @@ Ordered by priority and logical workflow.
   - [x] Update any type checking documentation to use `uvx ty check`
 
 ## 6. Documentation Updates
-- [ ] README.md updates
-  - [ ] Remove Node.js prerequisite (site is static HTML/JS)
-  - [ ] Update Python prerequisite from 3.8+ to 3.10+
-  - [ ] Add note that GitHub Actions validation is live ✓
-- [ ] CONTRIBUTING.md updates
-  - [ ] Fix validator script references (after consolidation)
-  - [ ] Add section on using `uvx ty check` for type checking
-- [ ] CLAUDE.md updates
-  - [ ] Fix validator script reference (after consolidation)
-- [ ] Well-known path documentation:
-  - [ ] Schema already supports both /.well-known/agent.json and /.well-known/agent-card.json ✓
-  - [ ] Update README to mention both paths
-  - [ ] Update CONTRIBUTING.md to show both options
-  - [ ] Update CLAUDE.md to note both are supported
-  - [ ] Consider noting "agent-card.json" as preferred (per A2A spec)
+- [x] README.md updates
+  - [x] Remove Node.js prerequisite (site is static HTML/JS)
+  - [x] Update Python prerequisite from 3.8+ to 3.10+
+  - [x] Add note that GitHub Actions validation is live ✓
+- [x] CONTRIBUTING.md updates
+  - [x] Fix validator script references (after consolidation)
+  - [x] Add section on using `uvx ty check` for type checking
+- [x] CLAUDE.md updates
+  - [x] Fix validator script reference (after consolidation)
+- [x] Well-known path documentation:
+  - [x] Schema already supports both /.well-known/agent.json and /.well-known/agent-card.json ✓
+  - [x] Update README to mention both paths
+  - [x] Update CONTRIBUTING.md to show both options
+  - [x] Update CLAUDE.md to note both are supported
+  - [x] Consider noting "agent-card.json" as preferred (per A2A spec)
 
 ## 7. Registry Metadata Cleanup
-- [ ] Resolve _registryMetadata vs top-level _id/_source confusion
-  - [ ] generate_registry.py creates both (for backward compat)
-  - [ ] Schema only defines _registryMetadata
-  - [ ] Client uses agent._id (top-level)
-  - [ ] Decision: Keep both for now but document deprecation plan
-  - [ ] Update client to prefer _registryMetadata.id when available
+- [x] Resolve _registryMetadata vs top-level _id/_source confusion
+  - [x] generate_registry.py creates both (for backward compat)
+  - [x] Schema only defines _registryMetadata
+  - [x] Client uses agent._id (top-level)
+  - [x] Decision: Keep both for now but document deprecation plan
+  - [x] Update client to prefer _registryMetadata.id when available
 
 ## 8. Development Tooling
 - [ ] Add uv.lock file for reproducible builds (optional, for full uv adoption)

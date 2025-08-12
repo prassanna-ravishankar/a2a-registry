@@ -124,6 +124,7 @@ All agent submissions must:
 3. Include registry-specific fields: `author` and `wellKnownURI`
 4. Skills must have: `id`, `name`, `description`, and `tags`
 5. Match key fields between submission and the `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
+   - Note: `.well-known/agent-card.json` is preferred per the A2A specification
 6. Pass all automated validation checks
 
 ## API Documentation
