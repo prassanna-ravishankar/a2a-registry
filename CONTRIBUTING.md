@@ -17,7 +17,7 @@ Thank you for your interest in contributing to the A2A Registry! This document p
 Before submitting your agent, ensure you have:
 
 1. A working AI agent that follows the A2A Protocol
-2. A publicly accessible `.well-known/agent.json` endpoint
+2. A publicly accessible `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
 3. Clear documentation about your agent's capabilities
 4. Tested your agent's functionality
 
@@ -29,7 +29,7 @@ All submitted agents must meet these requirements:
 
 Your agent must have a valid A2A Protocol Agent Card accessible at:
 ```
-https://your-domain.com/.well-known/agent.json
+https://your-domain.com/.well-known/agent.json or https://your-domain.com/.well-known/agent-card.json
 ```
 
 The Agent Card must follow the [Official A2A Protocol specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure) and include:
@@ -57,11 +57,11 @@ Required A2A Protocol fields:
 
 Required registry fields:
 - `author`: Your name or organization
-- `wellKnownURI`: Full URL to your `.well-known/agent.json` endpoint
+- `wellKnownURI`: Full URL to your `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
 
 #### 3. Ownership Verification
 
-The `name` and `description` in your submission must match those in your `.well-known/agent.json` endpoint to verify ownership.
+The `name` and `description` in your submission must match those in your `.well-known/agent.json` or `.well-known/agent-card.json` endpoint to verify ownership.
 
 ## Submission Process
 
@@ -206,6 +206,9 @@ Run tests before submitting:
 ```bash
 # Python tests
 pytest
+
+# Type checking
+uvx ty check
 
 # Validate all agents
 for file in agents/*.json; do

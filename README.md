@@ -71,7 +71,7 @@ curl https://www.a2aregistry.org/registry.json
 
 #### Via Python Client
 ```bash
-pip install a2a-registry-client
+uv pip install a2a-registry-client
 ```
 
 ```python
@@ -101,7 +101,7 @@ a2a-registry/
 1. **Submission**: Developers submit agent definitions as JSON files via Pull Requests
 2. **Validation**: GitHub Actions automatically validate:
    - JSON schema compliance
-   - Agent ownership via `.well-known/agent.json` verification
+   - Agent ownership via `.well-known/agent.json` or `.well-known/agent-card.json` verification
 3. **Publishing**: On merge, the system:
    - Consolidates all agents into `registry.json`
    - Deploys to GitHub Pages
@@ -122,7 +122,7 @@ All agent submissions must:
 2. Include all required A2A fields: `protocolVersion`, `name`, `description`, `url`, `version`, `capabilities`, `skills`, `defaultInputModes`, `defaultOutputModes`
 3. Include registry-specific fields: `author` and `wellKnownURI`
 4. Skills must have: `id`, `name`, `description`, and `tags`
-5. Match key fields between submission and the `.well-known/agent.json` endpoint
+5. Match key fields between submission and the `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
 6. Pass all automated validation checks
 
 ## API Documentation
@@ -142,7 +142,6 @@ All agent submissions must:
 ### Prerequisites
 - Python 3.10+
 - uv (for Python package management)
-- Node.js 16+ (for website development)
 
 ### Local Setup
 ```bash
