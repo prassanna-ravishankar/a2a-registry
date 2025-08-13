@@ -174,24 +174,36 @@ cd docs && python -m http.server 8000
 
 ## Roadmap
 
-### Phase 1: MVP ✅
-- [x] Repository structure
-- [x] Agent JSON Schema
-- [x] GitHub Actions validation
-- [x] Basic website
+### Near Term: Community Growth
+**Goal**: Establish A2A Registry as the go-to directory for AI agents
 
-### Phase 2: Usability ✅
-- [x] Python client library with async support
-- [x] Searchable website UI with filtering
-- [x] Comprehensive documentation
+- **Agent Ecosystem** - Reach 20+ high-quality agent submissions from diverse domains
+- **Enhanced Discovery** - Advanced search capabilities, agent categorization, and usage analytics
+- **Developer Experience** - SDKs for JavaScript, Go, and Rust alongside our Python client
 
-### Phase 3: Growth & A2A Protocol Integration
-- [ ] 20+ agent submissions
-- [ ] Agent Card signing and verification support
-- [ ] A2A extensions registry and discovery
-- [ ] Enhanced authentication integration
-- [ ] A2A validation tooling integration (Inspector, TCK)
-- [ ] Community governance model
+### Medium Term: Trust & Security
+**Goal**: Build a secure, verifiable agent ecosystem
+
+- **Agent Verification** - Cryptographic signing and verification of agent cards
+- **Trust Indicators** - Community ratings, usage metrics, and security audit badges
+- **A2A Protocol Extensions** - Registry and discovery for protocol extensions
+- **Authentication Framework** - Standardized auth patterns for agent interactions
+
+### Long Term: Distributed Infrastructure
+**Goal**: Scale to support thousands of agents globally
+
+- **Persistent Database** - Migration from static JSON to scalable database infrastructure when community adoption exceeds 100+ agents
+- **Federated Registries** - Support for multiple registry instances with cross-registry discovery
+- **Real-time Updates** - WebSocket/SSE support for live agent status and capability changes
+- **Global CDN** - Edge-deployed registry for low-latency agent discovery worldwide
+
+### Governance & Sustainability
+**Goal**: Transition to community-driven development
+
+- **Governance Model** - Establish steering committee and contribution guidelines
+- **Sustainability Plan** - Explore funding models for infrastructure and maintenance
+- **A2A Protocol Alignment** - Deep integration with A2A validation tools (Inspector, TCK)
+- **Standards Body** - Work towards formal standardization of agent registry protocols
 
 ## License
 
