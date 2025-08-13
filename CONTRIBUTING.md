@@ -129,11 +129,9 @@ Example agent file (A2A Protocol compliant):
 Test your submission locally:
 
 ```bash
-# Install dependencies
-uv pip install -r requirements.txt
-
 # Validate your agent file (checks both A2A compliance and registry requirements)
-python scripts/validate_agent.py agents/your-agent-name.json
+# Note: uv run automatically handles environment setup and dependencies
+uv run python scripts/validate_agent.py agents/your-agent-name.json
 ```
 
 ### Step 4: Submit Pull Request
@@ -174,6 +172,20 @@ We welcome contributions to improve the registry infrastructure!
 - **Documentation**: Tutorials, examples, guides
 - **Testing**: Unit tests, integration tests, CI improvements
 
+### Project Structure
+
+This repository contains two separate Python packages:
+
+1. **Root package (`a2a-registry`)**: Contains validation scripts and registry generation tools
+   - Configuration: `/pyproject.toml`
+   - Includes: `scripts/validate_agent.py`, `scripts/generate_registry.py`
+   - Dependencies: jsonschema (for validation), requests
+
+2. **Client package (`a2a-registry-client`)**: Python client library for consuming the registry
+   - Configuration: `/client-python/pyproject.toml`
+   - Published to PyPI separately
+   - Dependencies: requests, pydantic (for data models)
+
 ### Development Setup
 
 1. Clone the repository:
@@ -182,17 +194,19 @@ We welcome contributions to improve the registry infrastructure!
    cd a2a-registry
    ```
 
-2. Set up Python environment with uv:
+2. Install uv (if not already installed):
    ```bash
-   uv venv
-   source .venv/bin/activate
-   uv pip install -r requirements.txt
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-3. For client development:
+3. No explicit setup needed! Just use `uv run` to execute commands:
    ```bash
+   # For root scripts
+   uv run python scripts/validate_agent.py agents/example-weather-bot.json
+   
+   # For client development
    cd client-python
-   uv pip install -e ".[dev]"
+   uv run pytest tests/
    ```
 
 ### Code Style
@@ -230,7 +244,7 @@ done
 ### Communication
 
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
-- **Discussions**: General questions and discussions in [GitHub Discussions](https://github.com/a2aregistry/a2a-registry/discussions)
+- **Discussions**: General questions and discussions in [GitHub Discussions](https://github.com/prassanna-ravishankar/a2a-registry/discussions)
 - **Pull Requests**: Submit code changes with clear descriptions
 
 ### Review Process

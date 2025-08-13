@@ -141,9 +141,11 @@ All agent submissions must:
 
 ## Development
 
+> **Note**: This repository contains two Python packages - the root package for scripts and the client library in `/client-python/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ### Prerequisites
 - Python 3.10+
-- uv (for Python package management)
+- Git
 
 ### Local Setup
 ```bash
@@ -151,13 +153,14 @@ All agent submissions must:
 git clone https://github.com/prassanna-ravishankar/a2a-registry.git
 cd a2a-registry
 
-# Set up Python environment with uv
-uv venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate     # On Windows
 
-# Note: uv provides automatic dependency caching for faster installs
-# For users who prefer pip: pip install -r requirements.txt
+# Install the package with dependencies
+pip install .
 
 # Run validation locally
 python scripts/validate_agent.py agents/example-weather-bot.json

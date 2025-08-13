@@ -1,5 +1,5 @@
 # Pre-commit hooks for A2A Registry
-# Install with: uv run pre-commit install
+# For developers: Install with `uv run pre-commit install`
 
 repos:
   # Python code formatting
@@ -55,7 +55,8 @@ repos:
     hooks:
       - id: validate-agents
         name: Validate agent JSON files
-        entry: python scripts/validate_agent.py
+        entry: uv run python scripts/validate_agent.py
         language: system
         files: ^agents/.*\.json$
         pass_filenames: true
+

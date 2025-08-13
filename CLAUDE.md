@@ -13,20 +13,8 @@ A2A Registry is a community-driven, open-source directory of AI agents using a "
 # Install uv if not already installed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Create virtual environment
-uv venv
-
-# Activate virtual environment
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate  # On Windows
-
-# Install dependencies
-uv pip install -r requirements.txt
-
-# For client library development
-cd client-python
-uv pip install -e ".[dev]"
+# No explicit setup needed! Just use `uv run` for all commands
+# uv run automatically handles environment setup and dependencies
 ```
 
 ## Common Development Commands
@@ -42,13 +30,13 @@ act -j publish
 ```bash
 # Run tests for the Python client
 cd client-python
-pytest tests/
+uv run pytest tests/
 
 # Build the package
-python -m build
+uv run python -m build
 
 # Check package before publishing
-twine check dist/*
+uv run twine check dist/*
 ```
 
 ### Website Development
@@ -62,10 +50,10 @@ python -m http.server 8000
 ### Agent Registry Operations
 ```bash
 # Validate a single agent file
-python scripts/validate_agent.py agents/example-agent.json
+uv run python scripts/validate_agent.py agents/example-agent.json
 
 # Generate registry.json from all agent files
-python scripts/generate_registry.py agents/ > docs/registry.json
+uv run python scripts/generate_registry.py agents/ > docs/registry.json
 ```
 
 ## Architecture & Key Components
@@ -73,10 +61,13 @@ python scripts/generate_registry.py agents/ > docs/registry.json
 ### Repository Structure
 - `/agents/` - Flat directory containing individual agent JSON files (the "database")
 - `/docs/` - Static website files served via GitHub Pages at www.a2aregistry.org
+- `/scripts/` - Validation and generation scripts (uses root `pyproject.toml`)
 - `/client-python/` - Python client library source (published as `a2a-registry-client`)
+  - Has its own `pyproject.toml` for independent PyPI publishing
 - `/.github/workflows/` - GitHub Actions for automation:
   - `validate-pr.yml` - Validates agent submissions on PRs
   - `publish.yml` - Generates registry.json and deploys to GitHub Pages
+- `/pyproject.toml` - Root package configuration for scripts and development tools
 
 ### Data Flow
 1. **Agent Submission**: Developer creates PR with new JSON file in `/agents/`
