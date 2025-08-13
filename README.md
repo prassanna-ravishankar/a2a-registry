@@ -174,18 +174,21 @@ cd docs && python -m http.server 8000
 ### Phase 1: MVP ✅
 - [x] Repository structure
 - [x] Agent JSON Schema
-- [ ] GitHub Actions validation
+- [x] GitHub Actions validation
 - [x] Basic website
 
-### Phase 2: Usability
-- [x] Python client library
-- [ ] Searchable website UI
-- [ ] Comprehensive documentation
+### Phase 2: Usability ✅
+- [x] Python client library with async support
+- [x] Searchable website UI with filtering
+- [x] Comprehensive documentation
 
-### Phase 3: Growth
+### Phase 3: Growth & A2A Protocol Integration
 - [ ] 20+ agent submissions
-- [ ] Governance model
-- [ ] Advanced features (semantic search, health checks)
+- [ ] Agent Card signing and verification support
+- [ ] A2A extensions registry and discovery
+- [ ] Enhanced authentication integration
+- [ ] A2A validation tooling integration (Inspector, TCK)
+- [ ] Community governance model
 
 ## License
 

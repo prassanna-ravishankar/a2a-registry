@@ -97,23 +97,23 @@ Ordered by priority and logical workflow.
 - [x] Add rate limiting awareness
 
 ## 10. Website UI Improvements
-- [ ] Enhance index.html visual design
-  - [ ] Add smooth animations and transitions (fade-in for cards, etc.)
-  - [ ] Add icons for agent capabilities (streaming, push notifications, etc.)
-  - [ ] Improve loading state with skeleton cards
-  - [ ] Add filter buttons for skills/capabilities
-  - [ ] Add dark mode toggle
-  - [ ] Show agent version and last updated info
-  - [ ] Add tooltips for technical terms
-  - [ ] Improve mobile responsiveness
-  - [ ] Add subtle gradient overlays or patterns
-  - [ ] Consider adding agent logos/avatars support
+- [x] Enhance index.html visual design
+  - [x] Add smooth animations and transitions (fade-in for cards, etc.)
+  - [x] Add icons for agent capabilities (streaming, push notifications, etc.)
+  - [x] Improve loading state with skeleton cards
+  - [x] Add filter buttons for skills/capabilities
+  - [x] Add dark mode toggle
+  - [x] Show agent version and last updated info
+  - [x] Add tooltips for technical terms
+  - [x] Improve mobile responsiveness
+  - [x] Add subtle gradient overlays or patterns
+  - [x] Consider adding agent logos/avatars support
 
 ## 11. Client Library Enhancements (Future)
-- [ ] Add helper methods for filtering by input/output modes
-- [ ] Surface _registryMetadata properly
-- [ ] Add async support for registry fetching
-- [ ] Add caching configuration options
+- [x] Add helper methods for filtering by input/output modes
+- [x] Surface _registryMetadata properly
+- [x] Add async support for registry fetching
+- [x] Add caching configuration options
 
 ---
 
