@@ -37,7 +37,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
-    "ty>=0.1.0",
+    "ty>=0.0.1a1",
     "ruff>=0.1.0",
 ]
 async = [
