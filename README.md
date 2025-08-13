@@ -8,10 +8,11 @@
 
 ## Overview
 
-The A2A Registry solves the critical problem of agent discovery in the AI ecosystem. Using a "Git as a Database" model, we leverage GitHub for transparent data submission, validation, and hosting. The registry is accessible both to humans via our website and to agents programmatically via a static API endpoint.
+The A2A Registry solves the critical problem of agent discovery in the AI ecosystem. **Unlike other registries that index code repositories or implementations, we exclusively index live, hosted agents that are actively running and accessible.** Using a "Git as a Database" model, we leverage GitHub for transparent data submission, validation, and hosting. The registry is accessible both to humans via our website and to agents programmatically via a static API endpoint.
 
 ## Key Features
 
+- **Live Agents Only**: We index operational, hosted agents - not just code or implementations
 - **Open Source**: Fully transparent, community-driven development
 - **A2A Protocol Compliant**: Uses official A2A Protocol AgentCard specification
 - **Simple Submission**: Submit agents via GitHub Pull Requests
@@ -23,12 +24,15 @@ The A2A Registry solves the critical problem of agent discovery in the AI ecosys
 
 ### For Agent Developers (Submitting an Agent)
 
+**Important**: We only accept live, hosted agents that are publicly accessible. Your agent must be deployed and operational before submission.
+
 1. Fork this repository
 2. Create a new JSON file in `/agents/` directory (e.g., `/agents/my-agent.json`)
 3. Follow the [Official A2A AgentCard specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure)
 4. Include required registry fields: `author` and `wellKnownURI`
-5. Submit a Pull Request
-6. Our CI will validate your submission for both A2A compliance and registry requirements
+5. Ensure your agent is live and responds to A2A Protocol requests
+6. Submit a Pull Request
+7. Our CI will validate your submission for both A2A compliance and registry requirements
 
 Example agent entry (A2A Protocol compliant):
 ```json

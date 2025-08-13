@@ -17,8 +17,10 @@
 
 <!-- If submitting a new agent, please ensure: -->
 
+- [ ] Agent is **live and hosted** (not just code or an implementation)
 - [ ] Agent follows the A2A Protocol specification
 - [ ] Agent has a valid `.well-known/agent-card.json` or `.well-known/agent.json` endpoint
+- [ ] Agent responds to A2A Protocol requests at the specified URL
 - [ ] Agent JSON file includes all required fields:
   - [ ] `protocolVersion`, `name`, `description`, `url`, `version`
   - [ ] `capabilities`, `skills`, `defaultInputModes`, `defaultOutputModes`

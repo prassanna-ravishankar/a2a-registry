@@ -13,14 +13,17 @@ Thank you for your interest in contributing to the A2A Registry! This document p
 
 ## Submitting an Agent
 
+**Important**: The A2A Registry only accepts **live, hosted agents** that are publicly accessible. We do not index code repositories, implementations, or agents that are not actively running. Your agent must be deployed and operational before submission.
+
 ### Prerequisites
 
 Before submitting your agent, ensure you have:
 
-1. A working AI agent that follows the A2A Protocol
+1. A **deployed and operational** AI agent that follows the A2A Protocol
 2. A publicly accessible `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
-3. Clear documentation about your agent's capabilities
-4. Tested your agent's functionality
+3. A live A2A endpoint that responds to requests
+4. Clear documentation about your agent's capabilities
+5. Tested your agent's functionality
 
 ### Agent Requirements
 
