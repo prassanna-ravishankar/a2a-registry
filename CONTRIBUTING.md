@@ -9,6 +9,7 @@ Thank you for your interest in contributing to the A2A Registry! This document p
 - [Submission Process](#submission-process)
 - [Contributing Code](#contributing-code)
 - [Community Guidelines](#community-guidelines)
+- [Releasing (Maintainers Only)](#releasing-maintainers-only)
 
 ## Submitting an Agent
 
@@ -158,7 +159,7 @@ uv run python scripts/validate_agent.py agents/your-agent-name.json
 Once merged:
 - Your agent will appear on [a2aregistry.org](https://www.a2aregistry.org) within minutes
 - It will be available via the API at `https://www.a2aregistry.org/registry.json`
-- Python users can discover it using the `a2a-registry-client` package
+- Python users can discover it using the `a2aregistry` package
 
 ## Contributing Code
 
@@ -181,7 +182,7 @@ This repository contains two separate Python packages:
    - Includes: `scripts/validate_agent.py`, `scripts/generate_registry.py`
    - Dependencies: jsonschema (for validation), requests
 
-2. **Client package (`a2a-registry-client`)**: Python client library for consuming the registry
+2. **Client package (`a2aregistry`)**: Python client library for consuming the registry
    - Configuration: `/client-python/pyproject.toml`
    - Published to PyPI separately
    - Dependencies: requests, pydantic (for data models)
@@ -256,6 +257,47 @@ done
    - No duplicate agents
 3. Feedback provided via PR comments
 4. Approved PRs are merged promptly
+
+## Releasing (Maintainers Only)
+
+### Python Client Library
+
+The Python client library (`a2aregistry`) is published to PyPI using a tag-based workflow. The version is automatically extracted from the git tag.
+
+#### Prerequisites
+
+1. Ensure you have a PyPI API token set as the `PYPI_API_TOKEN` secret in GitHub
+2. Make sure all tests pass and the code is ready for release
+
+#### Release Steps
+
+1. **Create and push a version tag**:
+   ```bash
+   # Format: v<version>
+   git tag v0.2.0
+   git push --tags
+   ```
+
+2. **Monitor the workflow**:
+   - Go to Actions tab in GitHub
+   - Watch the "Publish Registry" workflow
+   - The version will be automatically extracted from the tag
+   - The client will be built and published to PyPI
+
+#### Version Tag Format
+
+- Tags must follow semantic versioning with a `v` prefix
+- Examples: `v0.1.0`, `v1.0.0`, `v2.0.0-beta.1`
+- The version in `pyproject.toml` will be automatically updated to match the tag (without the `v` prefix)
+
+### Registry Updates
+
+The registry (GitHub Pages site) is automatically updated on every push to `main` that modifies:
+- Agent files (`agents/**.json`)
+- Documentation (`docs/**`)
+- Registry generation script (`scripts/generate_registry.py`)
+
+No manual intervention is needed for registry updates.
 
 ## Questions?
 

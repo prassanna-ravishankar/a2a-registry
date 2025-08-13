@@ -85,7 +85,7 @@ async def async_examples():
     try:
         from a2a_registry import AsyncRegistry
     except ImportError:
-        print("❌ AsyncRegistry not available. Install with: pip install 'a2a-registry-client[async]'")
+        print("❌ AsyncRegistry not available. Install with: pip install 'a2aregistry[async]'")
         return
     
     # Use async context manager for proper session management

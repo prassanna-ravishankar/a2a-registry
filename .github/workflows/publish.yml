@@ -7,9 +7,9 @@ on:
     paths:
       - 'agents/**.json'
       - 'docs/**'
-      - 'client-python/**'
-      - '.github/workflows/publish.yml'
       - 'scripts/generate_registry.py'
+    tags:
+      - 'v*'  # Trigger on version tags like v0.1.0
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
@@ -76,27 +76,34 @@ jobs:
       with:
         enable-cache: true
     
+    - name: Update version from tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        # Extract version from tag (remove 'v' prefix)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "Setting version to $VERSION"
+        cd client-python
+        # Use --no-sync to avoid dependency resolution during CI
+        uv version $VERSION --no-sync
+    
     - name: Build Python client
       run: |
         cd client-python
-        uv run python -m build
-    
-    - name: Check package
-      run: |
-        cd client-python
-        uv run twine check dist/*
+        uv build
     
     - name: Publish to PyPI
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: startsWith(github.ref, 'refs/tags/v')
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         cd client-python
-        uv run twine upload dist/*
+        uv publish
     
     - name: Display package info
-      if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+      if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
       run: |
         echo "📦 Python client package built successfully"
-        echo "To publish, ensure PYPI_API_TOKEN secret is set and push to main branch"
+        echo "📋 This is a dry run - package was not published"
+        echo "🏷️  To publish, create a tag: git tag v0.1.0 && git push --tags"
+        echo ""
+        ls -la client-python/dist/

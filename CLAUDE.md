@@ -86,7 +86,7 @@ Required fields for each agent:
 ### Key Endpoints
 - Website: `https://www.a2aregistry.org`
 - API: `https://www.a2aregistry.org/registry.json`
-- PyPI: `pip install a2a-registry-client`
+- PyPI: `pip install a2aregistry`
 
 ## Development Phases
 

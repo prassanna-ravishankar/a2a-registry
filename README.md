@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Website](https://img.shields.io/badge/website-a2aregistry.org-blue)](https://www.a2aregistry.org)
-[![Python Client](https://img.shields.io/pypi/v/a2a-registry-client)](https://pypi.org/project/a2a-registry-client/)
+[![Python Client](https://img.shields.io/pypi/v/a2aregistry)](https://pypi.org/project/a2aregistry/)
 
 ## Overview
 
@@ -71,8 +71,8 @@ curl https://www.a2aregistry.org/registry.json
 
 #### Via Python Client
 ```bash
-uv pip install a2a-registry-client
-# Or using pip: pip install a2a-registry-client
+uv pip install a2aregistry
+# Or using pip: pip install a2aregistry
 ```
 
 ```python

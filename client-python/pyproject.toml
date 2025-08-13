@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "a2a-registry-client"
+name = "a2aregistry"
 version = "0.1.0"
 description = "Python client library for the A2A Registry"
 readme = "README.md"

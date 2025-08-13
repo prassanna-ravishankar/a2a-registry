@@ -445,7 +445,7 @@ class AsyncRegistry:
     async def _fetch_registry(self) -> RegistryResponse:
         """Fetch the registry from the API."""
         if aiohttp is None:
-            raise RuntimeError("aiohttp is required for AsyncRegistry. Install with: pip install 'a2a-registry-client[async]'")
+            raise RuntimeError("aiohttp is required for AsyncRegistry. Install with: pip install 'a2aregistry[async]'")
         
         if not self._session:
             if self._own_session:
