@@ -159,7 +159,7 @@ uv run python scripts/validate_agent.py agents/your-agent-name.json
 Once merged:
 - Your agent will appear on [a2aregistry.org](https://www.a2aregistry.org) within minutes
 - It will be available via the API at `https://www.a2aregistry.org/registry.json`
-- Python users can discover it using the `a2aregistry` package
+- Python users can discover it using the `a2a-registry-client` package
 
 ## Contributing Code
 
@@ -182,7 +182,7 @@ This repository contains two separate Python packages:
    - Includes: `scripts/validate_agent.py`, `scripts/generate_registry.py`
    - Dependencies: jsonschema (for validation), requests
 
-2. **Client package (`a2aregistry`)**: Python client library for consuming the registry
+2. **Client package (`a2a-registry-client`)**: Python client library for consuming the registry
    - Configuration: `/client-python/pyproject.toml`
    - Published to PyPI separately
    - Dependencies: requests, pydantic (for data models)
@@ -262,7 +262,7 @@ done
 
 ### Python Client Library
 
-The Python client library (`a2aregistry`) is published to PyPI using a tag-based workflow. The version is automatically extracted from the git tag.
+The Python client library (`a2a-registry-client`) is published to PyPI using a tag-based workflow. The version is automatically extracted from the git tag.
 
 #### Prerequisites
 

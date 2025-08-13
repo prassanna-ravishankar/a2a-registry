@@ -5,10 +5,10 @@ Official Python client library for the A2A Registry - a community-driven directo
 ## Installation
 
 ```bash
-pip install a2aregistry
+pip install a2a-registry-client
 
 # For async support:
-pip install "a2aregistry[async]"
+pip install "a2a-registry-client[async]"
 ```
 
 ## Quick Start

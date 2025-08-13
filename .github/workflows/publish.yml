@@ -53,6 +53,7 @@ jobs:
   deploy-pages:
     needs: build-registry
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only deploy from main branch
     
     environment:
       name: github-pages
