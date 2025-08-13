@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+dist/
+.env
+.env.local
+*.log
+
+# Local guide (not for repo)
+COMPLETE_GUIDE.md

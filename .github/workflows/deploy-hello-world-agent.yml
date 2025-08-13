@@ -1,0 +1,60 @@
+name: Deploy Hello World Agent
+
+# To customize agent configuration, edit the 'vars' section in the Deploy step below
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hello-world-agent/**'
+      - '.github/workflows/deploy-hello-world-agent.yml'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare Workers
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'hello-world-agent'
+          # Set public environment variables (not secrets)
+          # Edit these values to customize your agent:
+          vars: |
+            AUTHOR_NAME=A2A Registry Team
+            GITHUB_URL=https://github.com/prassanna-ravishankar/a2a-registry
+          
+      - name: Test deployment
+        run: |
+          # Wait for deployment to propagate
+          sleep 10
+          
+          # Construct the worker URL from account ID
+          ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          URL="https://hello-world-agent.${ACCOUNT_ID}.workers.dev"
+          
+          echo "Worker should be deployed at: $URL"
+          
+          echo "🔍 Testing agent at: $URL"
+          
+          # Test agent card
+          echo "Testing /.well-known/agent-card.json..."
+          curl -f -s "$URL/.well-known/agent-card.json" | jq .name || exit 1
+          
+          # Test A2A endpoint
+          echo "Testing /a2a endpoint..."
+          curl -f -s -X POST "$URL/a2a" \
+            -H "Content-Type: text/plain" \
+            -d "Hello from CI!" | jq .message || exit 1
+          
+          echo "✅ All tests passed!"

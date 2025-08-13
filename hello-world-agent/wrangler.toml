@@ -1,0 +1,8 @@
+name = "hello-world-agent"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# For custom domain deployment, uncomment and update:
+# routes = [
+#   { pattern = "hello-agent.yourdomain.com/*", zone_name = "yourdomain.com" }
+# ]
