@@ -30,17 +30,13 @@ jobs:
       with:
         enable-cache: true
     
-    - name: Install dependencies
-      run: |
-        uv pip install .
-    
     - name: Generate registry.json
       run: |
         echo "🔄 Generating registry.json..."
-        python scripts/generate_registry.py agents/ --output docs/registry.json --pretty
+        uv run python scripts/generate_registry.py agents/ --output docs/registry.json --pretty
         
         # Display statistics
-        agent_count=$(python -c "import json; print(json.load(open('docs/registry.json'))['count'])")
+        agent_count=$(uv run python -c "import json; print(json.load(open('docs/registry.json'))['count'])")
         echo "✅ Generated registry with $agent_count agents"
     
     - name: Upload registry artifact
@@ -80,19 +76,15 @@ jobs:
       with:
         enable-cache: true
     
-    - name: Install build dependencies
-      run: |
-        uv pip install build twine
-    
     - name: Build Python client
       run: |
         cd client-python
-        python -m build
+        uv run python -m build
     
     - name: Check package
       run: |
         cd client-python
-        twine check dist/*
+        uv run twine check dist/*
     
     - name: Publish to PyPI
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -101,7 +93,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         cd client-python
-        twine upload dist/*
+        uv run twine upload dist/*
     
     - name: Display package info
       if: github.event_name != 'push' || github.ref != 'refs/heads/main'

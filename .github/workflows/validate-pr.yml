@@ -20,10 +20,6 @@ jobs:
       with:
         enable-cache: true
     
-    - name: Install dependencies
-      run: |
-        uv pip install .
-    
     - name: Get changed files
       id: changed-files
       uses: tj-actions/changed-files@v41
@@ -40,7 +36,7 @@ jobs:
         changed_files='${{ steps.changed-files.outputs.all_changed_files }}'
         
         # Convert JSON array to space-separated list
-        files=$(echo "$changed_files" | python -c "import sys, json; print(' '.join(json.load(sys.stdin)))")
+        files=$(echo "$changed_files" | uv run python -c "import sys, json; print(' '.join(json.load(sys.stdin)))")
         
         if [ -z "$files" ]; then
           echo "No agent files changed"
@@ -54,7 +50,7 @@ jobs:
           echo "Validating: $file"
           echo "----------------------------------------"
           
-          if python scripts/validate_agent.py "$file"; then
+          if uv run python scripts/validate_agent.py "$file"; then
             echo "✅ $file passed validation"
           else
             echo "❌ $file failed validation"
