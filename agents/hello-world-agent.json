@@ -1,0 +1,40 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Hello World Agent",
+  "description": "A simple A2A agent that responds with 'Hello World' to any request",
+  "url": "https://hello.a2aregistry.org/a2a",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "hello",
+      "name": "Say Hello",
+      "description": "Responds with a friendly 'Hello World' message",
+      "tags": ["greeting", "hello", "simple"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"],
+      "examples": [
+        "Say hello",
+        "Greet me",
+        "Hello"
+      ]
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "provider": {
+    "organization": "A2A Registry Team",
+    "url": "https://github.com/prassanna-ravishankar/a2a-registry"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-registry",
+  "author": "A2A Registry Team",
+  "wellKnownURI": "https://hello.a2aregistry.org/.well-known/agent-card.json",
+  "homepage": "https://hello.a2aregistry.org",
+  "license": "MIT",
+  "registryTags": ["demo", "example", "hello-world", "simple"]
+}
