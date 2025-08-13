@@ -35,6 +35,14 @@
   "author": "A2A Registry Team",
   "wellKnownURI": "https://hello.a2aregistry.org/.well-known/agent-card.json",
   "homepage": "https://hello.a2aregistry.org",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-registry",
   "license": "MIT",
-  "registryTags": ["demo", "example", "hello-world", "simple"]
+  "registryTags": ["demo", "example", "hello-world", "simple"],
+  "pricing": {
+    "model": "free",
+    "details": "This agent is provided free of charge as a demonstration."
+  },
+  "contact": {
+    "support": "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+  }
 }
