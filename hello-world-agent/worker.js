@@ -8,8 +8,8 @@ export default {
     // Get configuration from environment variables/secrets
     // Only AGENT_URL is really needed - everything else has good defaults
     const AGENT_URL = env.AGENT_URL || request.url.split('/')[0] + '//' + request.url.split('/')[2];
-    const AUTHOR_NAME = env.AUTHOR_NAME || 'A2A Developer';
-    const GITHUB_URL = env.GITHUB_URL || 'https://github.com/a2a-registry/hello-world-agent';
+    const AUTHOR_NAME = env.AUTHOR_NAME || 'A2A Registry Team';
+    const GITHUB_URL = env.GITHUB_URL || 'https://github.com/prassanna-ravishankar/a2a-registry';
     
     // Build Agent Card dynamically
     const AGENT_CARD = {

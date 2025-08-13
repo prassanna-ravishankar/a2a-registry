@@ -1,7 +1,5 @@
 name: Deploy Hello World Agent
 
-# To customize agent configuration, edit the 'vars' section in the Deploy step below
-
 on:
   push:
     branches: [main]
@@ -9,6 +7,12 @@ on:
       - 'hello-world-agent/**'
       - '.github/workflows/deploy-hello-world-agent.yml'
   workflow_dispatch: # Allow manual trigger
+
+# Define non-sensitive configuration as environment variables
+# To customize your agent, edit these values:
+env:
+  AUTHOR_NAME: 'A2A Registry Team'
+  GITHUB_URL: 'https://github.com/prassanna-ravishankar/a2a-registry'
 
 permissions:
   contents: read
@@ -28,11 +32,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'hello-world-agent'
-          # Set public environment variables (not secrets)
-          # Edit these values to customize your agent:
+          # Pass environment variables to the worker
           vars: |
-            AUTHOR_NAME=A2A Registry Team
-            GITHUB_URL=https://github.com/prassanna-ravishankar/a2a-registry
+            AUTHOR_NAME=${{ env.AUTHOR_NAME }}
+            GITHUB_URL=${{ env.GITHUB_URL }}
           
       - name: Test deployment
         run: |

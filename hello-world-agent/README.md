@@ -55,11 +55,13 @@ The agent uses environment variables for customization:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AGENT_URL` | Full agent URL | Auto-detected from request |
-| `AUTHOR_NAME` | Your name/organization | `A2A Developer` |
-| `GITHUB_URL` | GitHub repo URL | `https://github.com/a2a-registry/hello-world-agent` |
+| `AUTHOR_NAME` | Your name/organization | `A2A Registry Team` |
+| `GITHUB_URL` | GitHub repo URL | `https://github.com/prassanna-ravishankar/a2a-registry` |
 
-**For CI/CD**: These values are set in `.github/workflows/deploy-hello-world-agent.yml`
-**For manual deploy**: Use `wrangler secret put` or rely on defaults
+**To customize**:
+- **For CI/CD**: Edit the `env` section in `.github/workflows/deploy-hello-world-agent.yml`
+- **For manual deploy**: Use `wrangler secret put` or environment variables
+- **Defaults**: Work great for testing - no configuration needed!
 
 ## 🔧 CI/CD
 
