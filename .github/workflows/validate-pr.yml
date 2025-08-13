@@ -36,7 +36,7 @@ jobs:
         changed_files='${{ steps.changed-files.outputs.all_changed_files }}'
         
         # Convert JSON array to space-separated list
-        files=$(echo "$changed_files" | uv run python -c "import sys, json; print(' '.join(json.load(sys.stdin)))")
+        files=$(echo "$changed_files" | jq -r '.[]' | tr '\n' ' ')
         
         if [ -z "$files" ]; then
           echo "No agent files changed"
