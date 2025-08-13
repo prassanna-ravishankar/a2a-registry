@@ -12,6 +12,7 @@ import urllib.request
 import urllib.error
 import ssl
 import time
+import gzip
 from jsonschema import validate, ValidationError, Draft7Validator
 
 class AgentValidator:
@@ -133,7 +134,17 @@ class AgentValidator:
                 
                 with urllib.request.urlopen(req, timeout=15, context=ctx) as response:
                     if response.status == 200:
-                        content = response.read().decode('utf-8')
+                        # Read the raw response data
+                        raw_data = response.read()
+                        
+                        # Check if the response is gzip-compressed
+                        if response.headers.get('Content-Encoding') == 'gzip':
+                            # Decompress gzip data
+                            raw_data = gzip.decompress(raw_data)
+                        
+                        # Decode to UTF-8
+                        content = raw_data.decode('utf-8')
+                        
                         try:
                             remote_agent = json.loads(content)
                         except json.JSONDecodeError as json_err:
