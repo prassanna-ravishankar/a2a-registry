@@ -32,10 +32,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'hello-world-agent'
-          # Pass environment variables to the worker
-          vars: |
-            AUTHOR_NAME=${{ env.AUTHOR_NAME }}
-            GITHUB_URL=${{ env.GITHUB_URL }}
+          command: deploy --var AUTHOR_NAME:"${{ env.AUTHOR_NAME }}" --var GITHUB_URL:"${{ env.GITHUB_URL }}"
           
       - name: Test deployment
         run: |
