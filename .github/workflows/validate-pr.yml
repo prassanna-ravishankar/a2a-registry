@@ -8,6 +8,9 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # Needed to comment on PRs
     
     steps:
     - name: Checkout repository
@@ -36,7 +39,8 @@ jobs:
         changed_files='${{ steps.changed-files.outputs.all_changed_files }}'
         
         # Convert JSON array to space-separated list
-        files=$(echo "$changed_files" | jq -r '.[]' | tr '\n' ' ')
+        # The output from changed-files action comes with escaped quotes, so we need to unescape first
+        files=$(echo "$changed_files" | sed 's/\\\"/"/g' | jq -r '.[]' | tr '\n' ' ')
         
         if [ -z "$files" ]; then
           echo "No agent files changed"
