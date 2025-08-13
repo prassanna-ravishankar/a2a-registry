@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A community-driven, open-source directory of AI agents using the A2A Protocol"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "A2A Registry Community", email = "contact@a2aregistry.org"}
 ]
@@ -16,7 +16,7 @@ keywords = ["a2a", "agents", "ai", "registry", "protocol"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -46,6 +46,10 @@ Homepage = "https://www.a2aregistry.org"
 Documentation = "https://github.com/prassanna-ravishankar/a2a-registry"
 Repository = "https://github.com/prassanna-ravishankar/a2a-registry"
 Issues = "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+
+[tool.setuptools]
+# This is a scripts-only package, no Python packages to install
+py-modules = []
 
 [tool.black]
 line-length = 100

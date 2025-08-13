@@ -91,10 +91,10 @@ Ordered by priority and logical workflow.
 - [x] Add pre-commit hooks using uv for linting and formatting
 
 ## 9. Security Enhancements
-- [ ] Add SSL verification flag to validators (default on)
-- [ ] Improve error messages for well-known fetch failures
-- [ ] Add retry logic for transient network failures
-- [ ] Add rate limiting awareness
+- [x] Add SSL verification flag to validators (default on)
+- [x] Improve error messages for well-known fetch failures
+- [x] Add retry logic for transient network failures
+- [x] Add rate limiting awareness
 
 ## 10. Website UI Improvements
 - [ ] Enhance index.html visual design
