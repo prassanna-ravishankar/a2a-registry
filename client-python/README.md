@@ -8,6 +8,10 @@ Official Python client library for the A2A Registry - a community-driven directo
 uv pip install a2a-registry-client
 # Or using pip:
 # pip install a2a-registry-client
+
+# For async support:
+uv pip install "a2a-registry-client[async]"
+# pip install "a2a-registry-client[async]"
 ```
 
 ## Quick Start
@@ -129,13 +133,97 @@ filtered = [
 ]
 ```
 
-## Caching
+## Advanced Features
 
-The client automatically caches the registry data for 5 minutes to reduce network requests. You can force a refresh:
+### Input/Output Mode Filtering
 
 ```python
-registry = Registry()
-registry.refresh()  # Force reload from the API
+# Find agents that accept specific input types
+text_agents = registry.find_by_input_mode("text/plain")
+image_agents = registry.find_by_input_mode("image/jpeg")
+
+# Find agents that produce specific output types
+json_agents = registry.find_by_output_mode("application/json")
+
+# Find agents with both specific input AND output modes
+versatile_agents = registry.find_by_modes(
+    input_mode="text/plain",
+    output_mode="application/json"
+)
+
+# Discover all available modes
+input_modes = registry.get_available_input_modes()
+output_modes = registry.get_available_output_modes()
+```
+
+### Multi-Criteria Filtering
+
+```python
+# Advanced filtering with multiple criteria
+filtered_agents = registry.filter_agents(
+    skills=["text-generation", "summarization"],
+    capabilities=["streaming", "pushNotifications"],
+    input_modes=["text/plain"],
+    output_modes=["application/json"],
+    authors=["OpenAI", "Anthropic"],
+    tags=["production-ready"],
+    protocol_version="1.0"
+)
+```
+
+### Enhanced Statistics
+
+```python
+stats = registry.get_stats()
+print(f"Total agents: {stats['total_agents']}")
+print(f"Streaming agents: {stats['capabilities_count']['streaming']}")
+print(f"Available input modes: {stats['available_input_modes']}")
+print(f"Protocol versions: {stats['protocol_versions']}")
+```
+
+### Registry Metadata Access
+
+```python
+for agent in registry.get_all():
+    print(f"Agent: {agent.name}")
+    print(f"Registry ID: {agent.registry_id}")  # Smart property
+    print(f"Source: {agent.registry_source}")   # Smart property
+```
+
+### Async Support
+
+For high-performance applications:
+
+```python
+import asyncio
+from a2a_registry import AsyncRegistry
+
+async def main():
+    async with AsyncRegistry() as registry:
+        agents = await registry.get_all()
+        weather_agents = await registry.search("weather")
+        stats = await registry.get_stats()
+        
+        # All sync methods available as async
+        filtered = await registry.filter_agents(
+            capabilities=["streaming"],
+            input_modes=["text/plain"]
+        )
+
+asyncio.run(main())
+```
+
+## Caching
+
+The client automatically caches the registry data for 5 minutes to reduce network requests. You can customize and control caching:
+
+```python
+# Custom cache duration (10 minutes)
+registry = Registry(cache_duration=600)
+
+# Manual cache control
+registry.refresh()      # Force reload from API
+registry.clear_cache()  # Clear cache
 ```
 
 ## Contributing
