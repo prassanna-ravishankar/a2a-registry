@@ -2,7 +2,7 @@
   "protocolVersion": "0.3.0",
   "name": "Hello World Agent",
   "description": "A simple A2A agent that responds with 'Hello World' to any request",
-  "url": "https://hello.a2aregistry.org/a2a",
+  "url": "https://hello.a2aregistry.org/",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,

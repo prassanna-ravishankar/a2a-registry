@@ -41,10 +41,17 @@ uv run twine check dist/*
 
 ### Website Development
 ```bash
-# Serve the website locally
-cd docs
-python -m http.server 8000
-# Visit http://localhost:8000
+# Install dependencies
+cd website
+npm install
+
+# Run development server
+npm run dev
+# Visit http://localhost:5173
+
+# Build for production
+npm run build
+# Outputs to ../docs folder
 ```
 
 ### Agent Registry Operations
