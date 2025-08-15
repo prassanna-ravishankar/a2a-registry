@@ -34,7 +34,7 @@
   "preferredTransport": "REST",
   "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#data-transformation-agent-port-8004",
   "author": "Prassanna Ravishankar",
-  "wellKnownURI": "https://prassanna-ravishankar--data-agent-data-agent-app.modal.run/.well-known/agent-card.json",
+  "wellKnownURI": "https://prassanna-ravishankar--data-agent-data-agent-app.modal.run/.well-known/agent.json",
   "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "license": "MIT",

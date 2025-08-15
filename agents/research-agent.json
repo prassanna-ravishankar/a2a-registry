@@ -33,7 +33,7 @@
   "preferredTransport": "REST",
   "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#research-agent-port-8002",
   "author": "Prassanna Ravishankar",
-  "wellKnownURI": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run/.well-known/agent-card.json",
+  "wellKnownURI": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run/.well-known/agent.json",
   "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "license": "MIT",
