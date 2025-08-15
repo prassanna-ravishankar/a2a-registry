@@ -29,14 +29,14 @@
   "defaultOutputModes": ["text/plain", "application/json"],
   "provider": {
     "organization": "Prassanna Ravishankar",
-    "url": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent"
+    "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
   },
   "preferredTransport": "REST",
-  "documentationUrl": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#code-agent-port-8003",
   "author": "Prassanna Ravishankar",
   "wellKnownURI": "https://prassanna-ravishankar--code-agent-code-agent-app.modal.run/.well-known/agent-card.json",
-  "homepage": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent",
-  "repository": "https://github.com/prassanna-ravishankar/a2a-registry",
+  "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "license": "MIT",
   "registryTags": ["coding", "programming", "development", "ai", "pydantic-ai", "modal"],
   "pricing": {

@@ -29,14 +29,14 @@
   "defaultOutputModes": ["text/plain", "application/json"],
   "provider": {
     "organization": "Prassanna Ravishankar",
-    "url": "https://modal.com/apps/prassanna-ravishankar/main/deployed/planning-agent"
+    "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
   },
   "preferredTransport": "REST",
-  "documentationUrl": "https://modal.com/apps/prassanna-ravishankar/main/deployed/planning-agent",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#planning-agent-port-8005",
   "author": "Prassanna Ravishankar",
   "wellKnownURI": "https://prassanna-ravishankar--planning-agent-planning-agent-app.modal.run/.well-known/agent-card.json",
-  "homepage": "https://modal.com/apps/prassanna-ravishankar/main/deployed/planning-agent",
-  "repository": "https://github.com/prassanna-ravishankar/a2a-registry",
+  "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "license": "MIT",
   "registryTags": ["planning", "management", "strategy", "ai", "pydantic-ai", "modal"],
   "pricing": {

@@ -28,14 +28,14 @@
   "defaultOutputModes": ["text/plain", "application/json"],
   "provider": {
     "organization": "Prassanna Ravishankar",
-    "url": "https://modal.com/apps/prassanna-ravishankar/main/deployed/research-agent"
+    "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
   },
   "preferredTransport": "REST",
-  "documentationUrl": "https://modal.com/apps/prassanna-ravishankar/main/deployed/research-agent",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#research-agent-port-8002",
   "author": "Prassanna Ravishankar",
   "wellKnownURI": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run/.well-known/agent-card.json",
-  "homepage": "https://modal.com/apps/prassanna-ravishankar/main/deployed/research-agent",
-  "repository": "https://github.com/prassanna-ravishankar/a2a-registry",
+  "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
   "license": "MIT",
   "registryTags": ["research", "analysis", "ai", "pydantic-ai", "modal"],
   "pricing": {
