@@ -1,0 +1,49 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Code Agent",
+  "description": "An AI agent specialized in code generation, review, debugging, and software development assistance",
+  "url": "https://prassanna-ravishankar--code-agent-code-agent-app.modal.run",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "code-generation",
+      "name": "Code Generation & Review",
+      "description": "Generates, reviews, debugs, and optimizes code across multiple programming languages and frameworks",
+      "tags": ["coding", "programming", "debugging", "code-review", "software-development"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"],
+      "examples": [
+        "Generate a Python function to parse CSV files",
+        "Review this JavaScript code for potential bugs",
+        "Debug this SQL query that's running slowly",
+        "Optimize this React component for better performance"
+      ]
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "provider": {
+    "organization": "Prassanna Ravishankar",
+    "url": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent",
+  "author": "Prassanna Ravishankar",
+  "wellKnownURI": "https://prassanna-ravishankar--code-agent-code-agent-app.modal.run/.well-known/agent-card.json",
+  "homepage": "https://modal.com/apps/prassanna-ravishankar/main/deployed/code-agent",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-registry",
+  "license": "MIT",
+  "registryTags": ["coding", "programming", "development", "ai", "pydantic-ai", "modal"],
+  "pricing": {
+    "model": "free",
+    "details": "This agent is provided free of charge for demonstration and testing purposes."
+  },
+  "contact": {
+    "support": "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+  }
+}
