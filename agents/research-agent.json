@@ -1,0 +1,48 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Research Agent",
+  "description": "An AI agent specialized in research tasks, information gathering, and analysis using advanced search and synthesis capabilities",
+  "url": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "research",
+      "name": "Research & Analysis",
+      "description": "Conducts comprehensive research on topics, gathers information from multiple sources, and provides detailed analysis",
+      "tags": ["research", "analysis", "information-gathering", "synthesis"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"],
+      "examples": [
+        "Research the latest developments in AI safety",
+        "Analyze market trends for renewable energy",
+        "Gather information about quantum computing applications"
+      ]
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "provider": {
+    "organization": "Prassanna Ravishankar",
+    "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#research-agent-port-8002",
+  "author": "Prassanna Ravishankar",
+  "wellKnownURI": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run/.well-known/agent.json",
+  "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "license": "MIT",
+  "registryTags": ["research", "analysis", "ai", "pydantic-ai", "modal"],
+  "pricing": {
+    "model": "free",
+    "details": "This agent is provided free of charge for demonstration and testing purposes."
+  },
+  "contact": {
+    "support": "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+  }
+}

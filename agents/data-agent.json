@@ -1,0 +1,49 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Data Agent",
+  "description": "An AI agent specialized in data analysis, processing, visualization, and insights generation from various data sources",
+  "url": "https://prassanna-ravishankar--data-agent-data-agent-app.modal.run",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "data-analysis",
+      "name": "Data Analysis & Visualization",
+      "description": "Analyzes datasets, generates insights, creates visualizations, and performs statistical analysis",
+      "tags": ["data-analysis", "visualization", "statistics", "insights", "data-processing"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"],
+      "examples": [
+        "Analyze this sales dataset and identify trends",
+        "Create a visualization for customer demographics",
+        "Perform statistical analysis on survey responses",
+        "Generate insights from financial data"
+      ]
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "provider": {
+    "organization": "Prassanna Ravishankar",
+    "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#data-transformation-agent-port-8004",
+  "author": "Prassanna Ravishankar",
+  "wellKnownURI": "https://prassanna-ravishankar--data-agent-data-agent-app.modal.run/.well-known/agent.json",
+  "homepage": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "repository": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping",
+  "license": "MIT",
+  "registryTags": ["data", "analysis", "visualization", "ai", "pydantic-ai", "modal"],
+  "pricing": {
+    "model": "free",
+    "details": "This agent is provided free of charge for demonstration and testing purposes."
+  },
+  "contact": {
+    "support": "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+  }
+}
