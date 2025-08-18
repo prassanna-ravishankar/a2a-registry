@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
 import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, X } from 'lucide-react';
+
+// Lazy load non-critical components
+const FAQ = lazy(() => import('./components/FAQ'));
+const IntegrationGuide = lazy(() => import('./components/IntegrationGuide'));
 
 const A2ARegistry = () => {
   const [agents, setAgents] = useState([]);
@@ -11,10 +15,18 @@ const A2ARegistry = () => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  // Load real data from registry.json
+  // Load real data from registry.json with optimized fetching
   useEffect(() => {
-    fetch('/registry.json')
-      .then(res => res.json())
+    const controller = new AbortController();
+    
+    fetch('/registry.json', {
+      signal: controller.signal,
+      cache: 'force-cache'
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         const agentList = data.agents || [];
         setAgents(agentList);
@@ -22,10 +34,14 @@ const A2ARegistry = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to load registry:', err);
-        setError('Failed to load agent registry');
-        setLoading(false);
+        if (err.name !== 'AbortError') {
+          console.error('Failed to load registry:', err);
+          setError('Failed to load agent registry');
+          setLoading(false);
+        }
       });
+    
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -50,17 +66,19 @@ const A2ARegistry = () => {
     setFilteredAgents(filtered);
   }, [searchTerm, selectedSkills, agents]);
 
-  const allTags = [...new Set(agents.flatMap(agent => 
-    agent.skills.flatMap(skill => skill.tags || [])
-  ))].sort();
+  const allTags = useMemo(() => 
+    [...new Set(agents.flatMap(agent => 
+      agent.skills.flatMap(skill => skill.tags || [])
+    ))].sort(), [agents]
+  );
 
-  const toggleSkillFilter = (tag) => {
+  const toggleSkillFilter = useCallback((tag) => {
     setSelectedSkills(prev => 
       prev.includes(tag) 
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
-  };
+  }, []);
 
   const generateCodeSnippets = (agent) => {
     return {
@@ -204,7 +222,7 @@ asyncio.run(async_example())`
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="/logo.svg" alt="A2A Logo" className="w-8 h-8 lg:w-10 lg:h-10" />
+              <img src="/logo.svg" alt="A2A Logo" className="w-8 h-8 lg:w-10 lg:h-10" loading="eager" />
               <div>
                 <h1 className="text-xl lg:text-2xl font-bold text-white">A2A Registry</h1>
                 <p className="text-purple-200 text-xs lg:text-sm">Live Agent Directory</p>
@@ -241,48 +259,50 @@ asyncio.run(async_example())`
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
         {/* Hero Section */}
-        <div className="text-center mb-6 lg:mb-8">
-          <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4">
+        <section className="text-center mb-6 lg:mb-8" aria-labelledby="hero-heading">
+          <h1 id="hero-heading" className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4">
             Discover <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Live AI Agents</span>
-          </h2>
+          </h1>
           <p className="text-lg lg:text-xl text-purple-200 mb-4 max-w-4xl mx-auto">
             A community-driven directory of live, hosted A2A Protocol compliant AI agents. Find, connect, and integrate with production-ready agents.
           </p>
-          <div className="flex flex-wrap justify-center gap-4 lg:gap-6 text-sm text-purple-300">
-            <div className="flex items-center space-x-2">
-              <Globe className="w-4 h-4" />
+          <div className="flex flex-wrap justify-center gap-4 lg:gap-6 text-sm text-purple-300" role="list">
+            <div className="flex items-center space-x-2" role="listitem">
+              <Globe className="w-4 h-4" aria-hidden="true" />
               <span>Live & Hosted</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4" />
+            <div className="flex items-center space-x-2" role="listitem">
+              <CheckCircle className="w-4 h-4" aria-hidden="true" />
               <span>A2A Protocol Compliant</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <Github className="w-4 h-4" />
+            <div className="flex items-center space-x-2" role="listitem">
+              <Github className="w-4 h-4" aria-hidden="true" />
               <span>Open Source</span>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Search and Filters */}
-        <div className="mb-6">
+        <section className="mb-6" aria-labelledby="search-heading">
+          <h2 id="search-heading" className="sr-only">Search and Filter Agents</h2>
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" aria-hidden="true" />
               <input
                 type="text"
                 placeholder="Search agents by name, description, or skills..."
                 className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search agents"
               />
             </div>
 
             {/* Skill Filters */}
             {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by skills">
                 {allTags.slice(0, 15).map(tag => (
                   <button
                     key={tag}
@@ -292,6 +312,7 @@ asyncio.run(async_example())`
                         ? 'bg-purple-500 text-white'
                         : 'bg-white/10 text-purple-200 hover:bg-white/20'
                     }`}
+                    aria-pressed={selectedSkills.includes(tag)}
                   >
                     {tag}
                   </button>
@@ -304,103 +325,132 @@ asyncio.run(async_example())`
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Agents Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
-          {filteredAgents.map((agent, index) => (
-            <div key={index} className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 lg:p-5 border border-white/20 hover:bg-white/15 transition-all hover:scale-[1.02] hover:shadow-2xl">
-              {/* Agent Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg lg:text-xl font-bold text-white mb-1 truncate">{agent.name}</h3>
-                  <p className="text-purple-300 text-xs lg:text-sm truncate">
-                    v{agent.version} • {agent.author || agent.provider?.organization || 'Unknown'}
-                  </p>
-                </div>
-                <div className="flex space-x-1.5 ml-2">
-                  {agent.capabilities?.streaming && (
-                    <div className="w-2 h-2 bg-green-400 rounded-full" title="Streaming enabled"></div>
-                  )}
-                  {agent.capabilities?.pushNotifications && (
-                    <div className="w-2 h-2 bg-blue-400 rounded-full" title="Push notifications enabled"></div>
-                  )}
-                </div>
-              </div>
+        <section aria-labelledby="agents-heading">
+          <h2 id="agents-heading" className="sr-only">Available A2A Agents</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6" role="list">
+            {filteredAgents.map((agent, index) => (
+              <article key={index} className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 lg:p-5 border border-white/20 hover:bg-white/15 transition-all hover:scale-[1.02] hover:shadow-2xl" role="listitem">
+                {/* Agent Header */}
+                <header className="flex items-start justify-between mb-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg lg:text-xl font-bold text-white mb-1 truncate">{agent.name}</h3>
+                    <p className="text-purple-300 text-xs lg:text-sm truncate">
+                      v{agent.version} • {agent.author || agent.provider?.organization || 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="flex space-x-1.5 ml-2" aria-label="Agent capabilities">
+                    {agent.capabilities?.streaming && (
+                      <div className="w-2 h-2 bg-green-400 rounded-full" title="Streaming enabled" aria-label="Streaming enabled"></div>
+                    )}
+                    {agent.capabilities?.pushNotifications && (
+                      <div className="w-2 h-2 bg-blue-400 rounded-full" title="Push notifications enabled" aria-label="Push notifications enabled"></div>
+                    )}
+                  </div>
+                </header>
 
-              {/* Description */}
-              <p className="text-purple-100 mb-3 text-xs lg:text-sm leading-relaxed line-clamp-3">
-                {agent.description}
-              </p>
+                {/* Description */}
+                <p className="text-purple-100 mb-3 text-xs lg:text-sm leading-relaxed line-clamp-3">
+                  {agent.description}
+                </p>
 
-              {/* Skills */}
-              <div className="mb-3">
-                <h4 className="text-white font-semibold text-xs lg:text-sm mb-2">Skills</h4>
-                <div className="space-y-2">
-                  {agent.skills.slice(0, 2).map((skill, skillIndex) => (
-                    <div key={skillIndex} className="bg-white/5 rounded-lg p-2.5">
-                      <div className="font-medium text-white text-xs lg:text-sm truncate">{skill.name}</div>
-                      <div className="text-purple-200 text-xs mb-1.5 line-clamp-2">{skill.description}</div>
-                      <div className="flex flex-wrap gap-1">
-                        {(skill.tags || []).slice(0, 3).map((tag, tagIndex) => (
-                          <span key={tagIndex} className="px-1.5 py-0.5 bg-purple-500/30 text-purple-200 rounded text-xs">
-                            {tag}
-                          </span>
-                        ))}
-                        {skill.tags && skill.tags.length > 3 && (
-                          <span className="text-purple-300 text-xs">+{skill.tags.length - 3}</span>
-                        )}
+                {/* Skills */}
+                <section className="mb-3">
+                  <h4 className="text-white font-semibold text-xs lg:text-sm mb-2">Skills</h4>
+                  <div className="space-y-2">
+                    {agent.skills.slice(0, 2).map((skill, skillIndex) => (
+                      <div key={skillIndex} className="bg-white/5 rounded-lg p-2.5">
+                        <div className="font-medium text-white text-xs lg:text-sm truncate">{skill.name}</div>
+                        <div className="text-purple-200 text-xs mb-1.5 line-clamp-2">{skill.description}</div>
+                        <div className="flex flex-wrap gap-1">
+                          {(skill.tags || []).slice(0, 3).map((tag, tagIndex) => (
+                            <span key={tagIndex} className="px-1.5 py-0.5 bg-purple-500/30 text-purple-200 rounded text-xs">
+                              {tag}
+                            </span>
+                          ))}
+                          {skill.tags && skill.tags.length > 3 && (
+                            <span className="text-purple-300 text-xs">+{skill.tags.length - 3}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {agent.skills.length > 2 && (
-                    <div className="text-purple-300 text-xs">
-                      +{agent.skills.length - 2} more skills
-                    </div>
-                  )}
-                </div>
-              </div>
+                    ))}
+                    {agent.skills.length > 2 && (
+                      <div className="text-purple-300 text-xs">
+                        +{agent.skills.length - 2} more skills
+                      </div>
+                    )}
+                  </div>
+                </section>
 
-              {/* Actions */}
-              <div className="flex space-x-2">
-                <a
-                  href={agent.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-2 px-3 rounded-lg text-xs lg:text-sm font-medium flex items-center justify-center space-x-1.5 transition-all"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  <span>Connect</span>
-                </a>
-                <button
-                  onClick={() => setSelectedAgent(agent)}
-                  className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
-                  title="View Code Examples"
-                >
-                  <Code className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                </button>
-                <a
-                  href={agent.wellKnownURI}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
-                  title="View Agent Card"
-                >
-                  <Globe className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {filteredAgents.length === 0 && !loading && (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🤖</div>
-            <h3 className="text-2xl font-bold text-white mb-2">No agents found</h3>
-            <p className="text-purple-300">Try adjusting your search terms or filters</p>
+                {/* Actions */}
+                <footer className="flex space-x-2">
+                  <a
+                    href={agent.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-2 px-3 rounded-lg text-xs lg:text-sm font-medium flex items-center justify-center space-x-1.5 transition-all"
+                    aria-label={`Connect to ${agent.name}`}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
+                    <span>Connect</span>
+                  </a>
+                  <button
+                    onClick={() => setSelectedAgent(agent)}
+                    className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
+                    title="View Code Examples"
+                    aria-label={`View code examples for ${agent.name}`}
+                  >
+                    <Code className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
+                  </button>
+                  <a
+                    href={agent.wellKnownURI}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
+                    title="View Agent Card"
+                    aria-label={`View agent card for ${agent.name}`}
+                  >
+                    <Globe className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
+                  </a>
+                </footer>
+              </article>
+            ))}
           </div>
-        )}
 
+          {filteredAgents.length === 0 && !loading && (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4" role="img" aria-label="Robot emoji">🤖</div>
+              <h3 className="text-2xl font-bold text-white mb-2">No agents found</h3>
+              <p className="text-purple-300">Try adjusting your search terms or filters</p>
+            </div>
+          )}
+        </section>
+
+
+        {/* Lazy-loaded FAQ and Integration Guide */}
+        <Suspense fallback={
+          <div className="mt-12 lg:mt-16 text-center">
+            <div className="animate-pulse">
+              <div className="h-8 bg-white/10 rounded w-64 mx-auto mb-4"></div>
+              <div className="h-4 bg-white/5 rounded w-96 mx-auto"></div>
+            </div>
+          </div>
+        }>
+          <FAQ />
+        </Suspense>
+
+        <Suspense fallback={
+          <div className="mt-12 lg:mt-16 text-center">
+            <div className="animate-pulse">
+              <div className="h-8 bg-white/10 rounded w-64 mx-auto mb-4"></div>
+              <div className="h-4 bg-white/5 rounded w-96 mx-auto"></div>
+            </div>
+          </div>
+        }>
+          <IntegrationGuide />
+        </Suspense>
 
         {/* Footer */}
         <footer className="mt-12 lg:mt-16 pt-6 lg:pt-8 border-t border-white/20">
@@ -423,7 +473,7 @@ asyncio.run(async_example())`
             </div>
           </div>
         </footer>
-      </div>
+      </main>
 
       {/* Code Snippet Modal */}
       {selectedAgent && (

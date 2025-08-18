@@ -2,8 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Performance Optimizations -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://pypi.org" />
+    <link rel="dns-prefetch" href="https://github.com" />
+    <link rel="dns-prefetch" href="https://modal.com" />
+    <link rel="dns-prefetch" href="https://a2a-protocol.org" />
+    <link rel="preload" href="/logo.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/registry.json" as="fetch" type="application/json" crossorigin />
+    <link rel="modulepreload" href="/src/main.jsx" />
+    
+    <!-- Critical CSS -->
+    <style>
+      /* Critical above-the-fold styles */
+      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .min-h-screen { min-height: 100vh; }
+      .bg-gradient-to-br { background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a); }
+    </style>
     
     <!-- Primary SEO Meta Tags -->
     <title>A2A Registry - Live AI Agents Directory | Production-Ready A2A Protocol Agents</title>
@@ -89,6 +112,109 @@
       }
     }
     </script>
+
+    <!-- FAQ Schema for LLM optimization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is A2A Registry?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A2A Registry is a community-driven directory of live, hosted AI agents that comply with the A2A (Agent-to-Agent) Protocol. It provides developers with easy discovery and integration of production-ready AI agents."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I connect to A2A agents?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can connect to A2A agents using the Python client library: 'pip install a2a-registry-client'. The registry provides agent URLs, capabilities, and integration examples for each agent."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the A2A Protocol?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The A2A (Agent-to-Agent) Protocol is a standardized communication protocol that enables AI agents to interact with each other seamlessly. It defines how agents expose their capabilities, handle requests, and maintain interoperability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are the agents in A2A Registry free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most agents in the registry are free for demonstration and testing purposes. Each agent has its own pricing model detailed in its specifications. The registry itself and the Python client are completely free and open source."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- HowTo Schema for integration instructions -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Integrate A2A Protocol Agents",
+      "description": "Step-by-step guide to discover and integrate A2A Protocol compliant AI agents using the A2A Registry",
+      "totalTime": "PT5M",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "USD",
+        "value": "0"
+      },
+      "supply": [
+        {
+          "@type": "HowToSupply",
+          "name": "Python 3.10 or higher"
+        },
+        {
+          "@type": "HowToSupply", 
+          "name": "Internet connection"
+        }
+      ],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Install the A2A Registry Client",
+          "text": "Install the Python client library to access the registry",
+          "image": "https://www.a2aregistry.org/logo.svg",
+          "url": "https://pypi.org/project/a2a-registry-client/",
+          "direction": "pip install a2a-registry-client"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Browse Available Agents",
+          "text": "Explore the registry to find agents that match your requirements",
+          "url": "https://www.a2aregistry.org/",
+          "direction": "Visit the A2A Registry website and use the search functionality to find agents by skills, capabilities, or keywords."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Connect to an Agent",
+          "text": "Use the registry client to get agent details and establish connection",
+          "direction": "from a2a_registry import Registry; registry = Registry(); agent = registry.get_by_id('agent-name'); # Use agent.url to connect"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Interact with the Agent",
+          "text": "Send requests to the agent using the A2A Protocol standard",
+          "direction": "Use the agent's URL and send JSON-RPC 2.0 formatted requests to interact with the agent's capabilities."
+        }
+      ]
+    }
+    </script>
+
+    <!-- LLM-specific meta tags -->
+    <meta name="ai-purpose" content="AI agent discovery and integration platform" />
+    <meta name="content-type" content="directory, technical-documentation, developer-tools" />
+    <meta name="target-audience" content="developers, ai-engineers, software-architects" />
+    <meta name="interaction-model" content="browse, search, integrate, code-examples" />
   </head>
   <body>
     <div id="root"></div>
