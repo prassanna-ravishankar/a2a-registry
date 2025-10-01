@@ -1,6 +1,6 @@
 {
   "protocolVersion": "0.3.0",
-  "author": "Unknown",
+  "author": "Telex",
   "wellKnownURI": "https://system-integration.telex.im/chessagent/.well-known/agent.json",
   "name": "Chess Agent",
   "description": "An agent that plays chess. Accepts moves in standard notation and returns updated board state as FEN and an image.",
