@@ -70,12 +70,12 @@ jobs:
           if (status === 'success') {
             body = `## ✅ Agent Validation Successful
 
-          All submitted agent files have passed validation:
-          - ✓ JSON schema validation
-          - ✓ Required fields present
-          - ✓ Format requirements met
+All submitted agent files have passed validation:
+- ✓ JSON schema validation
+- ✓ Required fields present
+- ✓ Format requirements met
 
-          Your submission will be reviewed by a maintainer.`;
+Your submission will be reviewed by a maintainer.`;
           } else {
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             body = `## ❌ Agent Validation Failed
