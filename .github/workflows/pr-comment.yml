@@ -1,0 +1,115 @@
+name: Post PR Comment
+
+on:
+  workflow_run:
+    workflows: ["Validate Agent PR"]
+    types:
+      - completed
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+    - name: Download and extract artifact
+      id: download
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.payload.workflow_run.id,
+          });
+
+          const matchArtifact = artifacts.data.artifacts.find(artifact =>
+            artifact.name === 'pr-comment-data'
+          );
+
+          const download = await github.rest.actions.downloadArtifact({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            artifact_id: matchArtifact.id,
+            archive_format: 'zip',
+          });
+
+          const fs = require('fs');
+          fs.writeFileSync('artifact.zip', Buffer.from(download.data));
+
+          const { execSync } = require('child_process');
+          execSync('unzip -o artifact.zip');
+
+          const prNumber = fs.readFileSync('pr-number', 'utf8').trim();
+          const status = fs.readFileSync('status', 'utf8').trim();
+
+          return { prNumber, status };
+
+    - name: Set outputs
+      id: pr-data
+      run: |
+        PR_DATA='${{ steps.download.outputs.result }}'
+        PR_NUMBER=$(echo "$PR_DATA" | jq -r '.prNumber')
+        STATUS=$(echo "$PR_DATA" | jq -r '.status')
+        echo "pr-number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+    - name: Post comment
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = parseInt('${{ steps.pr-data.outputs.pr-number }}');
+          const status = '${{ steps.pr-data.outputs.status }}';
+
+          let body;
+          if (status === 'success') {
+            body = `## ✅ Agent Validation Successful
+
+          All submitted agent files have passed validation:
+          - ✓ JSON schema validation
+          - ✓ Required fields present
+          - ✓ Format requirements met
+
+          Your submission will be reviewed by a maintainer.`;
+          } else {
+            body = `## ❌ Agent Validation Failed
+
+          Your agent submission has validation errors. Please review the [workflow logs](${{ github.event.workflow_run.html_url }}) for details.
+
+          Common issues:
+          - Invalid JSON syntax
+          - Missing required fields (name, description, author, wellKnownURI, skills)
+          - Invalid URL format for wellKnownURI
+          - Skills must have id, name, and description
+
+          Please fix the issues and update your pull request.`;
+          }
+
+          // Find and update or create comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Agent Validation')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body
+            });
+          }
