@@ -10,19 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write  # Needed to comment on PRs
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Fetch all history for proper diff
-    
+
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
-    
+
     - name: Get changed files
       id: changed-files
       uses: tj-actions/changed-files@v41
@@ -30,30 +29,31 @@ jobs:
         files: |
           agents/**.json
         json: true
-    
+
     - name: Validate changed agent files
+      id: validate
       run: |
         echo "🔍 Validating agent submissions..."
-        
+
         # Parse the JSON array of changed files
         changed_files='${{ steps.changed-files.outputs.all_changed_files }}'
-        
+
         # Convert JSON array to space-separated list
         # The output from changed-files action comes with escaped quotes, so we need to unescape first
         files=$(echo "$changed_files" | sed 's/\\\"/"/g' | jq -r '.[]' | tr '\n' ' ')
-        
+
         if [ -z "$files" ]; then
           echo "No agent files changed"
           exit 0
         fi
-        
+
         validation_failed=false
-        
+
         for file in $files; do
           echo ""
           echo "Validating: $file"
           echo "----------------------------------------"
-          
+
           if uv run python scripts/validate_agent.py "$file"; then
             echo "✅ $file passed validation"
           else
@@ -61,7 +61,7 @@ jobs:
             validation_failed=true
           fi
         done
-        
+
         if [ "$validation_failed" = true ]; then
           echo ""
           echo "❌ One or more agent files failed validation"
@@ -70,90 +70,22 @@ jobs:
           echo ""
           echo "✅ All agent files passed validation!"
         fi
-    
-    - name: Comment PR - Success
-      if: success()
-      uses: actions/github-script@v7
+
+    - name: Save validation result
+      if: always()
+      run: |
+        mkdir -p ./pr-comment
+        echo "${{ github.event.pull_request.number }}" > ./pr-comment/pr-number
+        echo "${{ github.run_id }}" > ./pr-comment/run-id
+        if [ "${{ steps.validate.outcome }}" == "success" ]; then
+          echo "success" > ./pr-comment/status
+        else
+          echo "failure" > ./pr-comment/status
+        fi
+
+    - name: Upload result artifact
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        script: |
-          const body = `## ✅ Agent Validation Successful
-          
-          All submitted agent files have passed validation:
-          - ✓ JSON schema validation
-          - ✓ Required fields present
-          - ✓ Format requirements met
-          
-          Your submission will be reviewed by a maintainer.`;
-          
-          // Find and update or create comment
-          const { data: comments } = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: context.issue.number,
-          });
-          
-          const botComment = comments.find(comment => 
-            comment.user.type === 'Bot' && 
-            comment.body.includes('Agent Validation')
-          );
-          
-          if (botComment) {
-            await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: botComment.id,
-              body: body
-            });
-          } else {
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: body
-            });
-          }
-    
-    - name: Comment PR - Failure
-      if: failure()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const body = `## ❌ Agent Validation Failed
-          
-          Your agent submission has validation errors. Please review the workflow logs for details.
-          
-          Common issues:
-          - Invalid JSON syntax
-          - Missing required fields (name, description, author, wellKnownURI, skills)
-          - Invalid URL format for wellKnownURI
-          - Skills must have id, name, and description
-          
-          Please fix the issues and update your pull request.`;
-          
-          // Find and update or create comment
-          const { data: comments } = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: context.issue.number,
-          });
-          
-          const botComment = comments.find(comment => 
-            comment.user.type === 'Bot' && 
-            comment.body.includes('Agent Validation')
-          );
-          
-          if (botComment) {
-            await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: botComment.id,
-              body: body
-            });
-          } else {
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: body
-            });
-          }
+        name: pr-comment-data
+        path: pr-comment/
