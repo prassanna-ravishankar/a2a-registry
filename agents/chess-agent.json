@@ -16,7 +16,6 @@
     "pushNotifications": false,
     "stateTransitionHistory": true
   },
-  },
   "defaultInputModes": [
     "text/plain"
   ],
