@@ -80,15 +80,15 @@ Your submission will be reviewed by a maintainer.`;
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             body = `## ❌ Agent Validation Failed
 
-          Your agent submission has validation errors. Please review the [workflow logs](${logsUrl}) for details.
+Your agent submission has validation errors. Please review the [workflow logs](${logsUrl}) for details.
 
-          Common issues:
-          - Invalid JSON syntax
-          - Missing required fields (name, description, author, wellKnownURI, skills)
-          - Invalid URL format for wellKnownURI
-          - Skills must have id, name, and description
+Common issues:
+- Invalid JSON syntax
+- Missing required fields (name, description, author, wellKnownURI, skills)
+- Invalid URL format for wellKnownURI
+- Skills must have id, name, and description
 
-          Please fix the issues and update your pull request.`;
+Please fix the issues and update your pull request.`;
           }
 
           // Find and update or create comment
