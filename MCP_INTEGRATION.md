@@ -305,6 +305,14 @@ Once configured, AI assistants can use the following tools:
   - Advanced multi-criteria filtering (AND logic)
   - All parameters are optional lists/strings
 
+### Code Generation
+
+- **`get_code_snippets(agent_id: str, snippet_type: str = "all")`**
+  - Get ready-to-use Python code snippets for connecting to and using an agent
+  - Snippet types: `integrated` (recommended), `registry`, `a2a_official`, `search`, `advanced`, `all`
+  - Includes installation instructions and documentation links
+  - Example: `get_code_snippets("chess-agent", "integrated")`
+
 ### Metadata
 
 - **`get_registry_stats()`**
@@ -320,6 +328,7 @@ Once configured, AI assistants can use the following tools:
 
 Once configured in Claude Desktop or other MCP clients, you can ask:
 
+**Discovery & Search:**
 ```
 "Find agents that support streaming"
 "Search for chess-playing agents"
@@ -327,6 +336,14 @@ Once configured in Claude Desktop or other MCP clients, you can ask:
 "Which agents support JSON output?"
 "What are the registry statistics?"
 "Find agents with weather-forecast skill"
+```
+
+**Code Generation (NEW!):**
+```
+"Show me how to connect to the chess-agent"
+"Give me code to use the weather agent"
+"How do I invoke the planning agent?"
+"I want to use the data-agent in my Python project"
 ```
 
 The AI assistant will automatically call the appropriate MCP tools and present the results.

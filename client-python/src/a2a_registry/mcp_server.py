@@ -22,11 +22,15 @@ mcp = FastMCP(
     - Find agents with specific capabilities (streaming, push notifications, etc.)
     - Filter agents by skills, authors, input/output modes, or tags
     - Get detailed information about specific agents
+    - Get ready-to-use code snippets for connecting to agents
     - View registry statistics
 
     The A2A protocol enables interoperable AI agent communication.
     When users ask about finding agents, AI agents, or the A2A registry,
     use the tools from this server to search and retrieve information.
+
+    When users want to know HOW to use or connect to an agent, use the
+    get_code_snippets tool to provide ready-to-use Python code examples.
     """
 )
 
@@ -286,6 +290,214 @@ def refresh_registry() -> dict:
     """
     _registry.refresh()
     return {"status": "success", "message": "Registry cache refreshed"}
+
+
+@mcp.tool
+def get_code_snippets(agent_id: str, snippet_type: str = "all") -> dict:
+    """
+    Get ready-to-use Python code snippets for connecting to and using an agent.
+
+    This tool provides practical, copy-paste code examples showing how to:
+    - Discover and connect to agents using the integrated A2A SDK
+    - Use the registry client for discovery only
+    - Implement low-level A2A protocol interactions
+    - Search and filter agents
+    - Use advanced filtering features
+
+    Args:
+        agent_id: The agent's registry ID
+        snippet_type: Type of snippet to return. Options:
+                     - "all" (default): Returns all available code snippets
+                     - "integrated": Quick 3-line discovery + invoke (recommended)
+                     - "registry": Basic registry usage for discovery
+                     - "a2a_official": Low-level A2A SDK interaction
+                     - "search": Search and discovery examples
+                     - "advanced": Advanced filtering and async usage
+
+    Returns:
+        Dictionary containing the requested code snippet(s) with installation instructions
+
+    Use cases: "show me how to connect to this agent", "give me code to use agent X",
+               "how do I invoke this agent"
+    """
+    agent = _registry.get_by_id(agent_id)
+    if not agent:
+        return {"error": f"Agent '{agent_id}' not found"}
+
+    # Generate snippets similar to the website modals
+    snippets = {}
+
+    # Integrated approach (recommended)
+    integrated = f"""# Integrated Discover → Invoke workflow
+# Combine registry discovery with A2A SDK invocation
+from a2a_registry import Registry
+
+# Step 1: Discover agent
+registry = Registry()
+agent = registry.get_by_id("{agent.registry_id}")
+
+# Step 2: Connect with one line!
+client = agent.connect()
+
+# Step 3: Invoke using A2A SDK
+# Now use the official A2A SDK methods:
+# - client.message.send(...)
+# - client.message.stream(...)
+# - client.tasks.get(...)
+
+print(f"Connected to {{agent.name}}")
+print(f"Ready to invoke skills: {{[s.id for s in agent.skills]}}")"""
+
+    # Registry client only (discovery)
+    registry = f"""# Install the A2A Registry Python client
+# pip install a2a-registry-client
+
+# Basic usage - find and connect to {agent.name}
+from a2a_registry import Registry
+import requests
+
+registry = Registry()
+agent = registry.get_by_id("{agent.registry_id}")
+print(f"Found: {{agent.name}} - {{agent.description}}")
+
+# Connect to the agent using URL from registry
+response = requests.post(agent.url, json={{
+    "jsonrpc": "2.0",
+    "method": "hello",
+    "params": {{}},
+    "id": 1
+}})
+print(response.json())"""
+
+    # Official A2A SDK (low-level)
+    first_skill = agent.skills[0].id if agent.skills else "example-skill"
+    a2a_official = f"""# Install the official A2A Python SDK
+# pip install a2a-sdk
+
+# Using official A2A SDK to interact with {agent.name}
+import asyncio
+import httpx
+from uuid import uuid4
+from a2a_registry import Registry
+from a2a import A2ACardResolver, SendMessageRequest, MessageSendParams
+
+async def interact_with_agent():
+    # Get agent URL from registry
+    registry = Registry()
+    agent = registry.get_by_id("{agent.registry_id}")
+    base_url = str(agent.url).rstrip('/')
+
+    async with httpx.AsyncClient() as httpx_client:
+        resolver = A2ACardResolver(
+            httpx_client=httpx_client,
+            base_url=base_url
+        )
+
+        # Get agent capabilities
+        agent_card = await resolver.resolve_card()
+        print(f"Agent: {{agent_card.name}}")
+
+        # Send a message to the agent
+        send_message_payload = {{
+            'message': {{
+                'role': 'user',
+                'parts': [
+                    {{'kind': 'text', 'text': 'Hello! Can you help me?'}}
+                ],
+                'messageId': uuid4().hex,
+            }}
+        }}
+
+        request = SendMessageRequest(
+            id=str(uuid4()),
+            params=MessageSendParams(**send_message_payload)
+        )
+
+        response = await client.send_message(request)
+        print(response.model_dump(mode='json', exclude_none=True))
+
+# Run the async example
+asyncio.run(interact_with_agent())"""
+
+    # Search and discovery
+    skill_search = (
+        f"agents = registry.find_by_skill('{first_skill}')"
+        if agent.skills
+        else f"agents = registry.search('{agent.name.lower().split()[0]}')"
+    )
+    search = f"""# Search for agents by capability or skill
+from a2a_registry import Registry
+
+registry = Registry()
+
+# Search for agents with specific skills
+{skill_search}
+print(f"Found {{len(agents)}} agents")
+
+# Find agents by capability
+streaming_agents = registry.find_by_capability("streaming")
+print(f"Streaming agents: {{len(streaming_agents)}}")"""
+
+    # Advanced usage
+    has_streaming = (
+        agent.capabilities and agent.capabilities.streaming
+        if hasattr(agent.capabilities, 'streaming')
+        else False
+    )
+    skills_filter = f"skills=['{first_skill}']," if agent.skills else ""
+    advanced = f"""# Advanced filtering and async usage
+from a2a_registry import Registry, AsyncRegistry
+import asyncio
+
+# Synchronous filtering
+registry = Registry()
+filtered_agents = registry.filter_agents(
+    {skills_filter}
+    input_modes=["text/plain"],
+    capabilities=["streaming"] if {has_streaming} else []
+)
+
+# Async usage for high-performance applications
+async def async_example():
+    async with AsyncRegistry() as registry:
+        agents = await registry.get_all()
+        stats = await registry.get_stats()
+        print(f"Total agents: {{stats['total_agents']}}")
+
+asyncio.run(async_example())"""
+
+    # Build response based on snippet_type
+    if snippet_type == "integrated":
+        snippets["integrated"] = integrated
+    elif snippet_type == "registry":
+        snippets["registry"] = registry
+    elif snippet_type == "a2a_official":
+        snippets["a2a_official"] = a2a_official
+    elif snippet_type == "search":
+        snippets["search"] = search
+    elif snippet_type == "advanced":
+        snippets["advanced"] = advanced
+    else:  # "all"
+        snippets = {
+            "integrated": integrated,
+            "registry": registry,
+            "a2a_official": a2a_official,
+            "search": search,
+            "advanced": advanced
+        }
+
+    return {
+        "agent_id": agent.registry_id,
+        "agent_name": agent.name,
+        "snippets": snippets,
+        "installation": {
+            "recommended": "pip install \"a2a-registry-client[a2a]\"",
+            "basic": "pip install a2a-registry-client",
+            "with_async": "pip install \"a2a-registry-client[async]\"",
+            "all_features": "pip install \"a2a-registry-client[all]\""
+        },
+        "documentation": "https://github.com/prassanna-ravishankar/a2a-registry/blob/main/MCP_INTEGRATION.md"
+    }
 
 
 def main():
