@@ -43,8 +43,9 @@ jobs:
 
           const prNumber = fs.readFileSync('pr-number', 'utf8').trim();
           const status = fs.readFileSync('status', 'utf8').trim();
+          const runId = fs.readFileSync('run-id', 'utf8').trim();
 
-          return { prNumber, status };
+          return { prNumber, status, runId };
 
     - name: Set outputs
       id: pr-data
@@ -52,8 +53,10 @@ jobs:
         PR_DATA='${{ steps.download.outputs.result }}'
         PR_NUMBER=$(echo "$PR_DATA" | jq -r '.prNumber')
         STATUS=$(echo "$PR_DATA" | jq -r '.status')
+        RUN_ID=$(echo "$PR_DATA" | jq -r '.runId')
         echo "pr-number=$PR_NUMBER" >> $GITHUB_OUTPUT
         echo "status=$STATUS" >> $GITHUB_OUTPUT
+        echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
 
     - name: Post comment
       uses: actions/github-script@v7
@@ -61,6 +64,7 @@ jobs:
         script: |
           const prNumber = parseInt('${{ steps.pr-data.outputs.pr-number }}');
           const status = '${{ steps.pr-data.outputs.status }}';
+          const runId = '${{ steps.pr-data.outputs.run-id }}';
 
           let body;
           if (status === 'success') {
@@ -73,9 +77,10 @@ jobs:
 
           Your submission will be reviewed by a maintainer.`;
           } else {
+            const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             body = `## ❌ Agent Validation Failed
 
-          Your agent submission has validation errors. Please review the [workflow logs](${{ github.event.workflow_run.html_url }}) for details.
+          Your agent submission has validation errors. Please review the [workflow logs](${logsUrl}) for details.
 
           Common issues:
           - Invalid JSON syntax

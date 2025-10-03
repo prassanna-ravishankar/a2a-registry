@@ -76,6 +76,7 @@ jobs:
       run: |
         mkdir -p ./pr-comment
         echo "${{ github.event.pull_request.number }}" > ./pr-comment/pr-number
+        echo "${{ github.run_id }}" > ./pr-comment/run-id
         if [ "${{ steps.validate.outcome }}" == "success" ]; then
           echo "success" > ./pr-comment/status
         else
