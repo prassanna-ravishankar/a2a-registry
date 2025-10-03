@@ -17,18 +17,23 @@ from jsonschema import validate, ValidationError, Draft7Validator
 
 class AgentValidator:
     """Validates agent entries against A2A Protocol and Registry requirements."""
-    
+
+    # Official A2A Protocol schema URL
+    OFFICIAL_SCHEMA_URL = "https://raw.githubusercontent.com/a2aproject/A2A/refs/heads/main/specification/json/a2a.json"
+
     def __init__(self):
         self.a2a_schema = self._load_a2a_schema()
         self.registry_requirements = self._load_registry_requirements()
-    
+
     def _load_a2a_schema(self) -> Dict[str, Any]:
-        """Load the official A2A AgentCard schema."""
-        schema_path = Path(__file__).parent.parent / "schemas" / "a2a-official.schema.json"
-        with open(schema_path, 'r') as f:
-            schema = json.load(f)
-        # Return the full schema with definitions so $ref works
-        return schema
+        """Load the official A2A AgentCard schema from GitHub."""
+        req = urllib.request.Request(
+            self.OFFICIAL_SCHEMA_URL,
+            headers={'User-Agent': 'A2A-Registry-Validator/2.0'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            schema = json.loads(response.read())
+            return schema
     
     def _load_registry_requirements(self) -> Dict[str, List[str]]:
         """Define registry-specific requirements."""
