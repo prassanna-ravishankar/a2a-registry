@@ -1,11 +1,12 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
-import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check } from 'lucide-react';
+import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, ArrowUp, Download, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Lazy load non-critical components
 const FAQ = lazy(() => import('./components/FAQ'));
@@ -19,7 +20,50 @@ const A2ARegistry = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedButton, setCopiedButton] = useState(null); // Track which button was copied
+  const [showHelp, setShowHelp] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Focus search on '/' key
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+        const searchInput = document.getElementById('agent-search');
+        if (searchInput && document.activeElement !== searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+        }
+      }
+      // Show help on '?' key
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowHelp(true);
+      }
+      // Close dialogs on Escape
+      if (e.key === 'Escape') {
+        setShowHelp(false);
+        setSelectedAgent(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Scroll to top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Load real data from registry.json with optimized fetching
   useEffect(() => {
@@ -192,20 +236,58 @@ asyncio.run(async_example())`
     };
   };
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text, buttonId) => {
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedButton(buttonId);
+      setTimeout(() => setCopiedButton(null), 2000);
     });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="w-16 h-16 bg-primary rounded-full"></div>
+      <TooltipProvider>
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50">
+        <div className="container mx-auto px-4 sm:px-6 py-8">
+          <div className="text-center mb-8">
+            <div className="w-48 h-12 bg-purple-200 rounded-lg mx-auto mb-4 animate-pulse"></div>
+            <div className="w-96 h-6 bg-purple-100 rounded mx-auto animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="bg-white/90 flex flex-col h-full">
+                <CardHeader>
+                  <div className="w-32 h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="w-24 h-4 bg-gray-100 rounded animate-pulse"></div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col">
+                  <div className="min-h-[60px] mb-4">
+                    <div className="space-y-2">
+                      <div className="w-full h-4 bg-gray-100 rounded animate-pulse"></div>
+                      <div className="w-full h-4 bg-gray-100 rounded animate-pulse"></div>
+                      <div className="w-3/4 h-4 bg-gray-100 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="w-16 h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="space-y-2">
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2.5 border border-purple-100">
+                        <div className="w-32 h-4 bg-gray-200 rounded animate-pulse mb-1"></div>
+                        <div className="w-full h-3 bg-gray-100 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                  <div className="h-9 bg-purple-200 rounded animate-pulse w-24"></div>
+                  <div className="w-16 h-9 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="w-16 h-9 bg-gray-200 rounded animate-pulse"></div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
+      </TooltipProvider>
     );
   }
 
@@ -222,6 +304,7 @@ asyncio.run(async_example())`
   }
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50">
       {/* Background decoration */}
       <div className="fixed inset-0 -z-10">
@@ -247,6 +330,30 @@ asyncio.run(async_example())`
                 <span>•</span>
                 <span>{allTags.length} skills</span>
               </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-purple-200 hover:bg-purple-50"
+                    onClick={() => {
+                      const dataStr = JSON.stringify({ agents }, null, 2);
+                      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                      const link = document.createElement('a');
+                      link.setAttribute('href', dataUri);
+                      link.setAttribute('download', 'a2a-registry.json');
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Export registry as JSON</p>
+                </TooltipContent>
+              </Tooltip>
               <Button asChild size="sm" className="lg:size-default bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0">
                 <a href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/CONTRIBUTING.md">
                   Submit Agent
@@ -295,8 +402,8 @@ asyncio.run(async_example())`
 
         <Separator className="mb-8" />
 
-        {/* Search and Filters */}
-        <section className="mb-8">
+        {/* Search and Filters - Sticky */}
+        <section className="sticky top-[65px] lg:top-[73px] z-40 bg-gradient-to-br from-violet-50/95 via-purple-50/95 to-pink-50/95 backdrop-blur-lg py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-8 border-b border-purple-100">
           <div className="space-y-4">
             <div className="relative max-w-2xl mx-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -306,6 +413,7 @@ asyncio.run(async_example())`
                 className="pl-10 border-purple-200 focus:border-purple-400 bg-white/80 backdrop-blur-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                id="agent-search"
               />
             </div>
 
@@ -340,10 +448,24 @@ asyncio.run(async_example())`
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredAgents.map((agent, index) => (
-              <Card key={index} className="bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group border-purple-100">
+              <Card key={index} className="bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group border-purple-100 relative flex flex-col h-full">
+                {/* Status Badge */}
+                {agent.status && (
+                  <Badge
+                    className={`absolute top-3 right-3 ${
+                      agent.status === 'stable' ? 'bg-green-100 text-green-700' :
+                      agent.status === 'beta' ? 'bg-yellow-100 text-yellow-700' :
+                      agent.status === 'new' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}
+                    variant="secondary"
+                  >
+                    {agent.status || 'stable'}
+                  </Badge>
+                )}
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pr-12">
                       <CardTitle className="truncate">{agent.name}</CardTitle>
                       <CardDescription className="truncate">
                         v{agent.version} • {agent.author || agent.provider?.organization || 'Unknown'}
@@ -351,22 +473,38 @@ asyncio.run(async_example())`
                     </div>
                     <div className="flex gap-1.5 ml-2">
                       {agent.capabilities?.streaming && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Streaming enabled"></div>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Streaming enabled</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                       {agent.capabilities?.pushNotifications && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full" title="Push notifications enabled"></div>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Push notifications</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {agent.description}
-                  </p>
+                <CardContent className="flex-1 flex flex-col">
+                  <div className="min-h-[60px] mb-4">
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {agent.description}
+                    </p>
+                  </div>
 
                   {/* Skills */}
-                  <div>
+                  <div className="flex-1">
                     <h4 className="text-sm font-semibold mb-2">Skills</h4>
                     <div className="space-y-2">
                       {agent.skills.slice(0, 2).map((skill, skillIndex) => (
@@ -395,30 +533,55 @@ asyncio.run(async_example())`
                 </CardContent>
 
                 <CardFooter className="flex gap-2">
-                  <Button size="sm" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" asChild>
-                    <a href={agent.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Connect</span>
-                    </a>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-purple-200 hover:bg-purple-50 flex items-center justify-center"
-                    onClick={() => setSelectedAgent(agent)}
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-purple-200 hover:bg-purple-50"
-                    asChild
-                  >
-                    <a href={agent.wellKnownURI} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
-                      <Globe className="w-3.5 h-3.5" />
-                    </a>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" asChild>
+                        <a href={agent.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span className="text-xs">Connect</span>
+                        </a>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Open agent endpoint</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-200 hover:bg-purple-50 flex items-center gap-1"
+                        onClick={() => setSelectedAgent(agent)}
+                      >
+                        <Code className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline text-xs">Code</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View integration code examples</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-200 hover:bg-purple-50 flex items-center gap-1"
+                        asChild
+                      >
+                        <a href={agent.wellKnownURI} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                          <Info className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline text-xs">Card</span>
+                        </a>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View agent card specification</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardFooter>
               </Card>
             ))}
@@ -426,9 +589,33 @@ asyncio.run(async_example())`
 
           {filteredAgents.length === 0 && !loading && (
             <div className="text-center py-16">
-              <div className="text-6xl mb-4">🤖</div>
+              <div className="w-24 h-24 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
+                <Search className="w-12 h-12 text-purple-400" />
+              </div>
               <h3 className="text-2xl font-bold mb-2">No agents found</h3>
-              <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
+              <p className="text-muted-foreground mb-4">Try adjusting your search terms or filters</p>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedSkills([]);
+                  }}
+                  className="border-purple-200 hover:bg-purple-50"
+                >
+                  Clear filters
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  asChild
+                >
+                  <a href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/CONTRIBUTING.md">
+                    Submit an agent
+                  </a>
+                </Button>
+              </div>
             </div>
           )}
         </section>
@@ -465,6 +652,45 @@ asyncio.run(async_example())`
         </footer>
       </main>
 
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <Button
+          size="icon"
+          className="fixed bottom-6 right-6 z-50 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+          onClick={scrollToTop}
+        >
+          <ArrowUp className="w-4 h-4" />
+        </Button>
+      )}
+
+      {/* Help Dialog */}
+      <Dialog open={showHelp} onOpenChange={setShowHelp}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>Quick navigation and actions</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <div className="flex justify-between items-center py-2 px-3 bg-purple-50 rounded">
+              <span className="text-sm">Focus search</span>
+              <kbd className="px-2 py-1 bg-white rounded text-xs border">/</kbd>
+            </div>
+            <div className="flex justify-between items-center py-2 px-3 bg-purple-50 rounded">
+              <span className="text-sm">Show this help</span>
+              <kbd className="px-2 py-1 bg-white rounded text-xs border">?</kbd>
+            </div>
+            <div className="flex justify-between items-center py-2 px-3 bg-purple-50 rounded">
+              <span className="text-sm">Close dialogs</span>
+              <kbd className="px-2 py-1 bg-white rounded text-xs border">Esc</kbd>
+            </div>
+            <Separator className="my-4" />
+            <p className="text-sm text-muted-foreground">
+              Tip: Click any skill tag to filter agents by that skill.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Code Snippet Modal */}
       <Dialog open={!!selectedAgent} onOpenChange={() => setSelectedAgent(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -482,11 +708,11 @@ asyncio.run(async_example())`
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).registry)}
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).registry, 'registry')}
                     className="flex items-center gap-2"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    {copiedButton === 'registry' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedButton === 'registry' ? 'Copied!' : 'Copy'}</span>
                   </Button>
                 </div>
                 <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
@@ -503,11 +729,11 @@ asyncio.run(async_example())`
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).a2a_official)}
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).a2a_official, 'a2a_official')}
                     className="flex items-center gap-2"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    {copiedButton === 'a2a_official' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedButton === 'a2a_official' ? 'Copied!' : 'Copy'}</span>
                   </Button>
                 </div>
                 <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
@@ -524,11 +750,11 @@ asyncio.run(async_example())`
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).search)}
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).search, 'search')}
                     className="flex items-center gap-2"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    {copiedButton === 'search' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedButton === 'search' ? 'Copied!' : 'Copy'}</span>
                   </Button>
                 </div>
                 <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
@@ -545,11 +771,11 @@ asyncio.run(async_example())`
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).advanced)}
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).advanced, 'advanced')}
                     className="flex items-center gap-2"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    {copiedButton === 'advanced' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedButton === 'advanced' ? 'Copied!' : 'Copy'}</span>
                   </Button>
                 </div>
                 <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
@@ -597,6 +823,7 @@ asyncio.run(async_example())`
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 };
 
