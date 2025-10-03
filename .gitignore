@@ -58,6 +58,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Exception for website source lib directory (shadcn utils)
+!website/src/lib/
+
 # Project specific
 *.log
 .tmp/

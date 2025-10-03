@@ -10,6 +10,9 @@
     "refresh-data": "cd .. && source .venv/bin/activate && python scripts/generate_registry.py agents/ --output website/public/registry.json --pretty"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -17,7 +20,10 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "postcss": "^8.4.32",
+    "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.0",
     "terser": "^5.43.1",
     "vite": "^5.0.10"
