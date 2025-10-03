@@ -16,11 +16,6 @@
     "pushNotifications": false,
     "stateTransitionHistory": true
   },
-  "authentication": {
-    "schemes": [
-      "Bearer"
-    ],
-    "credentials": null
   },
   "defaultInputModes": [
     "text/plain"
