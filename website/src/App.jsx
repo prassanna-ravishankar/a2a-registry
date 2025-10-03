@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
-import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, ArrowUp, Download, Info } from 'lucide-react';
+import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, ArrowUp, Download, Info, BookOpen, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Lazy load non-critical components
 const FAQ = lazy(() => import('./components/FAQ'));
-const IntegrationGuide = lazy(() => import('./components/IntegrationGuide'));
 
 const A2ARegistry = () => {
   const [agents, setAgents] = useState([]);
@@ -277,10 +277,9 @@ asyncio.run(async_example())`
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex gap-2">
-                  <div className="h-9 bg-purple-200 rounded animate-pulse w-24"></div>
-                  <div className="w-16 h-9 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="w-16 h-9 bg-gray-200 rounded animate-pulse"></div>
+                <CardFooter className="flex gap-2 pt-4">
+                  <div className="flex-1 h-9 bg-purple-200 rounded animate-pulse"></div>
+                  <div className="flex-1 h-9 bg-gray-200 rounded animate-pulse"></div>
                 </CardFooter>
               </Card>
             ))}
@@ -532,18 +531,18 @@ asyncio.run(async_example())`
                   </div>
                 </CardContent>
 
-                <CardFooter className="flex gap-2">
+                <CardFooter className="flex gap-2 pt-4">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" asChild>
-                        <a href={agent.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                      <Button size="sm" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" asChild>
+                        <a href={agent.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5">
                           <ExternalLink className="w-3.5 h-3.5" />
-                          <span className="text-xs">Connect</span>
+                          <span className="text-xs">Try Agent</span>
                         </a>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Open agent endpoint</p>
+                      <p>Launch agent chat interface</p>
                     </TooltipContent>
                   </Tooltip>
 
@@ -552,34 +551,15 @@ asyncio.run(async_example())`
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-purple-200 hover:bg-purple-50 flex items-center gap-1"
+                        className="flex-1 border-purple-200 hover:bg-purple-50 flex items-center justify-center gap-1.5"
                         onClick={() => setSelectedAgent(agent)}
                       >
-                        <Code className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-xs">Code</span>
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span className="text-xs">Documentation</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>View integration code examples</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-purple-200 hover:bg-purple-50 flex items-center gap-1"
-                        asChild
-                      >
-                        <a href={agent.wellKnownURI} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
-                          <Info className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline text-xs">Card</span>
-                        </a>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>View agent card specification</p>
+                      <p>View code examples and specifications</p>
                     </TooltipContent>
                   </Tooltip>
                 </CardFooter>
@@ -620,13 +600,9 @@ asyncio.run(async_example())`
           )}
         </section>
 
-        {/* Lazy-loaded FAQ and Integration Guide */}
+        {/* Lazy-loaded FAQ */}
         <Suspense fallback={<div className="mt-12 h-32 animate-pulse bg-muted/20 rounded-lg" />}>
           <FAQ />
-        </Suspense>
-
-        <Suspense fallback={<div className="mt-12 h-32 animate-pulse bg-muted/20 rounded-lg" />}>
-          <IntegrationGuide />
         </Suspense>
 
         {/* Footer */}
@@ -696,11 +672,25 @@ asyncio.run(async_example())`
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedAgent?.name}</DialogTitle>
-            <DialogDescription>Python Code Examples</DialogDescription>
+            <DialogDescription className="mt-2">
+              {selectedAgent?.description}
+            </DialogDescription>
           </DialogHeader>
 
           {selectedAgent && (
-            <div className="space-y-6 mt-4">
+            <Tabs defaultValue="quickstart" className="mt-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="quickstart" className="flex items-center gap-2">
+                  <Code className="w-4 h-4" />
+                  Quick Start
+                </TabsTrigger>
+                <TabsTrigger value="specs" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Specifications
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="quickstart" className="space-y-6 mt-4">
               {/* Registry Client Usage */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -796,29 +786,111 @@ asyncio.run(async_example())`
                 <pre className="bg-muted rounded p-2 text-xs">pip install a2a-registry-client[async]</pre>
               </div>
 
-              {/* Agent Details */}
-              <div className="bg-accent/50 rounded-lg p-4 border">
-                <h4 className="font-semibold mb-2">🤖 Agent Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              </TabsContent>
+
+              <TabsContent value="specs" className="space-y-6 mt-4">
+                {/* Agent Overview */}
+                <div className="space-y-4">
                   <div>
-                    <span className="text-muted-foreground">URL:</span>
-                    <span className="ml-2 font-mono text-xs">{selectedAgent.url}</span>
+                    <h4 className="text-sm font-semibold mb-2">Overview</h4>
+                    <div className="bg-accent/50 rounded-lg p-4 border">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground font-medium">Agent URL:</span>
+                          <div className="mt-1 font-mono text-xs bg-muted p-2 rounded break-all">{selectedAgent.url}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground font-medium">Version:</span>
+                          <div className="mt-1">{selectedAgent.version}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground font-medium">Protocol Version:</span>
+                          <div className="mt-1">{selectedAgent.protocolVersion}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground font-medium">Author:</span>
+                          <div className="mt-1">{selectedAgent.author || selectedAgent.provider?.organization || 'Unknown'}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Capabilities */}
+                  {selectedAgent.capabilities && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Capabilities</h4>
+                      <div className="bg-accent/50 rounded-lg p-4 border">
+                        <div className="flex flex-wrap gap-2">
+                          {selectedAgent.capabilities.streaming && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              <Zap className="w-3 h-3 mr-1" />
+                              Streaming
+                            </Badge>
+                          )}
+                          {selectedAgent.capabilities.pushNotifications && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              Push Notifications
+                            </Badge>
+                          )}
+                          {selectedAgent.capabilities.stateTransitionHistory && (
+                            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                              State History
+                            </Badge>
+                          )}
+                          {!selectedAgent.capabilities.streaming && !selectedAgent.capabilities.pushNotifications && !selectedAgent.capabilities.stateTransitionHistory && (
+                            <span className="text-sm text-muted-foreground">No special capabilities declared</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skills */}
                   <div>
-                    <span className="text-muted-foreground">Version:</span>
-                    <span className="ml-2">{selectedAgent.version}</span>
+                    <h4 className="text-sm font-semibold mb-2">Skills ({selectedAgent.skills?.length || 0})</h4>
+                    <div className="space-y-3">
+                      {selectedAgent.skills?.map((skill, idx) => (
+                        <div key={idx} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
+                          <h5 className="font-medium text-sm mb-1">{skill.name}</h5>
+                          <p className="text-xs text-muted-foreground mb-2">{skill.description}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {skill.tags?.map((tag, tagIdx) => (
+                              <Badge key={tagIdx} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Well-known URI */}
                   <div>
-                    <span className="text-muted-foreground">Protocol:</span>
-                    <span className="ml-2">{selectedAgent.protocolVersion}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Author:</span>
-                    <span className="ml-2">{selectedAgent.author}</span>
+                    <h4 className="text-sm font-semibold mb-2">Agent Card</h4>
+                    <div className="bg-accent/50 rounded-lg p-4 border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <span className="text-muted-foreground text-sm">Specification Endpoint:</span>
+                          <div className="mt-1 font-mono text-xs bg-muted p-2 rounded break-all">{selectedAgent.wellKnownURI}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          asChild
+                          className="ml-4"
+                        >
+                          <a href={selectedAgent.wellKnownURI} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                            <ExternalLink className="w-3 h-3" />
+                            View JSON
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
