@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
-import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, ArrowUp, Download, Info, BookOpen, FileText } from 'lucide-react';
+import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, ArrowUp, Download, Info, BookOpen, FileText, Radio } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const A2ARegistry = () => {
   const [copiedButton, setCopiedButton] = useState(null); // Track which button was copied
   const [showHelp, setShowHelp] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showMCPDialog, setShowMCPDialog] = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -44,6 +45,7 @@ const A2ARegistry = () => {
       if (e.key === 'Escape') {
         setShowHelp(false);
         setSelectedAgent(null);
+        setShowMCPDialog(false);
       }
     };
 
@@ -232,7 +234,27 @@ async def async_example():
         stats = await registry.get_stats()
         print(f"Total agents: {stats['total_agents']}")
 
-asyncio.run(async_example())`
+asyncio.run(async_example())`,
+
+      integrated: `# Integrated Discover → Invoke workflow
+# Combine registry discovery with A2A SDK invocation
+from a2a_registry import Registry
+
+# Step 1: Discover agent
+registry = Registry()
+agent = registry.get_by_id("${agent.registry_id || agent.name.toLowerCase().replace(/\s+/g, '-')}")
+
+# Step 2: Connect with one line!
+client = agent.connect()
+
+# Step 3: Invoke using A2A SDK
+# Now use the official A2A SDK methods:
+# - client.message.send(...)
+# - client.message.stream(...)
+# - client.tasks.get(...)
+
+print(f"Connected to {agent.name}")
+print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
     };
   };
 
@@ -364,6 +386,22 @@ asyncio.run(async_example())`
                   <span className="hidden sm:inline">PyPI</span>
                 </a>
               </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="lg:size-default border-purple-200 hover:bg-purple-50 flex items-center gap-2"
+                    onClick={() => setShowMCPDialog(true)}
+                  >
+                    <Radio className="w-4 h-4" />
+                    <span className="hidden sm:inline">MCP</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Model Context Protocol integration</p>
+                </TooltipContent>
+              </Tooltip>
               <Button variant="outline" size="icon" className="border-purple-200 hover:bg-purple-50" asChild>
                 <a href="https://github.com/prassanna-ravishankar/a2a-registry">
                   <Github className="w-4 h-4" />
@@ -639,6 +677,357 @@ asyncio.run(async_example())`
         </Button>
       )}
 
+      {/* MCP Integration Dialog */}
+      <Dialog open={showMCPDialog} onOpenChange={setShowMCPDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Radio className="w-5 h-5" />
+              MCP Integration
+            </DialogTitle>
+            <DialogDescription>
+              Enable AI assistants like Claude to discover and query agents from the A2A Registry
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="claude-desktop" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
+              <TabsTrigger value="claude-desktop" className="text-xs">Claude Desktop</TabsTrigger>
+              <TabsTrigger value="cline" className="text-xs">Cline</TabsTrigger>
+              <TabsTrigger value="zed" className="text-xs">Zed</TabsTrigger>
+              <TabsTrigger value="cursor" className="text-xs lg:block hidden">Cursor</TabsTrigger>
+              <TabsTrigger value="other" className="text-xs lg:block hidden">Other</TabsTrigger>
+            </TabsList>
+
+            {/* Claude Desktop */}
+            <TabsContent value="claude-desktop" className="space-y-4 mt-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-600" />
+                  Quick Setup
+                </h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  The most popular way to use the A2A Registry MCP server.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">1. Run the MCP Server</h5>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-sm overflow-x-auto">uvx a2a-registry-client</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard('uvx a2a-registry-client', 'mcp-uvx')}
+                  >
+                    {copiedButton === 'mcp-uvx' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">2. Add to Claude Desktop Config</h5>
+                <div className="bg-muted/50 rounded p-2 text-xs text-muted-foreground mb-2">
+                  <strong>macOS:</strong> ~/Library/Application Support/Claude/claude_desktop_config.json<br />
+                  <strong>Windows:</strong> %APPDATA%\Claude\claude_desktop_config.json
+                </div>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">{`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`}</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`, 'mcp-config')}
+                  >
+                    {copiedButton === 'mcp-config' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded p-3 text-xs text-blue-900 border border-blue-200">
+                <strong>After setup:</strong> Restart Claude Desktop and look for the 🔌 icon to verify MCP servers are loaded.
+              </div>
+            </TabsContent>
+
+            {/* Cline (VS Code) */}
+            <TabsContent value="cline" className="space-y-4 mt-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2">Cline for VS Code</h4>
+                <p className="text-sm text-muted-foreground">
+                  Popular AI coding assistant with MCP support
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Setup Steps</h5>
+                <ol className="text-sm space-y-2 list-decimal list-inside">
+                  <li>Install Cline extension from VS Code marketplace</li>
+                  <li>Open VS Code Settings (Cmd/Ctrl + ,)</li>
+                  <li>Search for "Cline: MCP Settings"</li>
+                  <li>Add the configuration below</li>
+                  <li>Restart VS Code</li>
+                </ol>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Configuration</h5>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">{`{
+  "cline.mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`}</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`{
+  "cline.mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`, 'mcp-cline')}
+                  >
+                    {copiedButton === 'mcp-cline' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Zed */}
+            <TabsContent value="zed" className="space-y-4 mt-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2">Zed Editor</h4>
+                <p className="text-sm text-muted-foreground">
+                  High-performance editor with built-in MCP support
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Configuration File</h5>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Location: <code className="bg-muted px-1 rounded">~/.config/zed/settings.json</code>
+                </p>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">{`{
+  "context_servers": {
+    "a2a-registry": {
+      "command": {
+        "path": "uvx",
+        "args": ["a2a-registry-client"]
+      }
+    }
+  }
+}`}</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`{
+  "context_servers": {
+    "a2a-registry": {
+      "command": {
+        "path": "uvx",
+        "args": ["a2a-registry-client"]
+      }
+    }
+  }
+}`, 'mcp-zed')}
+                  >
+                    {copiedButton === 'mcp-zed' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                <strong>After setup:</strong> Restart Zed and the MCP server will appear in the context menu.
+              </div>
+            </TabsContent>
+
+            {/* Cursor */}
+            <TabsContent value="cursor" className="space-y-4 mt-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2">Cursor</h4>
+                <p className="text-sm text-muted-foreground">
+                  AI-first code editor
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Setup</h5>
+                <ol className="text-sm space-y-2 list-decimal list-inside">
+                  <li>Open Cursor Settings (Cmd/Ctrl + ,)</li>
+                  <li>Search for "MCP" settings</li>
+                  <li>Add the configuration below</li>
+                  <li>Restart Cursor</li>
+                </ol>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Configuration</h5>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">{`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`}</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`, 'mcp-cursor')}
+                  >
+                    {copiedButton === 'mcp-cursor' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 rounded p-3 text-xs text-yellow-900 border border-yellow-200">
+                <strong>Note:</strong> MCP support in Cursor may be in beta. Check Cursor's documentation for latest setup instructions.
+              </div>
+            </TabsContent>
+
+            {/* Other Tools */}
+            <TabsContent value="other" className="space-y-4 mt-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2">Other Tools & Custom Integrations</h4>
+                <p className="text-sm text-muted-foreground">
+                  Generic configuration for any MCP-compatible tool
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Supported Tools</h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted rounded p-2">• Continue (VS Code)</div>
+                  <div className="bg-muted rounded p-2">• Custom MCP clients</div>
+                  <div className="bg-muted rounded p-2">• Windsurf</div>
+                  <div className="bg-muted rounded p-2">• And more...</div>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-semibold mb-2">Generic Configuration</h5>
+                <div className="relative">
+                  <pre className="bg-muted rounded p-3 text-xs overflow-x-auto">{`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`}</pre>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard(`{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}`, 'mcp-other')}
+                  >
+                    {copiedButton === 'mcp-other' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                <strong>Protocol:</strong> The server uses stdio transport and follows the{' '}
+                <a href="https://spec.modelcontextprotocol.io/" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                  MCP specification
+                </a>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <Separator className="my-6" />
+
+          {/* What You Can Do */}
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-3">What You Can Do</h4>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <p className="text-sm text-muted-foreground mb-2">Once configured, ask your AI assistant:</p>
+                <ul className="space-y-1 text-sm">
+                  <li>• "Find agents that support streaming"</li>
+                  <li>• "Search for chess-playing agents"</li>
+                  <li>• "Show me all agents by a specific author"</li>
+                  <li>• "Which agents support JSON output?"</li>
+                  <li>• "What are the registry statistics?"</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Available Tools Summary */}
+            <div>
+              <h5 className="text-sm font-semibold mb-2">Available MCP Tools</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div className="bg-muted rounded p-2">✓ Search agents</div>
+                <div className="bg-muted rounded p-2">✓ Filter by capability</div>
+                <div className="bg-muted rounded p-2">✓ Filter by skill</div>
+                <div className="bg-muted rounded p-2">✓ Filter by author</div>
+                <div className="bg-muted rounded p-2">✓ Get agent details</div>
+                <div className="bg-muted rounded p-2">✓ + 8 more tools</div>
+              </div>
+            </div>
+
+            {/* Full Documentation Link */}
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                className="border-purple-200 hover:bg-purple-50"
+                asChild
+              >
+                <a
+                  href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/MCP_INTEGRATION.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  View Full Documentation
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Help Dialog */}
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
         <DialogContent className="max-w-md">
@@ -678,11 +1067,15 @@ asyncio.run(async_example())`
           </DialogHeader>
 
           {selectedAgent && (
-            <Tabs defaultValue="quickstart" className="mt-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="quickstart" className="flex items-center gap-2">
+            <Tabs defaultValue="getstarted" className="mt-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="getstarted" className="flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Get Started
+                </TabsTrigger>
+                <TabsTrigger value="examples" className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
-                  Quick Start
+                  More Examples
                 </TabsTrigger>
                 <TabsTrigger value="specs" className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
@@ -690,11 +1083,77 @@ asyncio.run(async_example())`
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="quickstart" className="space-y-6 mt-4">
+              {/* GET STARTED TAB */}
+              <TabsContent value="getstarted" className="space-y-6 mt-4">
+              {/* Hero message */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-600" />
+                  Quick Connect in 3 Lines
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  The fastest way to discover and invoke this agent using the integrated A2A SDK.
+                </p>
+              </div>
+
+              {/* Integrated Discovery + Invocation */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Code Example</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).integrated, 'integrated')}
+                    className="flex items-center gap-2"
+                  >
+                    {copiedButton === 'integrated' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedButton === 'integrated' ? 'Copied!' : 'Copy'}</span>
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
+                  <code>{generateCodeSnippets(selectedAgent).integrated}</code>
+                </pre>
+              </div>
+
+              <Separator />
+
+              {/* Installation Instructions */}
+              <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                <h4 className="font-semibold mb-2">📦 Installation</h4>
+                <p className="text-sm text-muted-foreground mb-2">With A2A SDK integration (recommended):</p>
+                <pre className="bg-muted rounded p-2 text-xs mb-3">pip install "a2a-registry-client[a2a]"</pre>
+
+                <details className="mt-3">
+                  <summary className="text-sm font-medium cursor-pointer hover:text-purple-600">Other installation options</summary>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Basic installation (discovery only):</p>
+                      <pre className="bg-muted rounded p-2 text-xs">pip install a2a-registry-client</pre>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">With async support:</p>
+                      <pre className="bg-muted rounded p-2 text-xs">pip install "a2a-registry-client[async]"</pre>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">All features (A2A SDK + async):</p>
+                      <pre className="bg-muted rounded p-2 text-xs">pip install "a2a-registry-client[all]"</pre>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              </TabsContent>
+
+              {/* MORE EXAMPLES TAB */}
+              <TabsContent value="examples" className="space-y-6 mt-4">
+
               {/* Registry Client Usage */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold">Registry Client Usage</h4>
+                  <div>
+                    <h4 className="text-sm font-semibold">Registry Client (Discovery Only)</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Use when you only need to find agents</p>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -715,7 +1174,10 @@ asyncio.run(async_example())`
               {/* Official A2A SDK */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold">Official A2A SDK</h4>
+                  <div>
+                    <h4 className="text-sm font-semibold">Official A2A SDK (Low-Level)</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Direct A2A protocol interaction</p>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -736,7 +1198,10 @@ asyncio.run(async_example())`
               {/* Search & Discovery */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold">Search & Discovery</h4>
+                  <div>
+                    <h4 className="text-sm font-semibold">Search & Discovery</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Filter agents by skills and capabilities</p>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -757,7 +1222,10 @@ asyncio.run(async_example())`
               {/* Advanced Usage */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold">Advanced Usage</h4>
+                  <div>
+                    <h4 className="text-sm font-semibold">Advanced Filtering</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Multi-criteria filtering and async support</p>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -771,19 +1239,6 @@ asyncio.run(async_example())`
                 <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
                   <code>{generateCodeSnippets(selectedAgent).advanced}</code>
                 </pre>
-              </div>
-
-              <Separator />
-
-              {/* Installation Instructions */}
-              <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                <h4 className="font-semibold mb-2">📦 Installation</h4>
-                <p className="text-sm text-muted-foreground mb-2">Install the A2A Registry Python client:</p>
-                <pre className="bg-muted rounded p-2 text-xs mb-2">pip install a2a-registry-client</pre>
-                <p className="text-sm text-muted-foreground mb-2">Install the official A2A Protocol SDK:</p>
-                <pre className="bg-muted rounded p-2 text-xs mb-2">pip install a2a-sdk</pre>
-                <p className="text-sm text-muted-foreground">For async support:</p>
-                <pre className="bg-muted rounded p-2 text-xs">pip install a2a-registry-client[async]</pre>
               </div>
 
               </TabsContent>

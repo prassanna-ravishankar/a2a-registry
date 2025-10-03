@@ -89,6 +89,30 @@ agents = registry.get_all()
 weather_agents = registry.find_by_skill("weather-forecast")
 ```
 
+#### Via MCP (Model Context Protocol)
+
+Enable AI assistants like Claude to discover and query agents directly:
+
+```bash
+uvx a2a-registry-client
+```
+
+Add to your Claude Desktop configuration:
+```json
+{
+  "mcpServers": {
+    "a2a-registry": {
+      "command": "uvx",
+      "args": ["a2a-registry-client"]
+    }
+  }
+}
+```
+
+Once configured, AI assistants can search agents, filter by capabilities, and query metadata in natural language.
+
+**📖 [Complete MCP Integration Guide](MCP_INTEGRATION.md)**
+
 ## Project Structure
 
 ```
