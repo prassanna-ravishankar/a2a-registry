@@ -9,6 +9,12 @@ pip install a2a-registry-client
 
 # For async support:
 pip install "a2a-registry-client[async]"
+
+# For A2A SDK integration (discover + invoke agents):
+pip install "a2a-registry-client[a2a]"
+
+# For all features:
+pip install "a2a-registry-client[all]"
 ```
 
 ## Quick Start
@@ -209,6 +215,69 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## A2A SDK Integration
+
+The registry client seamlessly integrates with the official A2A SDK for a complete **discover → invoke** workflow:
+
+```python
+from a2a_registry import Registry
+
+# Step 1: Discover agents using the registry
+registry = Registry()
+agent = registry.search("weather")[0]
+
+# Step 2: Connect using the official A2A SDK
+client = agent.connect()
+
+# Step 3: Invoke skills using A2A protocol
+response = await client.message.send(
+    skill_id="weather.forecast",
+    input={"city": "San Francisco"}
+)
+```
+
+### Key Features
+
+- **One-line connection**: `agent.connect()` returns a configured A2A client
+- **Automatic configuration**: Agent URL and metadata used automatically
+- **Optional dependency**: Only installed when needed (`pip install 'a2a-registry-client[a2a]'`)
+- **Full A2A SDK access**: Use all official SDK features (streaming, tasks, etc.)
+
+### Advanced Integration Examples
+
+```python
+# Filter before connecting
+streaming_agents = registry.find_by_capability("streaming")
+agent = streaming_agents[0]
+client = agent.connect()
+
+# Use streaming responses
+async for chunk in client.message.stream(
+    skill_id="chat",
+    input={"message": "Hello!"}
+):
+    print(chunk)
+
+# Pass custom configuration
+client = agent.connect(
+    auth={"type": "bearer", "token": "..."},
+    timeout=30
+)
+```
+
+### Error Handling
+
+```python
+try:
+    client = agent.connect()
+except ImportError:
+    print("Install A2A SDK: pip install 'a2a-registry-client[a2a]'")
+except ValueError:
+    print("Agent doesn't have a URL configured")
+```
+
+See [examples/a2a_integration.py](examples/a2a_integration.py) for complete examples.
 
 ## Caching
 

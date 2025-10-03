@@ -29,6 +29,7 @@ classifiers = [
 dependencies = [
     "requests>=2.31.0",
     "pydantic>=2.0.0",
+    "fastmcp>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -43,12 +44,22 @@ dev = [
 async = [
     "aiohttp>=3.8.0",
 ]
+a2a = [
+    "a2a-sdk>=0.3.7",
+]
+all = [
+    "aiohttp>=3.8.0",
+    "a2a-sdk>=0.3.7",
+]
 
 [project.urls]
 Homepage = "https://www.a2aregistry.org"
 Documentation = "https://github.com/prassanna-ravishankar/a2a-registry"
 Repository = "https://github.com/prassanna-ravishankar/a2a-registry"
 Issues = "https://github.com/prassanna-ravishankar/a2a-registry/issues"
+
+[project.scripts]
+a2a-registry-client = "a2a_registry.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
