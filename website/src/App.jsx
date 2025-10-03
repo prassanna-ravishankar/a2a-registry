@@ -1,5 +1,11 @@
 import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
-import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check, X } from 'lucide-react';
+import { Search, ExternalLink, Zap, Globe, CheckCircle, Github, Code, Copy, Check } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 // Lazy load non-critical components
 const FAQ = lazy(() => import('./components/FAQ'));
@@ -18,7 +24,7 @@ const A2ARegistry = () => {
   // Load real data from registry.json with optimized fetching
   useEffect(() => {
     const controller = new AbortController();
-    
+
     fetch('/registry.json', {
       signal: controller.signal,
       cache: 'force-cache'
@@ -40,16 +46,16 @@ const A2ARegistry = () => {
           setLoading(false);
         }
       });
-    
+
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    let filtered = agents.filter(agent => 
+    let filtered = agents.filter(agent =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (agent.author && agent.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      agent.skills.some(skill => 
+      agent.skills.some(skill =>
         skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         skill.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       )
@@ -66,15 +72,15 @@ const A2ARegistry = () => {
     setFilteredAgents(filtered);
   }, [searchTerm, selectedSkills, agents]);
 
-  const allTags = useMemo(() => 
-    [...new Set(agents.flatMap(agent => 
+  const allTags = useMemo(() =>
+    [...new Set(agents.flatMap(agent =>
       agent.skills.flatMap(skill => skill.tags || [])
     ))].sort(), [agents]
   );
 
   const toggleSkillFilter = useCallback((tag) => {
-    setSelectedSkills(prev => 
-      prev.includes(tag) 
+    setSelectedSkills(prev =>
+      prev.includes(tag)
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
@@ -117,17 +123,17 @@ async def interact_with_agent():
     registry = Registry()
     agent = registry.get_by_id("${agent.name.toLowerCase().replace(/\s+/g, '-')}")
     base_url = agent.url.rstrip('/')
-    
+
     async with httpx.AsyncClient() as httpx_client:
         resolver = A2ACardResolver(
             httpx_client=httpx_client,
             base_url=base_url
         )
-        
+
         # Get agent capabilities
         agent_card = await resolver.resolve_card()
         print(f"Agent: {agent_card.name}")
-        
+
         # Send a message to the agent
         send_message_payload = {
             'message': {
@@ -138,18 +144,18 @@ async def interact_with_agent():
                 'messageId': uuid4().hex,
             }
         }
-        
+
         request = SendMessageRequest(
-            id=str(uuid4()), 
+            id=str(uuid4()),
             params=MessageSendParams(**send_message_payload)
         )
-        
+
         response = await client.send_message(request)
         print(response.model_dump(mode='json', exclude_none=True))
 
 # Run the async example
 asyncio.run(interact_with_agent())`,
-      
+
       search: `# Search for agents by capability or skill
 from a2a_registry import Registry
 
@@ -195,9 +201,9 @@ asyncio.run(async_example())`
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse">
-          <div className="w-16 h-16 bg-purple-500 rounded-full"></div>
+          <div className="w-16 h-16 bg-primary rounded-full"></div>
         </div>
       </div>
     );
@@ -205,122 +211,125 @@ asyncio.run(async_example())`
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-center">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-2">Error Loading Registry</h2>
-          <p className="text-purple-300">{error}</p>
+          <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50">
+      {/* Background decoration */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+      </div>
+
       {/* Header */}
-      <header className="backdrop-blur-sm bg-white/10 border-b border-white/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 lg:py-4">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 sm:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img src="/logo.svg" alt="A2A Logo" className="w-8 h-8 lg:w-10 lg:h-10" loading="eager" />
               <div>
-                <h1 className="text-xl lg:text-2xl font-bold text-white">A2A Registry</h1>
-                <p className="text-purple-200 text-xs lg:text-sm">Live Agent Directory</p>
+                <h1 className="text-xl lg:text-2xl font-bold">A2A Registry</h1>
+                <p className="text-muted-foreground text-xs lg:text-sm">Live Agent Directory</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="hidden sm:flex items-center space-x-4 text-sm text-purple-300">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
                 <span>{agents.length} agents</span>
                 <span>•</span>
                 <span>{allTags.length} skills</span>
               </div>
-              <a
-                href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/CONTRIBUTING.md"
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-3 lg:px-4 py-2 rounded-lg font-medium transition-all text-sm lg:text-base"
-              >
-                Submit Agent
-              </a>
-              <a 
-                href="https://pypi.org/project/a2a-registry-client/" 
-                className="flex items-center space-x-2 px-3 lg:px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                title="Python Client on PyPI"
-              >
-                <span className="text-white text-sm lg:text-base font-mono">PyPI</span>
-              </a>
-              <a 
-                href="https://github.com/prassanna-ravishankar/a2a-registry" 
-                className="flex items-center space-x-2 px-3 lg:px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <Github className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
-                <span className="text-white text-sm lg:text-base hidden sm:inline">GitHub</span>
-              </a>
+              <Button asChild size="sm" className="lg:size-default bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0">
+                <a href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/CONTRIBUTING.md">
+                  Submit Agent
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" className="lg:size-default border-purple-200 hover:bg-purple-50" asChild>
+                <a href="https://pypi.org/project/a2a-registry-client/" className="flex items-center gap-2">
+                  <Code className="w-4 h-4" />
+                  <span className="hidden sm:inline">PyPI</span>
+                </a>
+              </Button>
+              <Button variant="outline" size="icon" className="border-purple-200 hover:bg-purple-50" asChild>
+                <a href="https://github.com/prassanna-ravishankar/a2a-registry">
+                  <Github className="w-4 h-4" />
+                </a>
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 lg:py-8 max-w-7xl">
         {/* Hero Section */}
-        <section className="text-center mb-6 lg:mb-8" aria-labelledby="hero-heading">
-          <h1 id="hero-heading" className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4">
-            Discover <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Live AI Agents</span>
+        <section className="text-center mb-8 lg:mb-12">
+          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold mb-4">
+            Discover <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Live AI Agents</span>
           </h1>
-          <p className="text-lg lg:text-xl text-purple-200 mb-4 max-w-4xl mx-auto">
+          <p className="text-lg lg:text-xl text-muted-foreground mb-6 max-w-3xl mx-auto">
             A community-driven directory of live, hosted A2A Protocol compliant AI agents. Find, connect, and integrate with production-ready agents.
           </p>
-          <div className="flex flex-wrap justify-center gap-4 lg:gap-6 text-sm text-purple-300" role="list">
-            <div className="flex items-center space-x-2" role="listitem">
-              <Globe className="w-4 h-4" aria-hidden="true" />
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 flex-shrink-0" />
               <span>Live & Hosted</span>
             </div>
-            <div className="flex items-center space-x-2" role="listitem">
-              <CheckCircle className="w-4 h-4" aria-hidden="true" />
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
               <span>A2A Protocol Compliant</span>
             </div>
-            <div className="flex items-center space-x-2" role="listitem">
-              <Github className="w-4 h-4" aria-hidden="true" />
+            <div className="flex items-center gap-2">
+              <Github className="w-4 h-4 flex-shrink-0" />
               <span>Open Source</span>
             </div>
           </div>
         </section>
 
+        <Separator className="mb-8" />
+
         {/* Search and Filters */}
-        <section className="mb-6" aria-labelledby="search-heading">
-          <h2 id="search-heading" className="sr-only">Search and Filter Agents</h2>
+        <section className="mb-8">
           <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-300" aria-hidden="true" />
-              <input
+            <div className="relative max-w-2xl mx-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
                 type="text"
                 placeholder="Search agents by name, description, or skills..."
-                className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                className="pl-10 border-purple-200 focus:border-purple-400 bg-white/80 backdrop-blur-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search agents"
               />
             </div>
 
             {/* Skill Filters */}
             {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by skills">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {allTags.slice(0, 15).map(tag => (
-                  <button
+                  <Badge
                     key={tag}
-                    onClick={() => toggleSkillFilter(tag)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                    variant={selectedSkills.includes(tag) ? "default" : "outline"}
+                    className={`cursor-pointer transition-all ${
                       selectedSkills.includes(tag)
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-white/10 text-purple-200 hover:bg-white/20'
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0'
+                        : 'border-purple-200 hover:bg-purple-50'
                     }`}
-                    aria-pressed={selectedSkills.includes(tag)}
+                    onClick={() => toggleSkillFilter(tag)}
                   >
                     {tag}
-                  </button>
+                  </Badge>
                 ))}
                 {allTags.length > 15 && (
-                  <span className="text-purple-300 text-sm px-3 py-1.5">
+                  <Badge variant="outline" className="opacity-60 border-purple-200">
                     +{allTags.length - 15} more
-                  </span>
+                  </Badge>
                 )}
               </div>
             )}
@@ -328,146 +337,127 @@ asyncio.run(async_example())`
         </section>
 
         {/* Agents Grid */}
-        <section aria-labelledby="agents-heading">
-          <h2 id="agents-heading" className="sr-only">Available A2A Agents</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6" role="list">
+        <section>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredAgents.map((agent, index) => (
-              <article key={index} className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 lg:p-5 border border-white/20 hover:bg-white/15 transition-all hover:scale-[1.02] hover:shadow-2xl" role="listitem">
-                {/* Agent Header */}
-                <header className="flex items-start justify-between mb-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-1 truncate">{agent.name}</h3>
-                    <p className="text-purple-300 text-xs lg:text-sm truncate">
-                      v{agent.version} • {agent.author || agent.provider?.organization || 'Unknown'}
-                    </p>
+              <Card key={index} className="bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group border-purple-100">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="truncate">{agent.name}</CardTitle>
+                      <CardDescription className="truncate">
+                        v{agent.version} • {agent.author || agent.provider?.organization || 'Unknown'}
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-1.5 ml-2">
+                      {agent.capabilities?.streaming && (
+                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Streaming enabled"></div>
+                      )}
+                      {agent.capabilities?.pushNotifications && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" title="Push notifications enabled"></div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex space-x-1.5 ml-2" aria-label="Agent capabilities">
-                    {agent.capabilities?.streaming && (
-                      <div className="w-2 h-2 bg-green-400 rounded-full" title="Streaming enabled" aria-label="Streaming enabled"></div>
-                    )}
-                    {agent.capabilities?.pushNotifications && (
-                      <div className="w-2 h-2 bg-blue-400 rounded-full" title="Push notifications enabled" aria-label="Push notifications enabled"></div>
-                    )}
-                  </div>
-                </header>
+                </CardHeader>
 
-                {/* Description */}
-                <p className="text-purple-100 mb-3 text-xs lg:text-sm leading-relaxed line-clamp-3">
-                  {agent.description}
-                </p>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {agent.description}
+                  </p>
 
-                {/* Skills */}
-                <section className="mb-3">
-                  <h4 className="text-white font-semibold text-xs lg:text-sm mb-2">Skills</h4>
-                  <div className="space-y-2">
-                    {agent.skills.slice(0, 2).map((skill, skillIndex) => (
-                      <div key={skillIndex} className="bg-white/5 rounded-lg p-2.5">
-                        <div className="font-medium text-white text-xs lg:text-sm truncate">{skill.name}</div>
-                        <div className="text-purple-200 text-xs mb-1.5 line-clamp-2">{skill.description}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {(skill.tags || []).slice(0, 3).map((tag, tagIndex) => (
-                            <span key={tagIndex} className="px-1.5 py-0.5 bg-purple-500/30 text-purple-200 rounded text-xs">
-                              {tag}
-                            </span>
-                          ))}
-                          {skill.tags && skill.tags.length > 3 && (
-                            <span className="text-purple-300 text-xs">+{skill.tags.length - 3}</span>
-                          )}
+                  {/* Skills */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Skills</h4>
+                    <div className="space-y-2">
+                      {agent.skills.slice(0, 2).map((skill, skillIndex) => (
+                        <div key={skillIndex} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2.5 space-y-1.5 border border-purple-100">
+                          <div className="font-medium text-sm truncate">{skill.name}</div>
+                          <div className="text-xs text-muted-foreground line-clamp-2">{skill.description}</div>
+                          <div className="flex flex-wrap gap-1">
+                            {(skill.tags || []).slice(0, 3).map((tag, tagIndex) => (
+                              <Badge key={tagIndex} variant="secondary" className="text-xs px-1.5 py-0 bg-white">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {skill.tags && skill.tags.length > 3 && (
+                              <span className="text-xs text-muted-foreground">+{skill.tags.length - 3}</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    {agent.skills.length > 2 && (
-                      <div className="text-purple-300 text-xs">
-                        +{agent.skills.length - 2} more skills
-                      </div>
-                    )}
+                      ))}
+                      {agent.skills.length > 2 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{agent.skills.length - 2} more skills
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </section>
+                </CardContent>
 
-                {/* Actions */}
-                <footer className="flex space-x-2">
-                  <a
-                    href={agent.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-2 px-3 rounded-lg text-xs lg:text-sm font-medium flex items-center justify-center space-x-1.5 transition-all"
-                    aria-label={`Connect to ${agent.name}`}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
-                    <span>Connect</span>
-                  </a>
-                  <button
+                <CardFooter className="flex gap-2">
+                  <Button size="sm" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" asChild>
+                    <a href={agent.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Connect</span>
+                    </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-200 hover:bg-purple-50 flex items-center justify-center"
                     onClick={() => setSelectedAgent(agent)}
-                    className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
-                    title="View Code Examples"
-                    aria-label={`View code examples for ${agent.name}`}
                   >
-                    <Code className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
-                  </button>
-                  <a
-                    href={agent.wellKnownURI}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-white/10 hover:bg-white/20 text-purple-200 py-2 px-3 rounded-lg transition-all"
-                    title="View Agent Card"
-                    aria-label={`View agent card for ${agent.name}`}
+                    <Code className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-200 hover:bg-purple-50"
+                    asChild
                   >
-                    <Globe className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
-                  </a>
-                </footer>
-              </article>
+                    <a href={agent.wellKnownURI} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                      <Globe className="w-3.5 h-3.5" />
+                    </a>
+                  </Button>
+                </CardFooter>
+              </Card>
             ))}
           </div>
 
           {filteredAgents.length === 0 && !loading && (
             <div className="text-center py-16">
-              <div className="text-6xl mb-4" role="img" aria-label="Robot emoji">🤖</div>
-              <h3 className="text-2xl font-bold text-white mb-2">No agents found</h3>
-              <p className="text-purple-300">Try adjusting your search terms or filters</p>
+              <div className="text-6xl mb-4">🤖</div>
+              <h3 className="text-2xl font-bold mb-2">No agents found</h3>
+              <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
             </div>
           )}
         </section>
 
-
         {/* Lazy-loaded FAQ and Integration Guide */}
-        <Suspense fallback={
-          <div className="mt-12 lg:mt-16 text-center">
-            <div className="animate-pulse">
-              <div className="h-8 bg-white/10 rounded w-64 mx-auto mb-4"></div>
-              <div className="h-4 bg-white/5 rounded w-96 mx-auto"></div>
-            </div>
-          </div>
-        }>
+        <Suspense fallback={<div className="mt-12 h-32 animate-pulse bg-muted/20 rounded-lg" />}>
           <FAQ />
         </Suspense>
 
-        <Suspense fallback={
-          <div className="mt-12 lg:mt-16 text-center">
-            <div className="animate-pulse">
-              <div className="h-8 bg-white/10 rounded w-64 mx-auto mb-4"></div>
-              <div className="h-4 bg-white/5 rounded w-96 mx-auto"></div>
-            </div>
-          </div>
-        }>
+        <Suspense fallback={<div className="mt-12 h-32 animate-pulse bg-muted/20 rounded-lg" />}>
           <IntegrationGuide />
         </Suspense>
 
         {/* Footer */}
-        <footer className="mt-12 lg:mt-16 pt-6 lg:pt-8 border-t border-white/20">
+        <footer className="mt-16 pt-8 border-t">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <div className="text-center md:text-left">
-              <p className="text-purple-300 mb-2">
+              <p className="text-muted-foreground">
                 Built with ❤️ by the A2A community
               </p>
             </div>
-            <div className="flex justify-center md:justify-end space-x-6 text-sm text-purple-300">
-              <a href="https://a2a-protocol.org" className="hover:text-white transition-colors">
+            <div className="flex justify-center md:justify-end gap-6 text-sm text-muted-foreground">
+              <a href="https://a2a-protocol.org" className="hover:text-foreground transition-colors">
                 A2A Protocol
               </a>
-              <a href="https://github.com/prassanna-ravishankar/a2a-registry/issues" className="hover:text-white transition-colors">
+              <a href="https://github.com/prassanna-ravishankar/a2a-registry/issues" className="hover:text-foreground transition-colors">
                 Issues
               </a>
-              <a href="https://github.com/prassanna-ravishankar/a2a-registry/discussions" className="hover:text-white transition-colors">
+              <a href="https://github.com/prassanna-ravishankar/a2a-registry/discussions" className="hover:text-foreground transition-colors">
                 Discussions
               </a>
             </div>
@@ -476,132 +466,136 @@ asyncio.run(async_example())`
       </main>
 
       {/* Code Snippet Modal */}
-      {selectedAgent && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 rounded-xl border border-white/20 w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/20">
+      <Dialog open={!!selectedAgent} onOpenChange={() => setSelectedAgent(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedAgent?.name}</DialogTitle>
+            <DialogDescription>Python Code Examples</DialogDescription>
+          </DialogHeader>
+
+          {selectedAgent && (
+            <div className="space-y-6 mt-4">
+              {/* Registry Client Usage */}
               <div>
-                <h3 className="text-xl font-bold text-white">{selectedAgent.name}</h3>
-                <p className="text-purple-300 text-sm">Python Code Examples</p>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Registry Client Usage</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).registry)}
+                    className="flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
+                  <code>{generateCodeSnippets(selectedAgent).registry}</code>
+                </pre>
               </div>
-              <button
-                onClick={() => setSelectedAgent(null)}
-                className="text-purple-300 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
 
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[70vh]">
-              <div className="space-y-6">
-                {/* Registry Client Usage */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-white">Registry Client Usage</h4>
-                    <button
-                      onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).registry)}
-                      className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-purple-200 transition-colors"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copied ? 'Copied!' : 'Copy'}</span>
-                    </button>
+              <Separator />
+
+              {/* Official A2A SDK */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Official A2A SDK</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).a2a_official)}
+                    className="flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
+                  <code>{generateCodeSnippets(selectedAgent).a2a_official}</code>
+                </pre>
+              </div>
+
+              <Separator />
+
+              {/* Search & Discovery */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Search & Discovery</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).search)}
+                    className="flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
+                  <code>{generateCodeSnippets(selectedAgent).search}</code>
+                </pre>
+              </div>
+
+              <Separator />
+
+              {/* Advanced Usage */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Advanced Usage</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).advanced)}
+                    className="flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-lg p-4 overflow-x-auto text-xs">
+                  <code>{generateCodeSnippets(selectedAgent).advanced}</code>
+                </pre>
+              </div>
+
+              <Separator />
+
+              {/* Installation Instructions */}
+              <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                <h4 className="font-semibold mb-2">📦 Installation</h4>
+                <p className="text-sm text-muted-foreground mb-2">Install the A2A Registry Python client:</p>
+                <pre className="bg-muted rounded p-2 text-xs mb-2">pip install a2a-registry-client</pre>
+                <p className="text-sm text-muted-foreground mb-2">Install the official A2A Protocol SDK:</p>
+                <pre className="bg-muted rounded p-2 text-xs mb-2">pip install a2a-sdk</pre>
+                <p className="text-sm text-muted-foreground">For async support:</p>
+                <pre className="bg-muted rounded p-2 text-xs">pip install a2a-registry-client[async]</pre>
+              </div>
+
+              {/* Agent Details */}
+              <div className="bg-accent/50 rounded-lg p-4 border">
+                <h4 className="font-semibold mb-2">🤖 Agent Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">URL:</span>
+                    <span className="ml-2 font-mono text-xs">{selectedAgent.url}</span>
                   </div>
-                  <pre className="bg-black/30 rounded-lg p-4 overflow-x-auto">
-                    <code className="text-green-300 text-sm">{generateCodeSnippets(selectedAgent).registry}</code>
-                  </pre>
-                </div>
-
-                {/* Official A2A SDK */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-white">Official A2A SDK</h4>
-                    <button
-                      onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).a2a_official)}
-                      className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-purple-200 transition-colors"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copied ? 'Copied!' : 'Copy'}</span>
-                    </button>
+                  <div>
+                    <span className="text-muted-foreground">Version:</span>
+                    <span className="ml-2">{selectedAgent.version}</span>
                   </div>
-                  <pre className="bg-black/30 rounded-lg p-4 overflow-x-auto">
-                    <code className="text-green-300 text-sm">{generateCodeSnippets(selectedAgent).a2a_official}</code>
-                  </pre>
-                </div>
-
-                {/* Search & Discovery */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-white">Search & Discovery</h4>
-                    <button
-                      onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).search)}
-                      className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-purple-200 transition-colors"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copied ? 'Copied!' : 'Copy'}</span>
-                    </button>
+                  <div>
+                    <span className="text-muted-foreground">Protocol:</span>
+                    <span className="ml-2">{selectedAgent.protocolVersion}</span>
                   </div>
-                  <pre className="bg-black/30 rounded-lg p-4 overflow-x-auto">
-                    <code className="text-green-300 text-sm">{generateCodeSnippets(selectedAgent).search}</code>
-                  </pre>
-                </div>
-
-                {/* Advanced Usage */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-white">Advanced Usage</h4>
-                    <button
-                      onClick={() => copyToClipboard(generateCodeSnippets(selectedAgent).advanced)}
-                      className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-purple-200 transition-colors"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copied ? 'Copied!' : 'Copy'}</span>
-                    </button>
-                  </div>
-                  <pre className="bg-black/30 rounded-lg p-4 overflow-x-auto">
-                    <code className="text-green-300 text-sm">{generateCodeSnippets(selectedAgent).advanced}</code>
-                  </pre>
-                </div>
-
-                {/* Installation Instructions */}
-                <div className="mt-6 p-4 bg-purple-900/30 rounded-lg border border-purple-500/30">
-                  <h4 className="text-white font-semibold mb-2">📦 Installation</h4>
-                  <p className="text-purple-200 text-sm mb-2">Install the A2A Registry Python client:</p>
-                  <pre className="bg-black/30 rounded p-2 text-green-300 text-sm mb-2">pip install a2a-registry-client</pre>
-                  <p className="text-purple-200 text-sm mb-2">Install the official A2A Protocol SDK:</p>
-                  <pre className="bg-black/30 rounded p-2 text-green-300 text-sm mb-2">pip install a2a-sdk</pre>
-                  <p className="text-purple-200 text-sm">For async support:</p>
-                  <pre className="bg-black/30 rounded p-2 text-green-300 text-sm">pip install a2a-registry-client[async]</pre>
-                </div>
-
-                {/* Agent Details */}
-                <div className="mt-6 p-4 bg-blue-900/30 rounded-lg border border-blue-500/30">
-                  <h4 className="text-white font-semibold mb-2">🤖 Agent Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-blue-200">URL:</span>
-                      <span className="text-white ml-2">{selectedAgent.url}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-200">Version:</span>
-                      <span className="text-white ml-2">{selectedAgent.version}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-200">Protocol:</span>
-                      <span className="text-white ml-2">{selectedAgent.protocolVersion}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-200">Author:</span>
-                      <span className="text-white ml-2">{selectedAgent.author}</span>
-                    </div>
+                  <div>
+                    <span className="text-muted-foreground">Author:</span>
+                    <span className="ml-2">{selectedAgent.author}</span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
