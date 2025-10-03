@@ -221,20 +221,31 @@ asyncio.run(main())
 The registry client seamlessly integrates with the official A2A SDK for a complete **discover → invoke** workflow:
 
 ```python
-from a2a_registry import Registry
+import asyncio
+from a2a_registry import Registry, AsyncRegistry
 
-# Step 1: Discover agents using the registry
-registry = Registry()
-agent = registry.search("weather")[0]
+async def main():
+    # Step 1: Discover agents using the registry
+    # Using AsyncRegistry is preferred in an async context
+    async with AsyncRegistry() as registry:
+        agents = await registry.search("weather")
+        if not agents:
+            print("No weather agents found.")
+            return
+        agent = agents[0]
 
-# Step 2: Connect using the official A2A SDK
-client = agent.connect()
+    # Step 2: Connect using the async method
+    client = await agent.async_connect()
 
-# Step 3: Invoke skills using A2A protocol
-response = await client.message.send(
-    skill_id="weather.forecast",
-    input={"city": "San Francisco"}
-)
+    # Step 3: Invoke skills using A2A protocol
+    response = await client.message.send(
+        skill_id="weather.forecast",
+        input={"city": "San Francisco"}
+    )
+    print(response)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ### Key Features
