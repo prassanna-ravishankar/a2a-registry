@@ -51,6 +51,7 @@ class Agent(BaseModel):
 
     author: str = Field(..., description="Name or handle of the creator")
     wellKnownURI: HttpUrl = Field(..., description="The /.well-known/agent.json URI")
+    conformance: Optional[bool] = Field(None, description="Whether the agent card is fully A2A conformant (False indicates manual adaptation)")
     skills: List[Skill] = Field(..., description="List of skills the agent can perform")
     capabilities: Optional[Capabilities] = Field(None, description="A2A Protocol capabilities")
     version: Optional[str] = Field(None, description="Version of the agent")
