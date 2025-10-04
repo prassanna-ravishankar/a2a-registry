@@ -5,19 +5,19 @@
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
     <loc>https://www.a2aregistry.org/</loc>
-    <lastmod>2025-08-18</lastmod>
+    <lastmod>2025-10-04</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://www.a2aregistry.org/registry.json</loc>
-    <lastmod>2025-08-18</lastmod>
+    <lastmod>2025-10-04</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://hello.a2aregistry.org/</loc>
-    <lastmod>2025-08-18</lastmod>
+    <lastmod>2025-10-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

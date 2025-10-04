@@ -357,6 +357,7 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
                     variant="outline"
                     size="icon"
                     className="border-purple-200 hover:bg-purple-50"
+                    aria-label="Export registry as JSON"
                     onClick={() => {
                       const dataStr = JSON.stringify({ agents }, null, 2);
                       const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -381,8 +382,8 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
                 </a>
               </Button>
               <Button variant="outline" size="sm" className="lg:size-default border-purple-200 hover:bg-purple-50" asChild>
-                <a href="https://pypi.org/project/a2a-registry-client/" className="flex items-center gap-2">
-                  <Code className="w-4 h-4" />
+                <a href="https://pypi.org/project/a2a-registry-client/" className="flex items-center gap-2" aria-label="View Python package on PyPI">
+                  <Code className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">PyPI</span>
                 </a>
               </Button>
@@ -403,8 +404,8 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
                 </TooltipContent>
               </Tooltip>
               <Button variant="outline" size="icon" className="border-purple-200 hover:bg-purple-50" asChild>
-                <a href="https://github.com/prassanna-ravishankar/a2a-registry">
-                  <Github className="w-4 h-4" />
+                <a href="https://github.com/prassanna-ravishankar/a2a-registry" aria-label="View source code on GitHub">
+                  <Github className="w-4 h-4" aria-hidden="true" />
                 </a>
               </Button>
             </div>
@@ -416,10 +417,10 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
         {/* Hero Section */}
         <section className="text-center mb-8 lg:mb-12">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold mb-4">
-            Discover <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Live AI Agents</span>
+            AI Agent Directory - Find the <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Best AI Agents</span>
           </h1>
           <p className="text-lg lg:text-xl text-muted-foreground mb-6 max-w-3xl mx-auto">
-            A community-driven directory of live, hosted A2A Protocol compliant AI agents. Find, connect, and integrate with production-ready agents.
+            Discover production-ready AI agents using the A2A Protocol. Find, compare, and connect to the best AI agent platform with open source Python SDK integration.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -542,7 +543,7 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
 
                   {/* Skills */}
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold mb-2">Skills</h4>
+                    <div className="text-sm font-semibold mb-2">Skills</div>
                     <div className="space-y-2">
                       {agent.skills.slice(0, 2).map((skill, skillIndex) => (
                         <div key={skillIndex} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2.5 space-y-1.5 border border-purple-100">

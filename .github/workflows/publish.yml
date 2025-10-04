@@ -58,7 +58,13 @@ jobs:
         echo "🔄 Building React website..."
         npm run build
         echo "✅ Website built successfully"
-    
+
+    - name: Generate sitemap
+      run: |
+        echo "🔄 Generating sitemap.xml..."
+        uv run python scripts/generate_sitemap.py
+        echo "✅ Sitemap generated successfully"
+
     - name: Upload registry artifact
       uses: actions/upload-artifact@v4
       with:
