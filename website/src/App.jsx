@@ -17,6 +17,8 @@ const A2ARegistry = () => {
   const [filteredAgents, setFilteredAgents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
+  const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
+  const [showAllSkills, setShowAllSkills] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -115,14 +117,41 @@ const A2ARegistry = () => {
       );
     }
 
-    setFilteredAgents(filtered);
-  }, [searchTerm, selectedSkills, agents]);
+    // Apply conformance filter
+    if (conformanceFilter === 'standard') {
+      filtered = filtered.filter(agent => agent.conformance !== false);
+    } else if (conformanceFilter === 'non-standard') {
+      filtered = filtered.filter(agent => agent.conformance === false);
+    }
 
-  const allTags = useMemo(() =>
-    [...new Set(agents.flatMap(agent =>
-      agent.skills.flatMap(skill => skill.tags || [])
-    ))].sort(), [agents]
-  );
+    setFilteredAgents(filtered);
+  }, [searchTerm, selectedSkills, conformanceFilter, agents]);
+
+  const allTags = useMemo(() => {
+    // Filter agents first based on conformance filter
+    let relevantAgents = agents;
+    if (conformanceFilter === 'standard') {
+      relevantAgents = agents.filter(agent => agent.conformance !== false);
+    } else if (conformanceFilter === 'non-standard') {
+      relevantAgents = agents.filter(agent => agent.conformance === false);
+    }
+
+    // Count frequency of each tag from filtered agents
+    const tagCounts = {};
+    relevantAgents.forEach(agent => {
+      agent.skills.forEach(skill => {
+        (skill.tags || []).forEach(tag => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+    });
+
+    // Sort by frequency (descending), then alphabetically
+    return Object.keys(tagCounts).sort((a, b) => {
+      const countDiff = tagCounts[b] - tagCounts[a];
+      return countDiff !== 0 ? countDiff : a.localeCompare(b);
+    });
+  }, [agents, conformanceFilter]);
 
   const toggleSkillFilter = useCallback((tag) => {
     setSelectedSkills(prev =>
@@ -455,10 +484,54 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
               />
             </div>
 
+            {/* Conformance Filter */}
+            <div className="flex gap-2 justify-center items-center">
+              <span className="text-sm font-medium text-gray-600 mr-1">Filter:</span>
+              <Button
+                variant={conformanceFilter === 'standard' ? "default" : "outline"}
+                size="sm"
+                className={`h-8 transition-all ${
+                  conformanceFilter === 'standard'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'border-green-300 hover:bg-green-50 text-green-700'
+                }`}
+                onClick={() => setConformanceFilter('standard')}
+              >
+                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                Standard
+              </Button>
+              <Button
+                variant={conformanceFilter === 'non-standard' ? "default" : "outline"}
+                size="sm"
+                className={`h-8 transition-all ${
+                  conformanceFilter === 'non-standard'
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                    : 'border-amber-300 hover:bg-amber-50 text-amber-700'
+                }`}
+                onClick={() => setConformanceFilter('non-standard')}
+              >
+                <Info className="w-3.5 h-3.5 mr-1.5" />
+                Non-standard
+              </Button>
+              <Button
+                variant={conformanceFilter === 'all' ? "default" : "outline"}
+                size="sm"
+                className={`h-8 transition-all ${
+                  conformanceFilter === 'all'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
+                    : 'border-purple-300 hover:bg-purple-50 text-purple-700'
+                }`}
+                onClick={() => setConformanceFilter('all')}
+              >
+                <Globe className="w-3.5 h-3.5 mr-1.5" />
+                All Agents
+              </Button>
+            </div>
+
             {/* Skill Filters */}
             {allTags.length > 0 && (
               <div className="flex flex-wrap gap-2 justify-center">
-                {allTags.slice(0, 15).map(tag => (
+                {(showAllSkills ? allTags : allTags.slice(0, 9)).map(tag => (
                   <Badge
                     key={tag}
                     variant={selectedSkills.includes(tag) ? "default" : "outline"}
@@ -472,9 +545,13 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
                     {tag}
                   </Badge>
                 ))}
-                {allTags.length > 15 && (
-                  <Badge variant="outline" className="opacity-60 border-purple-200">
-                    +{allTags.length - 15} more
+                {allTags.length > 9 && (
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer border-purple-200 hover:bg-purple-50 transition-all"
+                    onClick={() => setShowAllSkills(!showAllSkills)}
+                  >
+                    {showAllSkills ? 'Show less' : `+${allTags.length - 9} more`}
                   </Badge>
                 )}
               </div>
@@ -510,10 +587,22 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
                       </CardDescription>
                     </div>
                     <div className="flex gap-1.5 ml-2">
+                      {agent.conformance === false && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 bg-amber-50 border-amber-200 text-amber-700">
+                              Non-standard
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Agent card manually adapted for A2A compatibility</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {agent.capabilities?.streaming && (
                         <Tooltip>
                           <TooltipTrigger>
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <Radio className="w-3.5 h-3.5 text-green-600" />
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>Streaming enabled</p>
@@ -1061,10 +1150,19 @@ print(f"Ready to invoke skills: {[s.id for s in agent.skills]}")`
       <Dialog open={!!selectedAgent} onOpenChange={() => setSelectedAgent(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedAgent?.name}</DialogTitle>
-            <DialogDescription className="mt-2">
-              {selectedAgent?.description}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <DialogTitle>{selectedAgent?.name}</DialogTitle>
+                <DialogDescription className="mt-2">
+                  {selectedAgent?.description}
+                </DialogDescription>
+              </div>
+              {selectedAgent?.conformance === false && (
+                <Badge variant="outline" className="text-xs px-2 py-1 bg-amber-50 border-amber-200 text-amber-700 whitespace-nowrap">
+                  Non-standard
+                </Badge>
+              )}
+            </div>
           </DialogHeader>
 
           {selectedAgent && (

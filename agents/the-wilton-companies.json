@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg841vhq04mnuat8gfjycvra/agent-card.json",
+  "conformance": false,
+  "name": "The Wilton Companies",
+  "description": "A full-service real estate company that owns, develops, and operates a diversified portfolio of retail shopping centers, office buildings, and warehouse space in the Richmond metropolitan area.",
+  "url": "https://hub.lifie.ai/agent/cmg841vhq04mnuat8gfjycvra/the-wilton-companies",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Wilton Companies",
+      "description": "A full-service real estate company that owns, develops, and operates a diversified portfolio of retail shopping centers, office buildings, and warehouse space in the Richmond metropolitan area.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg841vhq04mnuat8gfjycvra/avatar/avatar.png"
+}

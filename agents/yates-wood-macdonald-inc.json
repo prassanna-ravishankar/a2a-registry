@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg81u5g3000j12c263uchx7j/agent-card.json",
+  "conformance": false,
+  "name": "Yates, Wood & MacDonald, Inc.",
+  "description": "A commercial real estate brokerage and property management company providing services in Seattle WA since 1944. They help clients with expanding their space, moving to new locations, or managing properties.",
+  "url": "https://hub.lifie.ai/agent/cmg81u5g3000j12c263uchx7j/yates-wood-macdonald-inc",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Yates, Wood & MacDonald, Inc.",
+      "description": "A commercial real estate brokerage and property management company providing services in Seattle WA since 1944. They help clients with expanding their space, moving to new locations, or managing properties.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

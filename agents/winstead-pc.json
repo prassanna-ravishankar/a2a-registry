@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg820yih00lv12c2rf0xdabg/agent-card.json",
+  "conformance": false,
+  "name": "Winstead PC",
+  "description": "A business law firm providing legal services to mid-market and large businesses, including real estate, financial services, corporate, and litigation practice.",
+  "url": "https://hub.lifie.ai/agent/cmg820yih00lv12c2rf0xdabg/winstead-pc",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Winstead PC",
+      "description": "A business law firm providing legal services to mid-market and large businesses, including real estate, financial services, corporate, and litigation practice.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

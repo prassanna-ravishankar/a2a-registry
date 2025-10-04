@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84qqe006rpuat8xi9eqsse/agent-card.json",
+  "conformance": false,
+  "name": "SuperSeva",
+  "description": "SuperSeva provides comprehensive enterprise-centric services, including HR support, procurement, administration, operations, and finance support, to help organizations conduct business more effectively.",
+  "url": "https://hub.lifie.ai/agent/cmg84qqe006rpuat8xi9eqsse/superseva",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with SuperSeva",
+      "description": "SuperSeva provides comprehensive enterprise-centric services, including HR support, procurement, administration, operations, and finance support, to help organizations conduct business more effectively.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84qqe006rpuat8xi9eqsse/avatar/avatar.png"
+}

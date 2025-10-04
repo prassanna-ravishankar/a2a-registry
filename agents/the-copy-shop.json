@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84gnth05y9uat8jxeng23q/agent-card.json",
+  "conformance": false,
+  "name": "The Copy Shop",
+  "description": "A full-service print shop offering various printing services, including copies, color prints, scanning, and large format printing. They also provide project solutions for businesses.",
+  "url": "https://hub.lifie.ai/agent/cmg84gnth05y9uat8jxeng23q/the-copy-shop",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Copy Shop",
+      "description": "A full-service print shop offering various printing services, including copies, color prints, scanning, and large format printing. They also provide project solutions for businesses.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84gnth05y9uat8jxeng23q/avatar/avatar.png"
+}

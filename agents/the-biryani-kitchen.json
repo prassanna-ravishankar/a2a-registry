@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg849k1k05b5uat8cv1in340/agent-card.json",
+  "conformance": false,
+  "name": "The Biryani Kitchen",
+  "description": "A food-related business, likely a restaurant or food service provider, that is currently under construction.",
+  "url": "https://hub.lifie.ai/agent/cmg849k1k05b5uat8cv1in340/the-biryani-kitchen",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Biryani Kitchen",
+      "description": "A food-related business, likely a restaurant or food service provider, that is currently under construction.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg849k1k05b5uat8cv1in340/avatar/avatar.png"
+}

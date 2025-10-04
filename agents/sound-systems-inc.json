@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg85ewzr08ozuat8kry3cwok/agent-card.json",
+  "conformance": false,
+  "name": "Sound Systems, Inc.",
+  "description": "Sound Systems, Inc. offers equipment sales and services for various sound-related applications, including business telephones, public address systems, two-way radio, and surveillance systems.",
+  "url": "https://hub.lifie.ai/agent/cmg85ewzr08ozuat8kry3cwok/sound-systems-inc",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Sound Systems, Inc.",
+      "description": "Sound Systems, Inc. offers equipment sales and services for various sound-related applications, including business telephones, public address systems, two-way radio, and surveillance systems.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg85ewzr08ozuat8kry3cwok/avatar/avatar.png"
+}

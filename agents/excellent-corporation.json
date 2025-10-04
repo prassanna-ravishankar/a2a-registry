@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg81vtaq005h12c278pxsbd5/agent-card.json",
+  "conformance": false,
+  "name": "EXCELLENT Corporation",
+  "description": "Providing medical support services, mobile communication services, and restaurant management services.",
+  "url": "https://hub.lifie.ai/agent/cmg81vtaq005h12c278pxsbd5/excellent-corporation",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with EXCELLENT Corporation",
+      "description": "Providing medical support services, mobile communication services, and restaurant management services.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

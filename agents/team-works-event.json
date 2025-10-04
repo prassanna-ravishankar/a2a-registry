@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84fbs205tpuat82647j3kb/agent-card.json",
+  "conformance": false,
+  "name": "Team Works Event",
+  "description": "A company that appears to specialize in event planning and management services.",
+  "url": "https://hub.lifie.ai/agent/cmg84fbs205tpuat82647j3kb/team-works-event",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Team Works Event",
+      "description": "A company that appears to specialize in event planning and management services.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84fbs205tpuat82647j3kb/avatar/avatar.png"
+}

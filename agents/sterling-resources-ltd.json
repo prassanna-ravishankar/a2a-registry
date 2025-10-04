@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg850kzl07j9uat8pkz4ucnz/agent-card.json",
+  "conformance": false,
+  "name": "Sterling Resources, Ltd.",
+  "description": "A business with a contact page listing various employees and their roles, likely an administrative or management services company.",
+  "url": "https://hub.lifie.ai/agent/cmg850kzl07j9uat8pkz4ucnz/sterling-resources-ltd",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Sterling Resources, Ltd.",
+      "description": "A business with a contact page listing various employees and their roles, likely an administrative or management services company.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg850kzl07j9uat8pkz4ucnz/avatar/avatar.png"
+}

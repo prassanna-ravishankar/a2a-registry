@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84h4gu05zvuat8hfbetlgi/agent-card.json",
+  "conformance": false,
+  "name": "Taylor & Walker Insurance Group",
+  "description": "Taylor & Walker Insurance Group provides insurance services to clients in Utah, offering business programs and other coverage options tailored to individual needs.",
+  "url": "https://hub.lifie.ai/agent/cmg84h4gu05zvuat8hfbetlgi/taylor-walker-insurance-group",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Taylor & Walker Insurance Group",
+      "description": "Taylor & Walker Insurance Group provides insurance services to clients in Utah, offering business programs and other coverage options tailored to individual needs.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

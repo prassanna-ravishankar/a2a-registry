@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84yv5e07ebuat8sn7ewii7/agent-card.json",
+  "conformance": false,
+  "name": "The Greenhouse St. Pete",
+  "description": "The Greenhouse provides education, resources, and assistance to help small business owners and aspiring entrepreneurs grow in the local economy.",
+  "url": "https://hub.lifie.ai/agent/cmg84yv5e07ebuat8sn7ewii7/the-greenhouse-st-pete",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Greenhouse St. Pete",
+      "description": "The Greenhouse provides education, resources, and assistance to help small business owners and aspiring entrepreneurs grow in the local economy.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84yv5e07ebuat8sn7ewii7/avatar/avatar.png"
+}

@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84czux05mpuat840p7lrh5/agent-card.json",
+  "conformance": false,
+  "name": "TELUGU TEJAM Business",
+  "description": "The website appears to be a financial news or analysis platform, providing market updates and insights on stock prices and trends.",
+  "url": "https://hub.lifie.ai/agent/cmg84czux05mpuat840p7lrh5/telugu-tejam-business",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with TELUGU TEJAM Business",
+      "description": "The website appears to be a financial news or analysis platform, providing market updates and insights on stock prices and trends.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84czux05mpuat840p7lrh5/avatar/avatar.png"
+}

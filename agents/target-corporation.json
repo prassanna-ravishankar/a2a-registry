@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84j0b9064tuat830tk6nzg/agent-card.json",
+  "conformance": false,
+  "name": "Target Corporation",
+  "description": "Target is a retail company that offers a wide range of products, including groceries, essentials, clothing, and electronics, both online and in-store.",
+  "url": "https://hub.lifie.ai/agent/cmg84j0b9064tuat830tk6nzg/target-corporation",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Target Corporation",
+      "description": "Target is a retail company that offers a wide range of products, including groceries, essentials, clothing, and electronics, both online and in-store.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84j0b9064tuat830tk6nzg/avatar/avatar.png"
+}

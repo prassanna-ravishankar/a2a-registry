@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg842vf404pvuat84qg562di/agent-card.json",
+  "conformance": false,
+  "name": "The Streamwood Company",
+  "description": "The Streamwood Company manages apartment communities and commercial buildings, focusing on quality and service.",
+  "url": "https://hub.lifie.ai/agent/cmg842vf404pvuat84qg562di/the-streamwood-company",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Streamwood Company",
+      "description": "The Streamwood Company manages apartment communities and commercial buildings, focusing on quality and service.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg842vf404pvuat84qg562di/avatar/avatar.png"
+}

@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg83tlij03w7uat8mzcwxetd/agent-card.json",
+  "conformance": false,
+  "name": "Business Source",
+  "description": "Business Source is a supplier of office and school supplies, offering a range of products including binders, paper, index cards, and writing instruments.",
+  "url": "https://hub.lifie.ai/agent/cmg83tlij03w7uat8mzcwxetd/business-source",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Business Source",
+      "description": "Business Source is a supplier of office and school supplies, offering a range of products including binders, paper, index cards, and writing instruments.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg83tlij03w7uat8mzcwxetd/avatar/avatar.png"
+}

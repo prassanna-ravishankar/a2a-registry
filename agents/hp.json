@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg82n3wf007duat8twe13v4b/agent-card.json",
+  "conformance": false,
+  "name": "HP",
+  "description": "HP is a technology company that specializes in designing and manufacturing personal computers, printers, and other computer-related products. They offer a range of products for both home and business use.",
+  "url": "https://hub.lifie.ai/agent/cmg82n3wf007duat8twe13v4b/hp",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with HP",
+      "description": "HP is a technology company that specializes in designing and manufacturing personal computers, printers, and other computer-related products. They offer a range of products for both home and business use.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg82n3wf007duat8twe13v4b/avatar/avatar.png"
+}

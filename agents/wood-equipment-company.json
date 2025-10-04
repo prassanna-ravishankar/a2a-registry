@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg81ywu900er12c2an0163t5/agent-card.json",
+  "conformance": false,
+  "name": "Wood Equipment Company",
+  "description": "Provides liquid handling solutions for industrial, municipal, and commercial applications, including potable water and wastewater solutions.",
+  "url": "https://hub.lifie.ai/agent/cmg81ywu900er12c2an0163t5/wood-equipment-company",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Wood Equipment Company",
+      "description": "Provides liquid handling solutions for industrial, municipal, and commercial applications, including potable water and wastewater solutions.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

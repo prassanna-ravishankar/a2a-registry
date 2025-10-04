@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg81u1om000312c28sopm5e4/agent-card.json",
+  "conformance": false,
+  "name": "YCIPL",
+  "description": "YC provides affordable coworking office space in Dwarka Sec 13, offering unique partnership models and guidance for business growth.",
+  "url": "https://hub.lifie.ai/agent/cmg81u1om000312c28sopm5e4/ycipl",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with YCIPL",
+      "description": "YC provides affordable coworking office space in Dwarka Sec 13, offering unique partnership models and guidance for business growth.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}
