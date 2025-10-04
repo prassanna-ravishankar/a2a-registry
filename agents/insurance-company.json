@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84eyba05snuat8ufkrdxdo/agent-card.json",
+  "conformance": false,
+  "name": "Insurance Company",
+  "description": "Provides insurance services for business owners and professionals, including liability coverage for accidents and property damage.",
+  "url": "https://hub.lifie.ai/agent/cmg84eyba05snuat8ufkrdxdo/insurance-company",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Insurance Company",
+      "description": "Provides insurance services for business owners and professionals, including liability coverage for accidents and property damage.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84eyba05snuat8ufkrdxdo/avatar/avatar.png"
+}

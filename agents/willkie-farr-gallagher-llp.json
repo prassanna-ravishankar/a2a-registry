@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg822ej100ql12c2b3tlbcxp/agent-card.json",
+  "conformance": false,
+  "name": "Willkie Farr & Gallagher LLP",
+  "description": "A law firm providing leading-edge legal solutions on complex, business critical issues across multiple practices and industries.",
+  "url": "https://hub.lifie.ai/agent/cmg822ej100ql12c2b3tlbcxp/willkie-farr-gallagher-llp",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Willkie Farr & Gallagher LLP",
+      "description": "A law firm providing leading-edge legal solutions on complex, business critical issues across multiple practices and industries.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg8253cc005t72iccaj0mrxd/agent-card.json",
+  "conformance": false,
+  "name": "Whistle Solutions",
+  "description": "A B2B firm specializing in providing corporate gifts, catering to various needs with a wide range of products.",
+  "url": "https://hub.lifie.ai/agent/cmg8253cc005t72iccaj0mrxd/whistle-solutions",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Whistle Solutions",
+      "description": "A B2B firm specializing in providing corporate gifts, catering to various needs with a wide range of products.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

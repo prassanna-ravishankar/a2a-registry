@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84tbfu06zfuat8299xbzil/agent-card.json",
+  "conformance": false,
+  "name": "SUNIRO",
+  "description": "A consulting firm that helps individuals and businesses realize their purpose and achieve success in life. They offer personal and business consulting services.",
+  "url": "https://hub.lifie.ai/agent/cmg84tbfu06zfuat8299xbzil/suniro",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with SUNIRO",
+      "description": "A consulting firm that helps individuals and businesses realize their purpose and achieve success in life. They offer personal and business consulting services.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84tbfu06zfuat8299xbzil/avatar/avatar.png"
+}

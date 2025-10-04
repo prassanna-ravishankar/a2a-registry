@@ -95,9 +95,13 @@ class AgentValidator:
         # Validate wellKnownURI format
         if "wellKnownURI" in agent_data:
             uri = agent_data["wellKnownURI"]
-            allowed_suffixes = ("/.well-known/agent.json", "/.well-known/agent-card.json")
-            if not any(uri.endswith(suffix) for suffix in allowed_suffixes):
-                errors.append("wellKnownURI must end with '/.well-known/agent.json' or '/.well-known/agent-card.json'")
+            standard_suffixes = ("/.well-known/agent.json", "/.well-known/agent-card.json")
+            alternative_suffixes = ("/agent.json", "/agent-card.json")
+
+            if not any(uri.endswith(suffix) for suffix in standard_suffixes + alternative_suffixes):
+                errors.append("wellKnownURI must end with a valid agent card endpoint")
+            elif not any(uri.endswith(suffix) for suffix in standard_suffixes):
+                warnings.append("wellKnownURI uses non-standard path (should be /.well-known/agent.json or /.well-known/agent-card.json)")
         
         return errors, warnings
     

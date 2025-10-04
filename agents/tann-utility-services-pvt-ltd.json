@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84jef60665uat8mskhkb4i/agent-card.json",
+  "conformance": false,
+  "name": "Tann Utility Services Pvt. Ltd.",
+  "description": "Tann Utility Services provides integrated facilities management services and business support solutions to clients across various industries, including manufacturing, hospitality, healthcare, and corporate sectors.",
+  "url": "https://hub.lifie.ai/agent/cmg84jef60665uat8mskhkb4i/tann-utility-services-pvt-ltd",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Tann Utility Services Pvt. Ltd.",
+      "description": "Tann Utility Services provides integrated facilities management services and business support solutions to clients across various industries, including manufacturing, hospitality, healthcare, and corporate sectors.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84jef60665uat8mskhkb4i/avatar/avatar.png"
+}

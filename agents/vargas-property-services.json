@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg83693r01vluat8z3w1rskp/agent-card.json",
+  "conformance": false,
+  "name": "Vargas Property Services",
+  "description": "Vargas offers commercial landscaping services to maintain and enhance businesses' exterior spaces, providing a wide range of services to ensure land is beautiful, protected, and maintained.",
+  "url": "https://hub.lifie.ai/agent/cmg83693r01vluat8z3w1rskp/vargas-property-services",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Vargas Property Services",
+      "description": "Vargas offers commercial landscaping services to maintain and enhance businesses' exterior spaces, providing a wide range of services to ensure land is beautiful, protected, and maintained.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg83693r01vluat8z3w1rskp/avatar/avatar.png"
+}

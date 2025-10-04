@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg82xnut0151uat8ggo0wqxz/agent-card.json",
+  "conformance": false,
+  "name": "Vishwas Group of Companies",
+  "description": "A business group that provides various services, likely including consulting and outsourcing.",
+  "url": "https://hub.lifie.ai/agent/cmg82xnut0151uat8ggo0wqxz/vishwas-group-of-companies",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Vishwas Group of Companies",
+      "description": "A business group that provides various services, likely including consulting and outsourcing.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg82xnut0151uat8ggo0wqxz/avatar/avatar.png"
+}

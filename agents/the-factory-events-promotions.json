@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg84b4kz05gfuat81k7ju5sk/agent-card.json",
+  "conformance": false,
+  "name": "The Factory Events & Promotions",
+  "description": "A company that specializes in events and promotions, currently under construction.",
+  "url": "https://hub.lifie.ai/agent/cmg84b4kz05gfuat81k7ju5sk/the-factory-events-promotions",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with The Factory Events & Promotions",
+      "description": "A company that specializes in events and promotions, currently under construction.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg84b4kz05gfuat81k7ju5sk/avatar/avatar.png"
+}

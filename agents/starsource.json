@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg852ush07pluat8ppsib0s0/agent-card.json",
+  "conformance": false,
+  "name": "StarSource",
+  "description": "StarSource helps businesses navigate and adapt to rapid technological changes by connecting them with industry experts, enabling growth and success.",
+  "url": "https://hub.lifie.ai/agent/cmg852ush07pluat8ppsib0s0/starsource",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with StarSource",
+      "description": "StarSource helps businesses navigate and adapt to rapid technological changes by connecting them with industry experts, enabling growth and success.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  }
+}

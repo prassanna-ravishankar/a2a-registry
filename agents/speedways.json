@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg85bb8k08dtuat80j735wqr/agent-card.json",
+  "conformance": false,
+  "name": "SpeedWays",
+  "description": "SpeedWays provides employee transportation services, including airport transfers, local and outstation rentals, shuttle services, and corporate transportation solutions.",
+  "url": "https://hub.lifie.ai/agent/cmg85bb8k08dtuat80j735wqr/speedways",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with SpeedWays",
+      "description": "SpeedWays provides employee transportation services, including airport transfers, local and outstation rentals, shuttle services, and corporate transportation solutions.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg85bb8k08dtuat80j735wqr/avatar/avatar.png"
+}

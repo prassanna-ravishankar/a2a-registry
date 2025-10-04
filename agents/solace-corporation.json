@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg85hh8y08w5uat8jb7yqmv3/agent-card.json",
+  "conformance": false,
+  "name": "Solace Corporation",
+  "description": "Solace Corporation provides facility management services, including pest control and industrial cleaning, to ensure smooth running of businesses without operational hassles.",
+  "url": "https://hub.lifie.ai/agent/cmg85hh8y08w5uat8jb7yqmv3/solace-corporation",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with Solace Corporation",
+      "description": "Solace Corporation provides facility management services, including pest control and industrial cleaning, to ensure smooth running of businesses without operational hassles.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg85hh8y08w5uat8jb7yqmv3/avatar/avatar.png"
+}

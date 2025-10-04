@@ -1,0 +1,43 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Lifie.ai Hub",
+  "wellKnownURI": "https://api.lifie.ai/a2a/cmg8580g0084huat82yucg8g1/agent-card.json",
+  "conformance": false,
+  "name": "SR Business Solutions",
+  "description": "SR Business Solutions provides customized workshops and training programs for schools, colleges, working professionals, and entrepreneurs, focusing on building confidence, academic enhancement, relationship building, communication skills, career enhancement, and cross-functional synergy.",
+  "url": "https://hub.lifie.ai/agent/cmg8580g0084huat82yucg8g1/sr-business-solutions",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "interact",
+      "name": "Interact with SR Business Solutions",
+      "description": "SR Business Solutions provides customized workshops and training programs for schools, colleges, working professionals, and entrepreneurs, focusing on building confidence, academic enhancement, relationship building, communication skills, career enhancement, and cross-functional synergy.",
+      "tags": [
+        "business",
+        "commerce"
+      ],
+      "inputModes": [
+        "text/plain"
+      ],
+      "outputModes": [
+        "text/plain"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Lifie.ai Hub",
+    "url": "https://hub.lifie.ai"
+  },
+  "iconUrl": "https://api.lifie.ai/agents/cmg8580g0084huat82yucg8g1/avatar/avatar.png"
+}
