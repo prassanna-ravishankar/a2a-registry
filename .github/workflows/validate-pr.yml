@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'agents/**.json'
+      - 'scripts/validate_agent.py'
 
 jobs:
   validate:
@@ -43,7 +44,26 @@ jobs:
         files=$(echo "$changed_files" | sed 's/\\\"/"/g' | jq -r '.[]' | tr '\n' ' ')
 
         if [ -z "$files" ]; then
-          echo "No agent files changed"
+          echo "ℹ️  No agent files changed in this PR"
+          echo "Testing validation script with sample agents..."
+
+          # If validation script was modified but no agents changed, test with sample agents
+          if git diff --name-only origin/main...HEAD | grep -q 'scripts/validate_agent.py'; then
+            sample_agents=$(ls agents/*.json | head -5)
+            for file in $sample_agents; do
+              echo ""
+              echo "Testing: $file"
+              echo "----------------------------------------"
+              if ! uv run python scripts/validate_agent.py "$file" --no-remote; then
+                echo "❌ Validation script broken - failed on $file"
+                exit 1
+              fi
+            done
+            echo ""
+            echo "✅ Validation script works correctly!"
+          else
+            echo "Skipping validation - no relevant changes"
+          fi
           exit 0
         fi
 
