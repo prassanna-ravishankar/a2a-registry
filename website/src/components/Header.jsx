@@ -1,12 +1,16 @@
 import React from 'react';
-import { Search, Activity, Wifi, Shield } from 'lucide-react';
+import { Search, Activity, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
-const Header = ({ searchTerm, setSearchTerm, agentCount }) => {
+const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => {
     return (
         <header className="h-12 border-b border-zinc-800 bg-zinc-950 flex items-center px-4 justify-between shrink-0 z-50">
             {/* Left: Brand & Status */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" className="md:hidden -ml-2 text-zinc-400" onClick={onOpenMobileMenu}>
+                    <Menu className="w-5 h-5" />
+                </Button>
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-zinc-900 border border-zinc-800 flex items-center justify-center">
                         <img src="/logo.png" alt="A2A Registry" className="w-5 h-5" />

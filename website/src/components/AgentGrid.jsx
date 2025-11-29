@@ -13,10 +13,13 @@ const AgentGrid = ({
 }) => {
     if (loading) {
         return (
-            <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <div key={i} className="h-64 bg-zinc-900/50 border border-zinc-800 animate-pulse" />
-                ))}
+            <div className="flex-1 p-6">
+                {/* Grid */}
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <div key={i} className="h-64 bg-zinc-900/50 border border-zinc-800 animate-pulse" />
+                    ))}
+                </div>
             </div>
         );
     }

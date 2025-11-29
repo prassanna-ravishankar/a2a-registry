@@ -7,10 +7,11 @@ const Sidebar = ({
     selectedSkills,
     toggleSkillFilter,
     conformanceFilter,
-    setConformanceFilter
+    setConformanceFilter,
+    isMobile
 }) => {
     return (
-        <aside className="w-64 border-r border-zinc-800 bg-zinc-950 flex flex-col shrink-0">
+        <aside className={`${isMobile ? 'w-full border-none' : 'w-64 border-r'} border - zinc - 800 bg - zinc - 950 flex flex - col h - full shrink - 0`}>
             {/* Section Header */}
             <div className="h-10 border-b border-zinc-800 flex items-center px-4 bg-zinc-900/30">
                 <Filter className="w-3 h-3 text-emerald-500 mr-2" />
@@ -32,17 +33,17 @@ const Sidebar = ({
                                     key={option.id}
                                     onClick={() => setConformanceFilter(option.id)}
                                     className={`
-                    w-full text-left px-2 py-1.5 text-xs font-mono border transition-all
+w - full text - left px - 2 py - 1.5 text - xs font - mono border transition - all
                     ${conformanceFilter === option.id
                                             ? 'bg-zinc-900 border-emerald-500/50 text-zinc-200'
                                             : 'border-transparent hover:bg-zinc-900/50 text-zinc-500'
                                         }
-                  `}
+`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <span>{option.label}</span>
                                         {conformanceFilter === option.id && (
-                                            <div className={`w-1.5 h-1.5 rounded-full ${option.id === 'non-standard' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                            <div className={`w - 1.5 h - 1.5 rounded - full ${option.id === 'non-standard' ? 'bg-amber-500' : 'bg-emerald-500'} `} />
                                         )}
                                     </div>
                                 </button>
@@ -59,12 +60,12 @@ const Sidebar = ({
                                     key={tag}
                                     variant="outline"
                                     className={`
-                    cursor-pointer text-[10px] font-mono rounded-none border transition-all
+cursor - pointer text - [10px] font - mono rounded - none border transition - all
                     ${selectedSkills.includes(tag)
                                             ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-400'
                                             : 'bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-600'
                                         }
-                  `}
+`}
                                     onClick={() => toggleSkillFilter(tag)}
                                 >
                                     {tag}
