@@ -83,7 +83,6 @@ class AgentValidator:
 
         # Warn if we found unresolved external refs
         if unresolved_refs:
-            import sys
             print(f"Warning: {len(unresolved_refs)} unresolved schema references:", file=sys.stderr)
             for ref in unresolved_refs[:5]:  # Show first 5
                 print(f"  - {ref}", file=sys.stderr)

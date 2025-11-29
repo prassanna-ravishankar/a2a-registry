@@ -7,6 +7,7 @@ Sends a simple "hello" message to each agent.
 import asyncio
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 # Add client to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "client-python" / "src"))
@@ -30,7 +31,6 @@ async def test_agent(agent):
 
         # Try to send a simple message
         print("  2. Sending test message...")
-        from uuid import uuid4
         response_parts = []
         async for chunk in client.send_message({
             "role": "user",
