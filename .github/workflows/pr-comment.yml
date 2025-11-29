@@ -68,27 +68,22 @@ jobs:
 
           let body;
           if (status === 'success') {
-            body = `## ✅ Agent Validation Successful
-
-All submitted agent files have passed validation:
-- ✓ JSON schema validation
-- ✓ Required fields present
-- ✓ Format requirements met
-
-Your submission will be reviewed by a maintainer.`;
+            body = '## ✅ Agent Validation Successful\n\n' +
+              'All submitted agent files have passed validation:\n' +
+              '- ✓ JSON schema validation\n' +
+              '- ✓ Required fields present\n' +
+              '- ✓ Format requirements met\n\n' +
+              'Your submission will be reviewed by a maintainer.';
           } else {
-            const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
-            body = `## ❌ Agent Validation Failed
-
-Your agent submission has validation errors. Please review the [workflow logs](${logsUrl}) for details.
-
-Common issues:
-- Invalid JSON syntax
-- Missing required fields (name, description, author, wellKnownURI, skills)
-- Invalid URL format for wellKnownURI
-- Skills must have id, name, and description
-
-Please fix the issues and update your pull request.`;
+            const logsUrl = 'https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + runId;
+            body = '## ❌ Agent Validation Failed\n\n' +
+              'Your agent submission has validation errors. Please review the [workflow logs](' + logsUrl + ') for details.\n\n' +
+              'Common issues:\n' +
+              '- Invalid JSON syntax\n' +
+              '- Missing required fields (name, description, author, wellKnownURI, skills)\n' +
+              '- Invalid URL format for wellKnownURI\n' +
+              '- Skills must have id, name, and description\n\n' +
+              'Please fix the issues and update your pull request.';
           }
 
           // Find and update or create comment

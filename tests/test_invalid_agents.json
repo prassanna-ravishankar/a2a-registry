@@ -1,0 +1,108 @@
+{
+  "test_cases": [
+    {
+      "name": "missing_required_a2a_fields",
+      "description": "Agent missing required A2A fields",
+      "agent": {
+        "name": "Test Agent",
+        "author": "Test",
+        "wellKnownURI": "https://example.com/.well-known/agent.json"
+      },
+      "expected_errors": [
+        "Missing required A2A field: protocolVersion",
+        "Missing required A2A field: description",
+        "Missing required A2A field: url",
+        "Missing required A2A field: version",
+        "Missing required A2A field: capabilities",
+        "Missing required A2A field: skills",
+        "Missing required A2A field: defaultInputModes",
+        "Missing required A2A field: defaultOutputModes"
+      ]
+    },
+    {
+      "name": "missing_registry_fields",
+      "description": "Agent missing registry-required fields",
+      "agent": {
+        "protocolVersion": "1.0",
+        "name": "Test Agent",
+        "description": "A test agent",
+        "url": "https://example.com",
+        "version": "1.0.0",
+        "capabilities": {},
+        "skills": [],
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"]
+      },
+      "expected_errors": [
+        "Missing required registry field: author",
+        "Missing required registry field: wellKnownURI"
+      ]
+    },
+    {
+      "name": "invalid_wellKnownURI",
+      "description": "Agent with invalid wellKnownURI format",
+      "agent": {
+        "protocolVersion": "1.0",
+        "name": "Test Agent",
+        "description": "A test agent",
+        "url": "https://example.com",
+        "version": "1.0.0",
+        "capabilities": {},
+        "skills": [],
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "author": "Test",
+        "wellKnownURI": "https://example.com/invalid-endpoint.html"
+      },
+      "expected_errors": [
+        "wellKnownURI must end with a valid agent card endpoint"
+      ]
+    },
+    {
+      "name": "missing_skill_fields",
+      "description": "Agent with skills missing required fields",
+      "agent": {
+        "protocolVersion": "1.0",
+        "name": "Test Agent",
+        "description": "A test agent",
+        "url": "https://example.com",
+        "version": "1.0.0",
+        "capabilities": {},
+        "skills": [
+          {
+            "id": "test-skill"
+          }
+        ],
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "author": "Test",
+        "wellKnownURI": "https://example.com/.well-known/agent.json"
+      },
+      "expected_errors": [
+        "Skill 0 missing required field: name",
+        "Skill 0 missing required field: description",
+        "Skill 0 missing required field: tags"
+      ]
+    },
+    {
+      "name": "invalid_json_types",
+      "description": "Agent with wrong data types (capabilities should be object, skills should be array)",
+      "agent": {
+        "protocolVersion": "1.0",
+        "name": "Test Agent",
+        "description": "A test agent",
+        "url": "https://example.com",
+        "version": "1.0.0",
+        "capabilities": "invalid",
+        "skills": "invalid",
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "author": "Test",
+        "wellKnownURI": "https://example.com/.well-known/agent.json"
+      },
+      "expected_errors": [
+        "A2A Schema validation"
+      ]
+    }
+  ]
+}

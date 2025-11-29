@@ -19,7 +19,7 @@ class AgentValidator:
     """Validates agent entries against A2A Protocol and Registry requirements."""
 
     # Official A2A Protocol schema URL
-    OFFICIAL_SCHEMA_URL = "https://raw.githubusercontent.com/a2aproject/A2A/refs/heads/main/specification/json/a2a.json"
+    OFFICIAL_SCHEMA_URL = "https://a2aproject.github.io/A2A/latest/spec/a2a.json"
 
     def __init__(self):
         self.a2a_schema = self._load_a2a_schema()
@@ -33,7 +33,61 @@ class AgentValidator:
         )
         with urllib.request.urlopen(req, timeout=10) as response:
             schema = json.loads(response.read())
+            # Pre-process schema to convert external refs to internal refs
+            schema = self._resolve_schema_refs(schema)
             return schema
+
+    def _resolve_schema_refs(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert external .jsonschema.json references to internal #/definitions/ references.
+        The bundled schema has all definitions but uses external file references.
+        """
+        # Build explicit mapping from definition names to external refs
+        ref_mapping = {}
+        for def_name in schema.get("definitions", {}).keys():
+            # Remove spaces from definition name to get proto name
+            # e.g., "Agent Capabilities" -> "AgentCapabilities"
+            proto_name = def_name.replace(" ", "")
+
+            # Special cases for protobuf types
+            if def_name == "Struct":
+                ref_mapping['google.protobuf.Struct.jsonschema.json'] = f'#/definitions/{def_name}'
+            elif def_name == "Timestamp":
+                ref_mapping['google.protobuf.Timestamp.jsonschema.json'] = f'#/definitions/{def_name}'
+            else:
+                # Standard A2A types: "a2a.v1.{ProtoName}.jsonschema.json"
+                ref_mapping[f'a2a.v1.{proto_name}.jsonschema.json'] = f'#/definitions/{def_name}'
+
+        # Track unresolved refs for debugging
+        unresolved_refs = []
+
+        def resolve_refs(obj):
+            """Recursively walk through the schema and resolve references."""
+            if isinstance(obj, dict):
+                if '$ref' in obj:
+                    ref_value = obj['$ref']
+                    if ref_value in ref_mapping:
+                        obj['$ref'] = ref_mapping[ref_value]
+                    elif ref_value.endswith('.jsonschema.json'):
+                        # Track external refs that we couldn't resolve
+                        if ref_value not in unresolved_refs:
+                            unresolved_refs.append(ref_value)
+
+                for key, value in obj.items():
+                    obj[key] = resolve_refs(value)
+            elif isinstance(obj, list):
+                return [resolve_refs(item) for item in obj]
+            return obj
+
+        resolved_schema = resolve_refs(schema)
+
+        # Warn if we found unresolved external refs
+        if unresolved_refs:
+            print(f"Warning: {len(unresolved_refs)} unresolved schema references:", file=sys.stderr)
+            for ref in unresolved_refs[:5]:  # Show first 5
+                print(f"  - {ref}", file=sys.stderr)
+
+        return resolved_schema
     
     def _load_registry_requirements(self) -> Dict[str, List[str]]:
         """Define registry-specific requirements."""
@@ -64,12 +118,20 @@ class AgentValidator:
                     if field not in skill:
                         errors.append(f"Skill {i} missing required field: {field}")
         
-        # Validate against schema (use the AgentCard definition)
+        # Validate against the A2A JSON Schema
+        # Note: Our registry extends A2A with additional fields (author, wellKnownURI, etc.)
+        # So we need to allow additionalProperties for registry extensions
         try:
-            # Create a schema that references the AgentCard definition
+            # Use the Agent Card definition but allow additional properties for registry extensions
+            agent_card_def = self.a2a_schema.get("definitions", {}).get("Agent Card", {}).copy()
+            agent_card_def["additionalProperties"] = True  # Allow registry-specific fields
+
             agent_card_schema = {
-                "$ref": "#/definitions/AgentCard",
-                "definitions": self.a2a_schema.get("definitions", {})
+                "$ref": "#/definitions/Agent Card",
+                "definitions": {
+                    **self.a2a_schema.get("definitions", {}),
+                    "Agent Card": agent_card_def
+                }
             }
             validate(instance=agent_data, schema=agent_card_schema)
         except ValidationError as e:
