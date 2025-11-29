@@ -16,7 +16,7 @@ const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => 
                         <img src="/logo.png" alt="A2A Registry" className="w-5 h-5" />
                     </div>
                     <h1 className="font-mono font-bold text-zinc-100 tracking-wider text-sm">
-                        A2A_REGISTRY <span className="text-zinc-600 text-xs font-normal">// V2_INTERFACE</span>
+                        A2A_REGISTRY <span className="hidden md:inline text-zinc-600 text-xs font-normal">// V2_INTERFACE</span>
                     </h1>
                 </div>
 
@@ -30,12 +30,12 @@ const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => 
             </div>
 
             {/* Center: Search */}
-            <div className="flex-1 max-w-md mx-4">
+            <div className="flex-1 max-w-md mx-2 md:mx-4">
                 <div className="relative group">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
                     <Input
                         className="h-8 bg-zinc-900 border-zinc-800 text-zinc-200 text-xs font-mono pl-8 focus:border-emerald-500/50 focus:ring-0 placeholder:text-zinc-600"
-                        placeholder="SEARCH_AGENTS..."
+                        placeholder="SEARCH..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -43,7 +43,7 @@ const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => 
             </div>
 
             {/* Right: Metrics */}
-            <div className="flex items-center gap-4 text-xs font-mono">
+            <div className="hidden md:flex items-center gap-4 text-xs font-mono">
                 <div className="text-zinc-500">
                     AGENTS_ACTIVE: <span className="text-zinc-200">{agentCount}</span>
                 </div>
