@@ -7,9 +7,9 @@ const Header = ({ searchTerm, setSearchTerm, agentCount }) => {
         <header className="h-12 border-b border-zinc-800 bg-zinc-950 flex items-center px-4 justify-between shrink-0 z-50">
             {/* Left: Brand & Status */}
             <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-emerald-600 flex items-center justify-center">
-                        <Activity className="w-4 h-4 text-black" />
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                        <img src="/logo.png" alt="A2A Registry" className="w-5 h-5" />
                     </div>
                     <h1 className="font-mono font-bold text-zinc-100 tracking-wider text-sm">
                         A2A_REGISTRY <span className="text-zinc-600 text-xs font-normal">// V2_INTERFACE</span>
