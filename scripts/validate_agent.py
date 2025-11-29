@@ -42,12 +42,12 @@ class AgentValidator:
         Convert external .jsonschema.json references to internal #/definitions/ references.
         The bundled schema has all definitions but uses external file references.
         """
-        # Build mapping dynamically from definitions
+        # Build explicit mapping from definition names to external refs
         ref_mapping = {}
         for def_name in schema.get("definitions", {}).keys():
-            # Convert "Agent Capabilities" -> "a2a.v1.AgentCapabilities.jsonschema.json"
-            # First normalize the definition name
-            proto_name = def_name.replace(" ", "")  # Remove spaces
+            # Remove spaces from definition name to get proto name
+            # e.g., "Agent Capabilities" -> "AgentCapabilities"
+            proto_name = def_name.replace(" ", "")
 
             # Special cases for protobuf types
             if def_name == "Struct":
@@ -55,23 +55,40 @@ class AgentValidator:
             elif def_name == "Timestamp":
                 ref_mapping['google.protobuf.Timestamp.jsonschema.json'] = f'#/definitions/{def_name}'
             else:
-                # Standard A2A types
-                # Try both with and without "Agent" prefix for common patterns
+                # Standard A2A types: "a2a.v1.{ProtoName}.jsonschema.json"
                 ref_mapping[f'a2a.v1.{proto_name}.jsonschema.json'] = f'#/definitions/{def_name}'
-                ref_mapping[f'a2a.v1.Agent{proto_name}.jsonschema.json'] = f'#/definitions/{def_name}'
+
+        # Track unresolved refs for debugging
+        unresolved_refs = []
 
         def resolve_refs(obj):
             """Recursively walk through the schema and resolve references."""
             if isinstance(obj, dict):
-                if '$ref' in obj and obj['$ref'] in ref_mapping:
-                    obj['$ref'] = ref_mapping[obj['$ref']]
+                if '$ref' in obj:
+                    ref_value = obj['$ref']
+                    if ref_value in ref_mapping:
+                        obj['$ref'] = ref_mapping[ref_value]
+                    elif ref_value.endswith('.jsonschema.json'):
+                        # Track external refs that we couldn't resolve
+                        if ref_value not in unresolved_refs:
+                            unresolved_refs.append(ref_value)
+
                 for key, value in obj.items():
                     obj[key] = resolve_refs(value)
             elif isinstance(obj, list):
                 return [resolve_refs(item) for item in obj]
             return obj
 
-        return resolve_refs(schema)
+        resolved_schema = resolve_refs(schema)
+
+        # Warn if we found unresolved external refs
+        if unresolved_refs:
+            import sys
+            print(f"Warning: {len(unresolved_refs)} unresolved schema references:", file=sys.stderr)
+            for ref in unresolved_refs[:5]:  # Show first 5
+                print(f"  - {ref}", file=sys.stderr)
+
+        return resolved_schema
     
     def _load_registry_requirements(self) -> Dict[str, List[str]]:
         """Define registry-specific requirements."""
@@ -106,11 +123,9 @@ class AgentValidator:
         # Note: Our registry extends A2A with additional fields (author, wellKnownURI, etc.)
         # So we need to allow additionalProperties for registry extensions
         try:
-            # Use the Agent Card definition but allow additional properties
+            # Use the Agent Card definition but allow additional properties for registry extensions
             agent_card_def = self.a2a_schema.get("definitions", {}).get("Agent Card", {}).copy()
-            # Allow additional properties for registry extensions
-            if "additionalProperties" in agent_card_def:
-                agent_card_def["additionalProperties"] = True
+            agent_card_def["additionalProperties"] = True  # Allow registry-specific fields
 
             agent_card_schema = {
                 "$ref": "#/definitions/Agent Card",
@@ -122,9 +137,6 @@ class AgentValidator:
             validate(instance=agent_data, schema=agent_card_schema)
         except ValidationError as e:
             errors.append(f"A2A Schema validation: {e.message}")
-        except Exception as e:
-            # Don't fail validation on unexpected schema issues
-            errors.append(f"Schema validation error: {str(e)}")
         
         return errors
     
