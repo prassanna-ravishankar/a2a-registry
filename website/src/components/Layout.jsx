@@ -56,7 +56,7 @@ const Layout = ({
                 )}
 
                 {/* Desktop Sidebar */}
-                <div className="hidden md:block h-full">
+                <div className="hidden md:flex w-64 shrink-0 h-full">
                     <Sidebar
                         allTags={allTags}
                         selectedSkills={selectedSkills}
@@ -71,7 +71,7 @@ const Layout = ({
                 </main>
 
                 {selectedAgent && (
-                    <div className={`absolute inset-0 z-30 md:static md:z-auto md:w-auto ${selectedAgent ? 'block' : 'hidden md:block'}`}>
+                    <div className={`absolute inset-0 z-30 md:static md:z-auto md:w-[450px] md:shrink-0 ${selectedAgent ? 'block' : 'hidden md:block'}`}>
                         <InspectionDeck
                             agent={selectedAgent}
                             onClose={onCloseInspection}
