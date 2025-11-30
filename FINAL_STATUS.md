@@ -84,10 +84,10 @@ just dev-frontend
 ```
 
 ### Services will be available at:
-- **Frontend**: http://localhost:5173
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Postgres**: localhost:5432
+- **Frontend**: http://localhost:5174
+- **API**: http://localhost:8001
+- **API Docs**: http://localhost:8001/docs
+- **Postgres**: localhost:5433
 
 See `QUICKSTART.md` for complete guide.
 
