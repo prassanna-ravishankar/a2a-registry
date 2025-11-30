@@ -1,6 +1,7 @@
 import React from 'react';
 import { Filter, Cpu, Database, Network } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import LiveFeed from './LiveFeed';
 
 const Sidebar = ({
     allTags,
@@ -75,6 +76,9 @@ const Sidebar = ({
                     </div>
                 </div>
             </div>
+
+            {/* Live Feed - Desktop Only */}
+            {!isMobile && <LiveFeed />}
         </aside>
     );
 };
