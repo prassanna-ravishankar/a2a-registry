@@ -34,10 +34,14 @@ const A2ARegistry = () => {
   // Load data from API (with fallback to static registry)
   useEffect(() => {
     const loadData = async () => {
+      console.log('[A2A] Starting data load...');
       try {
         // Try new API first
+        console.log('[A2A] Fetching from API...');
         const data = await api.getAgents({ limit: 1000 });
+        console.log('[A2A] API response:', data);
         const agentList = data.agents || [];
+        console.log('[A2A] Loaded', agentList.length, 'agents from API');
         setAgents(agentList);
         setFilteredAgents(agentList);
         setLoading(false);
@@ -45,21 +49,23 @@ const A2ARegistry = () => {
         // Load stats
         try {
           const statsData = await api.getStats();
+          console.log('[A2A] Stats loaded:', statsData);
           setStats(statsData);
         } catch (statsErr) {
-          console.warn('Failed to load stats:', statsErr);
+          console.warn('[A2A] Failed to load stats:', statsErr);
         }
       } catch (err) {
-        console.warn('API failed, falling back to static registry:', err);
+        console.warn('[A2A] API failed, falling back to static registry:', err);
         // Fallback to static registry.json
         try {
           const data = await fetchStaticRegistry();
           const agentList = data.agents || [];
+          console.log('[A2A] Loaded', agentList.length, 'agents from static registry');
           setAgents(agentList);
           setFilteredAgents(agentList);
           setLoading(false);
         } catch (fallbackErr) {
-          console.error('Failed to load registry:', fallbackErr);
+          console.error('[A2A] Failed to load registry:', fallbackErr);
           setError('Failed to load agent registry');
           setLoading(false);
         }
