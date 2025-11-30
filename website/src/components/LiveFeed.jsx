@@ -48,12 +48,12 @@ const LiveFeed = () => {
     };
 
     return (
-        <div className="border-t border-zinc-800 bg-black flex flex-col h-64">
+        <div className="border-t border-zinc-800 bg-black flex flex-col h-80">
             {/* Header */}
             <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 bg-zinc-900/30">
                 <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-mono font-bold text-emerald-500 tracking-widest uppercase">
-                    Live Feed
+                    Feed
                 </span>
             </div>
 
