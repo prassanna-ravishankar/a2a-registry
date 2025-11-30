@@ -11,6 +11,8 @@ const AgentGrid = ({
     onAgentSelect,
     onClearFilters
 }) => {
+    console.log('[AgentGrid] Rendering - agents:', agents?.length, 'loading:', loading, 'error:', error);
+
     if (loading) {
         return (
             <div className="flex-1 p-6">
