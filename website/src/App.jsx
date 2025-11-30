@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from './components/Layout';
 import AgentGrid from './components/AgentGrid';
-import StatsBar from './components/StatsBar';
 import Submit from './pages/Submit';
 import { api, fetchStaticRegistry } from './lib/api';
 import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
