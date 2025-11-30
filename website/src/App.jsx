@@ -125,6 +125,11 @@ const A2ARegistry = () => {
 
   // Filtering Logic
   useEffect(() => {
+    console.log('[A2A] Filtering - agents count:', agents.length);
+    console.log('[A2A] Filtering - searchTerm:', searchTerm);
+    console.log('[A2A] Filtering - selectedSkills:', selectedSkills);
+    console.log('[A2A] Filtering - conformanceFilter:', conformanceFilter);
+
     let filtered = agents.filter(agent =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,6 +139,8 @@ const A2ARegistry = () => {
         skill.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     );
+
+    console.log('[A2A] After text filter:', filtered.length);
 
     // Track search
     if (searchTerm) {
@@ -146,15 +153,19 @@ const A2ARegistry = () => {
           skill.tags.some(tag => selectedSkills.includes(tag))
         )
       );
+      console.log('[A2A] After skill filter:', filtered.length);
     }
 
     // Apply conformance filter
     if (conformanceFilter === 'standard') {
       filtered = filtered.filter(agent => agent.conformance !== false);
+      console.log('[A2A] After standard conformance filter:', filtered.length);
     } else if (conformanceFilter === 'non-standard') {
       filtered = filtered.filter(agent => agent.conformance === false);
+      console.log('[A2A] After non-standard conformance filter:', filtered.length);
     }
 
+    console.log('[A2A] Final filtered count:', filtered.length);
     setFilteredAgents(filtered);
   }, [searchTerm, selectedSkills, conformanceFilter, agents]);
 
@@ -217,6 +228,8 @@ const A2ARegistry = () => {
   if (currentPage === 'submit') {
     return <Submit />;
   }
+
+  console.log('[A2A] Render - loading:', loading, 'agents:', agents.length, 'filteredAgents:', filteredAgents.length);
 
   return (
     <>
