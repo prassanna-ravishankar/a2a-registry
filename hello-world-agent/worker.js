@@ -79,8 +79,8 @@ export default {
       try {
         const body = await request.json();
 
-        // Extract user message from A2A SendMessageRequest format
-        const userMessage = body.message?.parts?.find(part => part.text)?.text || 'Hello';
+        // Extract user message from A2A SendMessageRequest format (handle multiple text parts)
+        const userMessage = body.message?.parts?.filter(part => part.text).map(part => part.text).join('\n') || 'Hello';
 
         // Return A2A Message response
         const a2aResponse = {
