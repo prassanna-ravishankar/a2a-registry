@@ -1,16 +1,22 @@
-import posthog from 'posthog-js';
+// Analytics functions with graceful degradation when blocked by ad blockers
+// All functions are safe to call even if analytics is blocked
 
-export const trackEvent = (eventName, properties = {}) => {
-  if (typeof posthog !== 'undefined' && posthog.capture) {
-    posthog.capture(eventName, properties);
+const trackEvent = (eventName, properties = {}) => {
+  try {
+    // Check if posthog is available globally (set by main.jsx)
+    if (typeof window !== 'undefined' && window.posthog && typeof window.posthog.capture === 'function') {
+      window.posthog.capture(eventName, properties);
+    }
+  } catch (e) {
+    // Silently fail - analytics should never break the app
   }
 };
 
 export const trackAgentView = (agent) => {
   trackEvent('agent_viewed', {
-    agent_id: agent.id,
-    agent_name: agent.name,
-    agent_author: agent.author,
+    agent_id: agent?.id,
+    agent_name: agent?.name,
+    agent_author: agent?.author,
   });
 };
 
