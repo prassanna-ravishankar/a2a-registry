@@ -1,9 +1,9 @@
 {
   "protocolVersion": "0.3.0",
-  "name": "Coin Railz x402 Payment Infrastructure",
-  "description": "Multi-Chain Payment Infrastructure for Crypto Communities. 18 x402 micropayment services: DEX aggregator, trading signals, wallet risk analysis, security audits, and blockchain intelligence. Pay per request with USDC on Base.",
+  "name": "Coin Railz",
+  "description": "Multi-chain x402 micropayment infrastructure for AI agents. 33 pay-per-call API services for crypto analytics, trading signals, security audits, real estate, banking, and market intelligence. Pay with USDC on Base chain - prices from $0.10 to $10.00 per request.",
   "url": "https://coinrailz.com",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "capabilities": {
     "streaming": true,
     "pushNotifications": false,
@@ -11,170 +11,575 @@
   },
   "skills": [
     {
-      "id": "smart-contract-scanning",
-      "name": "Smart Contract Scanner",
-      "description": "Deep analysis of smart contract code, security vulnerabilities, and on-chain behavior",
-      "tags": ["security", "smart-contracts", "auditing", "blockchain"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Scan contract 0x... for vulnerabilities", "Analyze smart contract security"]
+      "id": "gas-price-oracle",
+      "name": "Gas Price Oracle",
+      "description": "Real-time gas price predictions across multiple chains. $0.10 per request.",
+      "tags": [
+        "utilities",
+        "gas",
+        "ethereum",
+        "multi-chain",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "whale-tracking",
-      "name": "Whale Tracker & Alerts",
-      "description": "Real-time monitoring of large wallet movements and whale activity",
-      "tags": ["analytics", "whales", "monitoring", "crypto"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Track whale wallets", "Monitor large transactions"]
+      "id": "token-metadata",
+      "name": "Token Metadata",
+      "description": "Comprehensive token information including name, symbol, decimals, and contract details. $0.10 per request.",
+      "tags": [
+        "tokens",
+        "metadata",
+        "crypto",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "dex-liquidity",
+      "name": "DEX Liquidity Scanner",
+      "description": "Analyze liquidity pools, depths, and trading conditions across DEXs. $0.20 per request.",
+      "tags": [
+        "defi",
+        "liquidity",
+        "dex",
+        "trading",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "approval-manager",
+      "name": "Token Approval Manager",
+      "description": "Check and manage token approvals for smart contracts. $0.20 per request.",
+      "tags": [
+        "security",
+        "approvals",
+        "tokens",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "token-price",
+      "name": "Token Price Feed",
+      "description": "Real-time token prices from multiple sources. $0.25 per request.",
+      "tags": [
+        "prices",
+        "tokens",
+        "data",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "token-sentiment",
+      "name": "Token Sentiment Analysis",
+      "description": "AI-powered sentiment analysis for tokens from social and on-chain data. $0.25 per request.",
+      "tags": [
+        "sentiment",
+        "ai",
+        "analytics",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "transaction-builder",
+      "name": "Transaction Builder",
+      "description": "Build optimized blockchain transactions with gas estimation. $0.30 per request.",
+      "tags": [
+        "transactions",
+        "utilities",
+        "blockchain",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "whale-alerts",
+      "name": "Whale Alerts",
+      "description": "Real-time monitoring of large wallet movements and whale activity. $0.35 per request.",
+      "tags": [
+        "whales",
+        "monitoring",
+        "alerts",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "batch-quote",
+      "name": "Batch Quote Service",
+      "description": "Get multiple swap quotes in a single request. $0.40 per request.",
+      "tags": [
+        "trading",
+        "quotes",
+        "batch",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "multi-chain-balance",
+      "name": "Multi-Chain Balance",
+      "description": "Check wallet balances across all supported chains in one call. $0.50 per request.",
+      "tags": [
+        "wallets",
+        "balances",
+        "multi-chain",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "trending-tokens",
+      "name": "Trending Tokens",
+      "description": "Discover trending and hot tokens based on volume and social activity. $0.50 per request.",
+      "tags": [
+        "trending",
+        "tokens",
+        "discovery",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "portfolio-tracker",
+      "name": "Portfolio Tracker",
+      "description": "Complete portfolio breakdown with P&L and allocation insights. $0.50 per request.",
+      "tags": [
+        "portfolio",
+        "tracking",
+        "analytics",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "wallet-risk",
+      "name": "Wallet Risk Analysis",
+      "description": "Evaluate wallet risk levels and suspicious activity patterns. $0.50 per request.",
+      "tags": [
+        "security",
+        "risk",
+        "wallets",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
       "id": "trade-signals",
-      "name": "Trade Signal Generator",
-      "description": "AI-powered trading signals based on technical analysis and on-chain data",
-      "tags": ["trading", "signals", "ai", "crypto"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Get trading signals for ETH", "Generate buy/sell signals"]
+      "name": "Trade Signals",
+      "description": "AI-powered trading signals based on technical analysis and on-chain data. $0.75 per request.",
+      "tags": [
+        "trading",
+        "signals",
+        "ai",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "contract-audit",
+      "id": "payment-processing",
+      "name": "Payment Processing",
+      "description": "Process crypto payments across 7 blockchains. $0.50 per request.",
+      "tags": [
+        "payments",
+        "crypto",
+        "infrastructure",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "contract-scan",
+      "name": "Contract Scanner",
+      "description": "Deep analysis of smart contract code and security vulnerabilities. $1.00 per request.",
+      "tags": [
+        "security",
+        "smart-contracts",
+        "auditing",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "instant-agent-wallet",
+      "name": "Instant Agent Wallet",
+      "description": "Create managed wallets for AI agents instantly. $1.00 per request.",
+      "tags": [
+        "wallets",
+        "agents",
+        "infrastructure",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "seamless-chain-bridge",
+      "name": "Cross-Chain Bridge",
+      "description": "Bridge assets seamlessly across supported chains. $2.00 per request.",
+      "tags": [
+        "bridges",
+        "cross-chain",
+        "infrastructure",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "verified-agent-identity",
+      "name": "Verified Agent Identity",
+      "description": "On-chain identity verification and reputation for AI agents. $5.00 per request.",
+      "tags": [
+        "identity",
+        "verification",
+        "agents",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "compliance-consultation",
+      "name": "Compliance Consultation",
+      "description": "AI-powered compliance analysis for crypto operations. $5.00 per request.",
+      "tags": [
+        "compliance",
+        "legal",
+        "consulting",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "smart-contract-audit",
       "name": "Smart Contract Audit",
-      "description": "Comprehensive security audit with vulnerability detection",
-      "tags": ["security", "auditing", "smart-contracts", "defi"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Audit contract for security issues", "Full contract security scan"]
+      "description": "Comprehensive security audit with vulnerability detection. $10.00 per request.",
+      "tags": [
+        "security",
+        "auditing",
+        "smart-contracts",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "gas-price-oracle",
-      "name": "Gas Price Oracle",
-      "description": "Real-time gas price predictions across multiple chains",
-      "tags": ["utilities", "gas", "ethereum", "multi-chain"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Get current gas prices", "Estimate transaction costs"]
+      "id": "property-valuation",
+      "name": "Property Valuation",
+      "description": "AI-powered real estate property valuation and market analysis. $0.75 per request.",
+      "tags": [
+        "real-estate",
+        "valuation",
+        "ai",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "token-analytics",
-      "name": "Token Analytics",
-      "description": "Deep dive into token metrics, holder distribution, and price action",
-      "tags": ["analytics", "tokens", "defi", "data"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Analyze token metrics", "Get holder distribution"]
+      "id": "lease-analysis",
+      "name": "Lease Analysis",
+      "description": "Analyze commercial and residential lease terms and conditions. $1.00 per request.",
+      "tags": [
+        "real-estate",
+        "leases",
+        "analysis",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "dex-aggregator",
-      "name": "DEX Price Aggregator",
-      "description": "Best price discovery across all major DEXs",
-      "tags": ["trading", "dex", "defi", "aggregation"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Find best price for token swap", "Compare DEX prices"]
+      "id": "construction-progress",
+      "name": "Construction Progress",
+      "description": "Track and analyze construction project progress and milestones. $1.50 per request.",
+      "tags": [
+        "real-estate",
+        "construction",
+        "tracking",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "liquidity-scanner",
-      "name": "Liquidity Pool Scanner",
-      "description": "Analyze liquidity pools, APYs, and impermanent loss risk",
-      "tags": ["defi", "liquidity", "pools", "yield"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Scan liquidity pools", "Calculate impermanent loss"]
+      "id": "fraud-detection",
+      "name": "Fraud Detection",
+      "description": "AI-powered fraud detection for financial transactions. $0.75 per request.",
+      "tags": [
+        "banking",
+        "fraud",
+        "security",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "nft-floor-tracker",
-      "name": "NFT Floor Price Tracker",
-      "description": "Real-time NFT floor prices and collection analytics",
-      "tags": ["nft", "analytics", "collectibles", "data"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Get NFT floor price", "Track collection metrics"]
+      "id": "credit-risk-score",
+      "name": "Credit Risk Score",
+      "description": "Calculate credit risk scores for wallets and entities. $1.25 per request.",
+      "tags": [
+        "banking",
+        "credit",
+        "risk",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "portfolio-analytics",
-      "name": "Wallet Portfolio Analytics",
-      "description": "Complete portfolio breakdown with P&L and allocation insights",
-      "tags": ["analytics", "portfolio", "wallet", "tracking"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Analyze my portfolio", "Get wallet P&L"]
+      "id": "compliance-check",
+      "name": "Compliance Check",
+      "description": "Verify regulatory compliance for transactions and entities. $1.75 per request.",
+      "tags": [
+        "banking",
+        "compliance",
+        "regulatory",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "risk-assessment",
-      "name": "Risk Assessment Engine",
-      "description": "Evaluate smart contract and protocol risk levels",
-      "tags": ["security", "risk", "defi", "analysis"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Assess protocol risk", "Evaluate contract safety"]
+      "id": "sentiment-analysis",
+      "name": "Market Sentiment Analysis",
+      "description": "Analyze market sentiment from social media and news sources. $0.50 per request.",
+      "tags": [
+        "trading",
+        "sentiment",
+        "ai",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "bridge-monitor",
-      "name": "Cross-chain Bridge Monitor",
-      "description": "Track bridge transactions and security status",
-      "tags": ["utilities", "bridges", "cross-chain", "monitoring"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Monitor bridge transaction", "Check bridge security"]
+      "id": "trading-signal",
+      "name": "Trading Signal Generator",
+      "description": "Generate actionable trading signals with entry and exit points. $1.00 per request.",
+      "tags": [
+        "trading",
+        "signals",
+        "investment",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "staking-calculator",
-      "name": "Staking Rewards Calculator",
-      "description": "Calculate staking yields across protocols",
-      "tags": ["defi", "staking", "yield", "calculator"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Calculate staking rewards", "Compare staking yields"]
+      "id": "portfolio-optimization",
+      "name": "Portfolio Optimization",
+      "description": "AI-powered portfolio optimization and rebalancing recommendations. $2.00 per request.",
+      "tags": [
+        "trading",
+        "portfolio",
+        "optimization",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "defi-scanner",
-      "name": "DeFi Protocol Scanner",
-      "description": "Analyze DeFi protocols for yields and risks",
-      "tags": ["defi", "protocols", "yield", "analysis"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Scan DeFi protocol", "Find best yields"]
+      "id": "correlation-matrix",
+      "name": "Correlation Matrix",
+      "description": "Generate asset correlation matrices for portfolio analysis. $0.75 per request.",
+      "tags": [
+        "market-intelligence",
+        "correlation",
+        "analytics",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "holder-analytics",
-      "name": "Token Holder Analytics",
-      "description": "Analyze token holder behavior and distribution",
-      "tags": ["analytics", "holders", "tokens", "data"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Analyze holder distribution", "Track holder movements"]
+      "id": "risk-metrics",
+      "name": "Risk Metrics",
+      "description": "Calculate VaR, Sharpe ratio, and other risk metrics. $1.00 per request.",
+      "tags": [
+        "market-intelligence",
+        "risk",
+        "metrics",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
-      "id": "pattern-detector",
-      "name": "Transaction Pattern Detector",
-      "description": "Detect suspicious transaction patterns and wash trading",
-      "tags": ["security", "patterns", "fraud", "detection"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Detect wash trading", "Find suspicious patterns"]
-    },
-    {
-      "id": "sentiment-analyzer",
-      "name": "Market Sentiment Analyzer",
-      "description": "AI-powered sentiment analysis from social media and on-chain data",
-      "tags": ["analytics", "sentiment", "ai", "market"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Analyze market sentiment", "Get social sentiment score"]
-    },
-    {
-      "id": "agent-identity-verification",
-      "name": "Agent Identity Verification",
-      "description": "Verify AI agent identities and on-chain reputation",
-      "tags": ["security", "identity", "agents", "verification"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": ["Verify agent identity", "Check agent reputation"]
+      "id": "arbitrage-scanner",
+      "name": "Arbitrage Scanner",
+      "description": "Detect arbitrage opportunities across exchanges and chains. $1.25 per request.",
+      "tags": [
+        "market-intelligence",
+        "arbitrage",
+        "trading",
+        "x402"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     }
   ],
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"],
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "provider": {
     "organization": "Kellogg Holdings LLC",
     "url": "https://coinrailz.com"
@@ -189,10 +594,16 @@
     "defi",
     "payments",
     "x402",
+    "micropayments",
     "trading",
     "security",
     "analytics",
     "multi-chain",
-    "usdc"
+    "usdc",
+    "base",
+    "ai-agents",
+    "real-estate",
+    "banking",
+    "market-intelligence"
   ]
 }
