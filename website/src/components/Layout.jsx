@@ -37,7 +37,7 @@ const Layout = ({
     }, []);
 
     return (
-        <div className="flex flex-col h-screen bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
+        <div className="flex flex-col h-full bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
             <Header
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}

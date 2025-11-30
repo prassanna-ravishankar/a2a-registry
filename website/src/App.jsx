@@ -232,34 +232,36 @@ const A2ARegistry = () => {
   console.log('[A2A] Render - loading:', loading, 'agents:', agents.length, 'filteredAgents:', filteredAgents.length);
 
   return (
-    <>
+    <div className="flex flex-col h-screen">
       {stats && <StatsBar stats={stats} />}
-      <Layout
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        agentCount={filteredAgents.length}
-        allTags={allTags}
-        selectedSkills={selectedSkills}
-        toggleSkillFilter={toggleSkillFilter}
-        conformanceFilter={conformanceFilter}
-        setConformanceFilter={setConformanceFilter}
-        selectedAgent={selectedAgent}
-        onCloseInspection={() => setSelectedAgent(null)}
-      >
-        <AgentGrid
-          agents={filteredAgents}
-          loading={loading}
-          error={error}
+      <div className="flex-1 overflow-hidden">
+        <Layout
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          agentCount={filteredAgents.length}
+          allTags={allTags}
+          selectedSkills={selectedSkills}
+          toggleSkillFilter={toggleSkillFilter}
+          conformanceFilter={conformanceFilter}
+          setConformanceFilter={setConformanceFilter}
           selectedAgent={selectedAgent}
-          onAgentSelect={handleAgentSelect}
-          onClearFilters={() => {
-            setSearchTerm('');
-            setSelectedSkills([]);
-            setConformanceFilter('all');
-          }}
-        />
-      </Layout>
-    </>
+          onCloseInspection={() => setSelectedAgent(null)}
+        >
+          <AgentGrid
+            agents={filteredAgents}
+            loading={loading}
+            error={error}
+            selectedAgent={selectedAgent}
+            onAgentSelect={handleAgentSelect}
+            onClearFilters={() => {
+              setSearchTerm('');
+              setSelectedSkills([]);
+              setConformanceFilter('all');
+            }}
+          />
+        </Layout>
+      </div>
+    </div>
   );
 };
 
