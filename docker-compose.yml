@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: a2a-registry-db
+    environment:
+      POSTGRES_DB: a2a_registry
+      POSTGRES_USER: a2a_user
+      POSTGRES_PASSWORD: a2a_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations/versions/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a2a_user -d a2a_registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: a2a-registry-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "true"
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://us.posthog.com}
+      POSTHOG_ENABLED: ${POSTHOG_ENABLED:-false}
+      HEALTH_CHECK_INTERVAL_SECONDS: 300
+      HEALTH_CHECK_TIMEOUT_SECONDS: 10
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: python run.py
+
+  # Health Check Worker
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: a2a-registry-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
+      HEALTH_CHECK_INTERVAL_SECONDS: 300
+      HEALTH_CHECK_TIMEOUT_SECONDS: 10
+    volumes:
+      - ./backend:/app
+    command: python worker.py
+
+  # Frontend (development)
+  frontend:
+    image: node:20-alpine
+    container_name: a2a-registry-frontend
+    depends_on:
+      - api
+    working_dir: /app
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+      VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
+      VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://us.posthog.com}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./website:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+
+volumes:
+  postgres_data:
+  frontend_node_modules:

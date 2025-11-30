@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from './components/Layout';
 import AgentGrid from './components/AgentGrid';
+import StatsBar from './components/StatsBar';
+import Submit from './pages/Submit';
+import { api, fetchStaticRegistry } from './lib/api';
+import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
 
 const A2ARegistry = () => {
+  const [currentPage, setCurrentPage] = useState('home'); // 'home' or 'submit'
   const [agents, setAgents] = useState([]);
   const [filteredAgents, setFilteredAgents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -11,6 +16,7 @@ const A2ARegistry = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [stats, setStats] = useState(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -25,33 +31,42 @@ const A2ARegistry = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Load real data from registry.json
+  // Load data from API (with fallback to static registry)
   useEffect(() => {
-    const controller = new AbortController();
-
-    fetch('/registry.json', {
-      signal: controller.signal,
-      cache: 'force-cache'
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
+    const loadData = async () => {
+      try {
+        // Try new API first
+        const data = await api.getAgents({ limit: 1000 });
         const agentList = data.agents || [];
         setAgents(agentList);
         setFilteredAgents(agentList);
         setLoading(false);
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          console.error('Failed to load registry:', err);
+
+        // Load stats
+        try {
+          const statsData = await api.getStats();
+          setStats(statsData);
+        } catch (statsErr) {
+          console.warn('Failed to load stats:', statsErr);
+        }
+      } catch (err) {
+        console.warn('API failed, falling back to static registry:', err);
+        // Fallback to static registry.json
+        try {
+          const data = await fetchStaticRegistry();
+          const agentList = data.agents || [];
+          setAgents(agentList);
+          setFilteredAgents(agentList);
+          setLoading(false);
+        } catch (fallbackErr) {
+          console.error('Failed to load registry:', fallbackErr);
           setError('Failed to load agent registry');
           setLoading(false);
         }
-      });
+      }
+    };
 
-    return () => controller.abort();
+    loadData();
   }, []);
 
   // URL Synchronization
@@ -114,6 +129,11 @@ const A2ARegistry = () => {
       )
     );
 
+    // Track search
+    if (searchTerm) {
+      trackSearch(searchTerm, filtered.length);
+    }
+
     if (selectedSkills.length > 0) {
       filtered = filtered.filter(agent =>
         agent.skills.some(skill =>
@@ -158,39 +178,69 @@ const A2ARegistry = () => {
   }, [agents, conformanceFilter]);
 
   const toggleSkillFilter = useCallback((tag) => {
-    setSelectedSkills(prev =>
-      prev.includes(tag)
+    setSelectedSkills(prev => {
+      const newSkills = prev.includes(tag)
         ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
+        : [...prev, tag];
+
+      // Track filter change
+      trackFilterChange('skill', tag);
+
+      return newSkills;
+    });
   }, []);
 
+  const handleAgentSelect = useCallback((agent) => {
+    setSelectedAgent(agent);
+    trackAgentView(agent);
+  }, []);
+
+  // Handle page navigation
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      if (e.target.tagName === 'A' && e.target.pathname === '/submit') {
+        e.preventDefault();
+        setCurrentPage('submit');
+      }
+    };
+
+    document.addEventListener('click', handleNavigate);
+    return () => document.removeEventListener('click', handleNavigate);
+  }, []);
+
+  if (currentPage === 'submit') {
+    return <Submit />;
+  }
+
   return (
-    <Layout
-      searchTerm={searchTerm}
-      setSearchTerm={setSearchTerm}
-      agentCount={filteredAgents.length}
-      allTags={allTags}
-      selectedSkills={selectedSkills}
-      toggleSkillFilter={toggleSkillFilter}
-      conformanceFilter={conformanceFilter}
-      setConformanceFilter={setConformanceFilter}
-      selectedAgent={selectedAgent}
-      onCloseInspection={() => setSelectedAgent(null)}
-    >
-      <AgentGrid
-        agents={filteredAgents}
-        loading={loading}
-        error={error}
+    <>
+      {stats && <StatsBar stats={stats} />}
+      <Layout
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        agentCount={filteredAgents.length}
+        allTags={allTags}
+        selectedSkills={selectedSkills}
+        toggleSkillFilter={toggleSkillFilter}
+        conformanceFilter={conformanceFilter}
+        setConformanceFilter={setConformanceFilter}
         selectedAgent={selectedAgent}
-        onAgentSelect={setSelectedAgent}
-        onClearFilters={() => {
-          setSearchTerm('');
-          setSelectedSkills([]);
-          setConformanceFilter('all');
-        }}
-      />
-    </Layout>
+        onCloseInspection={() => setSelectedAgent(null)}
+      >
+        <AgentGrid
+          agents={filteredAgents}
+          loading={loading}
+          error={error}
+          selectedAgent={selectedAgent}
+          onAgentSelect={handleAgentSelect}
+          onClearFilters={() => {
+            setSearchTerm('');
+            setSelectedSkills([]);
+            setConformanceFilter('all');
+          }}
+        />
+      </Layout>
+    </>
   );
 };
 

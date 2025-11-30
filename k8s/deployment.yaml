@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2a-registry-api
+  labels:
+    app: a2a-registry
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: a2a-registry
+      component: api
+  template:
+    metadata:
+      labels:
+        app: a2a-registry
+        component: api
+    spec:
+      containers:
+      - name: api
+        image: a2a-registry-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: a2a-registry-secrets
+              key: database-url
+        - name: POSTHOG_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: a2a-registry-secrets
+              key: posthog-key
+        - name: API_HOST
+          value: "0.0.0.0"
+        - name: API_PORT
+          value: "8000"
+        - name: CORS_ORIGINS
+          value: '["https://www.a2aregistry.org","http://localhost:5173"]'
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2a-registry-api
+  labels:
+    app: a2a-registry
+    component: api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: a2a-registry
+    component: api
