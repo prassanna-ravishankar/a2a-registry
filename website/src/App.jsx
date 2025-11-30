@@ -34,7 +34,7 @@ const A2ARegistry = () => {
       cache: 'force-cache'
     })
       .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status} `);
         return res.json();
       })
       .then(data => {
@@ -74,12 +74,12 @@ const A2ARegistry = () => {
       const agentId = selectedAgent.name.toLowerCase().replace(/\s+/g, '-');
       if (params.get('agent') !== agentId) {
         params.set('agent', agentId);
-        window.history.pushState({}, '', `?${params.toString()}`);
+        window.history.pushState({}, '', `? ${params.toString()} `);
       }
     } else {
       if (params.has('agent')) {
         params.delete('agent');
-        const newUrl = params.toString() ? `?${params.toString()}` : '/';
+        const newUrl = params.toString() ? `? ${params.toString()} ` : '/';
         window.history.pushState({}, '', newUrl);
       }
     }
