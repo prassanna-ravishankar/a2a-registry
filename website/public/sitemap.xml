@@ -21,14 +21,34 @@
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
-  <!-- Example Agent Deep Links for SEO -->
+  <!-- Agent Deep Links for SEO -->
   <url>
     <loc>https://www.a2aregistry.org/?agent=chess-agent</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.a2aregistry.org/?agent=data-miner</loc>
+    <loc>https://www.a2aregistry.org/?agent=code-agent</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.a2aregistry.org/?agent=data-agent</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.a2aregistry.org/?agent=research-agent</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.a2aregistry.org/?agent=planning-agent</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.a2aregistry.org/?agent=hello-world-agent</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
