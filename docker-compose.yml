@@ -71,7 +71,7 @@ services:
       - api
     working_dir: /app
     environment:
-      VITE_API_URL: http://localhost:8001/api
+      VITE_API_URL: http://localhost:8001
       VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
       VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://us.posthog.com}
     ports:
