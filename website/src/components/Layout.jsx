@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import InspectionDeck from './InspectionDeck';
+import StatsBar from './StatsBar';
 import { Button } from '@/components/ui/button';
 
 const Layout = ({
@@ -16,7 +17,8 @@ const Layout = ({
     conformanceFilter,
     setConformanceFilter,
     selectedAgent,
-    onCloseInspection
+    onCloseInspection,
+    stats
 }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -37,7 +39,8 @@ const Layout = ({
     }, []);
 
     return (
-        <div className="flex flex-col h-full bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
+        <div className="flex flex-col h-screen bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
+            {stats && <StatsBar stats={stats} />}
             <Header
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
