@@ -34,6 +34,7 @@ const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => 
                 <div className="relative group">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
                     <Input
+                        id="global-agent-search"
                         className="h-8 bg-zinc-900 border-zinc-800 text-zinc-200 text-xs font-mono pl-8 focus:border-emerald-500/50 focus:ring-0 placeholder:text-zinc-600"
                         placeholder="SEARCH..."
                         value={searchTerm}

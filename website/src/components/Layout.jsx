@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -19,6 +19,22 @@ const Layout = ({
     onCloseInspection
 }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Keyboard shortcut: "/" to focus search
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+                const searchInput = document.getElementById('global-agent-search');
+                if (searchInput && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <div className="flex flex-col h-screen bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
