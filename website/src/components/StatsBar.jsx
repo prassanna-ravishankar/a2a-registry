@@ -32,19 +32,19 @@ const StatsBar = ({ stats }) => {
   ];
 
   return (
-    <div className="w-full bg-black/30 border-b border-cyan-500/20 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-6 py-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="w-full bg-black border-b border-zinc-800/50">
+      <div className="max-w-full mx-auto px-6 py-2">
+        <div className="flex items-center justify-between gap-6 text-[10px] font-mono uppercase tracking-wider">
           {statItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <div className={`${item.color} opacity-50`}>
-                <item.icon className="w-5 h-5" />
+            <div key={index} className="flex items-center gap-2">
+              <div className="text-emerald-500/50">
+                <item.icon className="w-3.5 h-3.5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-400 font-mono uppercase tracking-wide">
+              <div className="flex items-baseline gap-2">
+                <span className="text-zinc-500">
                   {item.label}
                 </span>
-                <span className={`text-lg font-bold font-mono ${item.color}`}>
+                <span className={`text-sm font-bold ${item.color}`}>
                   {item.value}
                 </span>
               </div>
