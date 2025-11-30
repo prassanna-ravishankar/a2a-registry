@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Terminal from './Terminal';
 
-const InspectionDeck = ({ agent, onClose, isMobile }) => {
+const InspectionDeck = ({ agent, onClose }) => {
     if (!agent) {
         return (
-            <aside className={`${isMobile ? 'w-full' : 'w-[450px] border-l'} border-zinc-800 bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 shrink-0 h-full`}>
+            <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col items-center justify-center text-zinc-700">
                 <div className="w-16 h-16 border-2 border-zinc-800 rounded-full flex items-center justify-center mb-4">
                     <Zap className="w-6 h-6" />
                 </div>
@@ -18,7 +18,7 @@ const InspectionDeck = ({ agent, onClose, isMobile }) => {
     }
 
     return (
-        <aside className={`${isMobile ? 'w-full absolute inset-0 z-50' : 'w-[450px] border-l'} border-zinc-800 bg-zinc-950 flex flex-col shrink-0 h-full`}>
+        <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col">
             {/* Header */}
             <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
                 <div className="flex items-center gap-2">

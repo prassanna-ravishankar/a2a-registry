@@ -108,7 +108,7 @@ const Terminal = ({ agent }) => {
             if (response.message) {
                 // Direct message response
                 responseText = extractMessageText(response.message);
-            } else if (response.task || response.id) {
+            } else if (response.id) {
                 // Task response - need to poll until completed
                 const taskId = response.id;
                 const taskState = response.status?.state;

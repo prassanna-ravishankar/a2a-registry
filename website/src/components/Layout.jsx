@@ -71,11 +71,10 @@ const Layout = ({
                 </main>
 
                 {selectedAgent && (
-                    <div className={`absolute inset-0 z-30 md:static md:z-auto md:w-[450px] md:shrink-0 ${selectedAgent ? 'block' : 'hidden md:block'}`}>
+                    <div className="absolute inset-0 z-30 md:static md:z-auto md:w-[450px] md:shrink-0">
                         <InspectionDeck
                             agent={selectedAgent}
                             onClose={onCloseInspection}
-                            isMobile={true}
                         />
                     </div>
                 )}
