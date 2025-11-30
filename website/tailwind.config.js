@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        mono: ['"Fira Code"', '"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -41,6 +44,27 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom palette from redesign.md
+        zinc: {
+          800: '#27272a',
+          900: '#18181b',
+          950: '#0a0a0a',
+        },
+        emerald: {
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+        },
+        amber: {
+          400: '#fbbf24',
+          500: '#f59e0b',
+        },
+        red: {
+          500: '#ef4444',
+        },
+        cyan: {
+          400: '#22d3ee',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -56,25 +80,19 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        blob: {
-          "0%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
-          "33%": {
-            transform: "translate(30px, -50px) scale(1.1)",
-          },
-          "66%": {
-            transform: "translate(-20px, 20px) scale(0.9)",
-          },
-          "100%": {
-            transform: "translate(0px, 0px) scale(1)",
-          },
+        glitch: {
+          "0%": { transform: "translate(0)" },
+          "20%": { transform: "translate(-2px, 2px)" },
+          "40%": { transform: "translate(-2px, -2px)" },
+          "60%": { transform: "translate(2px, 2px)" },
+          "80%": { transform: "translate(2px, -2px)" },
+          "100%": { transform: "translate(0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        blob: "blob 7s infinite",
+        glitch: "glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite",
       },
     },
   },

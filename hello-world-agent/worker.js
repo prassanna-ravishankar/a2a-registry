@@ -52,7 +52,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, A2A-Version, Accept',
     };
 
     // Handle preflight requests
@@ -74,12 +74,57 @@ export default {
       });
     }
 
-    // Handle A2A endpoint
+    // Handle A2A REST endpoint: POST /v1/message:send
+    if (url.pathname === '/a2a/v1/message:send' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+
+        // Extract user message from A2A SendMessageRequest format (handle multiple text parts)
+        const userMessage = body.message?.parts?.filter(part => part.text).map(part => part.text).join('\n') || 'Hello';
+
+        // Return A2A Message response
+        const a2aResponse = {
+          message: {
+            messageId: crypto.randomUUID(),
+            role: 'assistant',
+            parts: [{
+              kind: 'text',
+              text: `Hello World! You said: "${userMessage}"`
+            }],
+            timestamp: new Date().toISOString()
+          }
+        };
+
+        return new Response(JSON.stringify(a2aResponse, null, 2), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          type: "https://a2a-protocol.org/errors/invalid-request",
+          title: "Invalid Request",
+          status: 400,
+          detail: error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/problem+json',
+            ...corsHeaders
+          }
+        });
+      }
+    }
+
+    // Legacy /a2a endpoint for backwards compatibility
     if (url.pathname === '/a2a' && request.method === 'POST') {
       try {
         const contentType = request.headers.get('content-type') || '';
         let input = '';
-        
+
         if (contentType.includes('application/json')) {
           const body = await request.json();
           input = body.message || body.text || JSON.stringify(body);
@@ -197,7 +242,8 @@ export default {
         
         <h2>Endpoints</h2>
         <div class="endpoint">GET <a href="/.well-known/agent-card.json">/.well-known/agent-card.json</a></div>
-        <div class="endpoint">POST /a2a</div>
+        <div class="endpoint">POST /a2a/v1/message:send (A2A Protocol)</div>
+        <div class="endpoint">POST /a2a (Legacy)</div>
         
         <h2>Agent Information</h2>
         <ul>

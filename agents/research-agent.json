@@ -30,7 +30,7 @@
     "organization": "Prassanna Ravishankar",
     "url": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping"
   },
-  "preferredTransport": "REST",
+  "preferredTransport": "JSONRPC",
   "documentationUrl": "https://github.com/prassanna-ravishankar/a2a-agent-bootstrapping#research-agent-port-8002",
   "author": "Prassanna Ravishankar",
   "wellKnownURI": "https://prassanna-ravishankar--research-agent-research-agent-app.modal.run/.well-known/agent.json",
