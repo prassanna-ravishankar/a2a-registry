@@ -87,7 +87,7 @@ const InspectionDeck = ({ agent, onClose }) => {
                                         {`from a2a_registry import Registry
 
 registry = Registry()
-agent = registry.get_by_id("${agent.name.toLowerCase().replace(/\\s+/g, '-')}")
+agent = registry.get_by_id("${agent.name.toLowerCase().replace(/\s+/g, '-')}")
 print(f"Found: {agent.name}")
 
 # Connect
