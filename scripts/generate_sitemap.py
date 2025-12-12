@@ -32,14 +32,14 @@ def generate_sitemap(registry_path: Path, output_path: Path) -> None:
 
     # Main page
     url = SubElement(urlset, "url")
-    SubElement(url, "loc").text = "https://www.a2aregistry.org/"
+    SubElement(url, "loc").text = "https://a2aregistry.org/"
     SubElement(url, "lastmod").text = current_date
     SubElement(url, "changefreq").text = "daily"
     SubElement(url, "priority").text = "1.0"
 
     # Registry JSON API
     url = SubElement(urlset, "url")
-    SubElement(url, "loc").text = "https://www.a2aregistry.org/registry.json"
+    SubElement(url, "loc").text = "https://a2aregistry.org/registry.json"
     SubElement(url, "lastmod").text = current_date
     SubElement(url, "changefreq").text = "daily"
     SubElement(url, "priority").text = "0.8"
