@@ -47,29 +47,27 @@ const Layout = ({
 
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Mobile Sidebar Overlay */}
-                {isMobileMenuOpen && (
-                    <div className="absolute inset-0 z-40 md:hidden">
-                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-                        <div className="absolute inset-y-0 left-0 w-3/4 max-w-xs bg-zinc-950 border-r border-zinc-800 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
-                            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-                                <span className="text-emerald-500 font-bold">SYSTEM_FILTERS</span>
-                                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto">
-                                <Sidebar
-                                    allTags={allTags}
-                                    selectedSkills={selectedSkills}
-                                    toggleSkillFilter={toggleSkillFilter}
-                                    conformanceFilter={conformanceFilter}
-                                    setConformanceFilter={setConformanceFilter}
-                                    isMobile={true}
-                                />
-                            </div>
+                <div className={`absolute inset-0 z-40 !block md:!hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+                    <div className={`absolute inset-y-0 left-0 w-3/4 max-w-xs bg-zinc-950 border-r border-zinc-800 shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+                            <span className="text-emerald-500 font-bold">SYSTEM_FILTERS</span>
+                            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            <Sidebar
+                                allTags={allTags}
+                                selectedSkills={selectedSkills}
+                                toggleSkillFilter={toggleSkillFilter}
+                                conformanceFilter={conformanceFilter}
+                                setConformanceFilter={setConformanceFilter}
+                                isMobile={true}
+                            />
                         </div>
                     </div>
-                )}
+                </div>
 
                 {/* Desktop Sidebar */}
                 <div className="hidden md:flex w-64 shrink-0 h-full">
