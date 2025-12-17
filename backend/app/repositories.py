@@ -21,9 +21,9 @@ class AgentRepository:
             INSERT INTO agents (
                 protocol_version, name, description, author, well_known_uri,
                 url, version, provider, documentation_url, capabilities,
-                default_input_modes, default_output_modes, skills
+                default_input_modes, default_output_modes, skills, conformance
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             RETURNING *
         """
 
@@ -42,6 +42,7 @@ class AgentRepository:
             json.dumps(agent.defaultInputModes),
             json.dumps(agent.defaultOutputModes),
             json.dumps([skill.model_dump() for skill in agent.skills]),
+            agent.conformance,
         )
 
         return self._row_to_agent(row)
@@ -204,6 +205,7 @@ class AgentRepository:
             defaultInputModes=json.loads(row["default_input_modes"]),
             defaultOutputModes=json.loads(row["default_output_modes"]),
             skills=json.loads(row["skills"]),
+            conformance=row["conformance"],
         )
 
     def _row_to_agent_public(self, row) -> AgentPublic:

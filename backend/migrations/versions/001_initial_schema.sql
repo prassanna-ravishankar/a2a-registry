@@ -28,7 +28,8 @@ CREATE TABLE agents (
 
     -- Registry metadata
     hidden BOOLEAN DEFAULT FALSE,
-    flag_count INTEGER DEFAULT 0
+    flag_count INTEGER DEFAULT 0,
+    conformance BOOLEAN DEFAULT NULL
 );
 
 -- Indexes for agents

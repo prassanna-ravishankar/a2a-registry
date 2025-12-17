@@ -53,6 +53,9 @@ class AgentBase(BaseModel):
     defaultOutputModes: list[str] = Field(alias="defaultOutputModes")
     skills: list[Skill]
 
+    # Conformance flag (NULL/True = standard, False = non-standard)
+    conformance: Optional[bool] = None
+
     # Optional registry extensions
     homepage: Optional[HttpUrl] = None
     repository: Optional[HttpUrl] = None
