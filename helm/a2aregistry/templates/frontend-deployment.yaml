@@ -1,0 +1,43 @@
+{{- if .Values.frontend.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2aregistry-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: frontend
+spec:
+  {{- if not .Values.frontend.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: a2aregistry
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: a2aregistry
+        component: frontend
+    spec:
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+      - name: frontend
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.frontend.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+{{- end }}

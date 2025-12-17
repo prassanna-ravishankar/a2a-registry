@@ -1,10 +1,12 @@
-name: Deploy A2A Registry Backend
+name: Deploy A2A Registry
 
 on:
   push:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'website/**'
+      - 'helm/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
@@ -63,6 +65,24 @@ jobs:
           docker push gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:${{ env.IMAGE_TAG }}
           docker push gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:latest
 
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: website
+          file: website/Dockerfile
+          push: true
+          provenance: false
+          build-args: |
+            VITE_API_URL=https://beta.a2aregistry.org/api
+            VITE_POSTHOG_HOST=https://us.posthog.com
+          tags: |
+            gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
+            gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:latest
+          cache-from: |
+            type=gha
+            type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:latest
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
@@ -73,8 +93,8 @@ jobs:
       id-token: write
 
     environment:
-      name: production
-      url: https://www.a2aregistry.org
+      name: beta
+      url: https://beta.a2aregistry.org
 
     steps:
       - uses: actions/checkout@v4
@@ -91,28 +111,34 @@ jobs:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_REGION }}
 
-      - name: Update deployment images
-        run: |
-          # Update API deployment
-          kubectl set image deployment/a2a-registry-api \
-            api=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-api:${{ env.IMAGE_TAG }} \
-            -n a2a-registry
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
 
-          # Update worker deployment
-          kubectl set image deployment/a2a-registry-worker \
-            worker=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:${{ env.IMAGE_TAG }} \
-            -n a2a-registry
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install a2aregistry ./helm/a2aregistry \
+            --namespace a2aregistry \
+            --create-namespace \
+            --values ./helm/a2aregistry/values-prod.yaml \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --wait \
+            --timeout 5m
 
       - name: Verify deployment
         run: |
           echo "✅ Verifying deployment..."
-          kubectl rollout status deployment/a2a-registry-api -n a2a-registry --timeout=5m
-          kubectl rollout status deployment/a2a-registry-worker -n a2a-registry --timeout=5m
+          kubectl rollout status deployment/a2aregistry-api -n a2aregistry --timeout=5m
+          kubectl rollout status deployment/a2aregistry-worker -n a2aregistry --timeout=5m
+          kubectl rollout status deployment/a2aregistry-frontend -n a2aregistry --timeout=5m
 
       - name: Deployment summary
         run: |
-          echo "🎉 A2A Registry backend deployment completed!"
+          echo "🎉 A2A Registry deployment completed!"
           echo ""
-          kubectl get pods -n a2a-registry -o wide
+          kubectl get pods -n a2aregistry -o wide
           echo ""
-          kubectl get svc -n a2a-registry
+          kubectl get svc -n a2aregistry
+          echo ""
+          kubectl get httproute -n torale | grep a2aregistry

@@ -1,0 +1,32 @@
+# Production values for a2aregistry (beta deployment)
+# Overrides values.yaml for production environment
+
+# Use specific image tags (not 'latest') for production
+image:
+  tag: "{{ .Values.imageTag }}"  # Will be set by CI/CD
+
+# Production scaling
+api:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+worker:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+
+# Enable PostHog for production
+posthog:
+  enabled: true
+
+# Production configuration
+config:
+  apiReload: "false"
