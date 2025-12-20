@@ -146,8 +146,8 @@ database:
   connectionName: "baldmaninc:us-central1:clusterkit-db"
   host: "127.0.0.1"  # Cloud SQL Proxy
   port: 5432
-  name: a2a_registry_beta
-  user: a2a_registry_beta
+  name: a2aregistry
+  user: a2aregistry
   # Password should be set in secrets
 
 # Cloud SQL Proxy sidecar configuration
