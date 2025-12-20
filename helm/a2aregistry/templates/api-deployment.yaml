@@ -41,8 +41,14 @@ spec:
           containerPort: 8000
           protocol: TCP
         env:
-        - name: DATABASE_URL
-          value: "postgresql://{{ .Values.database.user }}:$(DB_PASSWORD)@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}"
+        - name: DB_HOST
+          value: "{{ .Values.database.host }}"
+        - name: DB_PORT
+          value: "{{ .Values.database.port }}"
+        - name: DB_NAME
+          value: "{{ .Values.database.name }}"
+        - name: DB_USER
+          value: "{{ .Values.database.user }}"
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:

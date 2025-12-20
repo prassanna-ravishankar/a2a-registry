@@ -1,5 +1,6 @@
 """Configuration management using pydantic-settings"""
 
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +13,25 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # Database
-    database_url: str = "postgresql://localhost/a2a_registry"
+    # Database - individual components (used in Kubernetes)
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "a2a_registry"
+    db_user: str = "postgres"
+    db_password: str = ""
+
+    # Database URL (optional override, takes precedence if set)
+    database_url_override: str = ""
+
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        """Construct DATABASE_URL from components or use override"""
+        if self.database_url_override:
+            return self.database_url_override
+        if self.db_password:
+            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return f"postgresql://{self.db_user}@{self.db_host}:{self.db_port}/{self.db_name}"
     database_pool_min_size: int = 5
     database_pool_max_size: int = 20
 

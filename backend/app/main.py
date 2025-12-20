@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -53,8 +53,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create router for all API endpoints
+router = APIRouter()
 
-@app.get("/")
+
+@router.get("/")
 async def root():
     """API root - basic info"""
     return {
@@ -68,7 +71,7 @@ async def root():
     }
 
 
-@app.get("/health")
+@router.get("/health")
 async def health_check():
     """Health check endpoint for k8s"""
     return {"status": "healthy"}
@@ -79,7 +82,7 @@ async def health_check():
 # ============================================================================
 
 
-@app.post("/agents", response_model=AgentPublic, status_code=201)
+@router.post("/agents", response_model=AgentPublic, status_code=201)
 async def register_agent(agent: AgentCreate, request: Request):
     """
     Register a new agent.
@@ -111,7 +114,7 @@ async def register_agent(agent: AgentCreate, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
 
 
-@app.get("/agents", response_model=PaginatedAgents)
+@router.get("/agents", response_model=PaginatedAgents)
 async def list_agents(
     skill: Optional[str] = None,
     capability: Optional[str] = None,
@@ -159,7 +162,7 @@ async def list_agents(
     )
 
 
-@app.get("/agents/{agent_id}", response_model=AgentPublic)
+@router.get("/agents/{agent_id}", response_model=AgentPublic)
 async def get_agent(agent_id: UUID):
     """Get a single agent by ID with health metrics"""
     track_api_query("GET /agents/{id}", agent_id=str(agent_id))
@@ -173,7 +176,7 @@ async def get_agent(agent_id: UUID):
     return agent
 
 
-@app.delete("/agents/{agent_id}", status_code=204)
+@router.delete("/agents/{agent_id}", status_code=204)
 async def delete_agent(agent_id: UUID, request: Request):
     """
     Delete an agent (owner only).
@@ -208,7 +211,7 @@ async def delete_agent(agent_id: UUID, request: Request):
 # ============================================================================
 
 
-@app.get("/agents/{agent_id}/health", response_model=HealthStatus)
+@router.get("/agents/{agent_id}/health", response_model=HealthStatus)
 async def get_agent_health(agent_id: UUID):
     """Get current health status for an agent (last 24 hours)"""
     track_api_query("GET /agents/{id}/health", agent_id=str(agent_id))
@@ -222,7 +225,7 @@ async def get_agent_health(agent_id: UUID):
     return status
 
 
-@app.get("/agents/{agent_id}/uptime", response_model=UptimeMetrics)
+@router.get("/agents/{agent_id}/uptime", response_model=UptimeMetrics)
 async def get_agent_uptime(agent_id: UUID, period_days: int = 30):
     """Get historical uptime metrics for an agent"""
     track_api_query("GET /agents/{id}/uptime", agent_id=str(agent_id), period_days=period_days)
@@ -245,7 +248,7 @@ async def get_agent_uptime(agent_id: UUID, period_days: int = 30):
 # ============================================================================
 
 
-@app.get("/stats", response_model=RegistryStats)
+@router.get("/stats", response_model=RegistryStats)
 async def get_registry_stats():
     """Get registry-wide statistics"""
     track_api_query("GET /stats")
@@ -259,7 +262,7 @@ async def get_registry_stats():
 # ============================================================================
 
 
-@app.post("/agents/{agent_id}/flag", status_code=201)
+@router.post("/agents/{agent_id}/flag", status_code=201)
 async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     """Community flag/report an agent"""
     track_api_query("POST /agents/{id}/flag", agent_id=str(agent_id))
@@ -276,6 +279,17 @@ async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     await agent_repo.increment_flag_count(agent_id)
 
     return {"message": "Flag recorded"}
+
+
+# ============================================================================
+# Mount router at both / and /api prefixes for GKE Gateway compatibility
+# ============================================================================
+
+# Include router at root (for direct access and docker-compose)
+app.include_router(router)
+
+# Include router at /api prefix (for GKE Gateway HTTPRoute)
+app.include_router(router, prefix="/api")
 
 
 # ============================================================================

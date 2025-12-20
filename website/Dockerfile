@@ -20,8 +20,8 @@ ARG VITE_API_URL
 ARG VITE_POSTHOG_KEY
 ARG VITE_POSTHOG_HOST
 
-# Build the application
-RUN npm run build
+# Build the application (outputs to ../docs by default, but we need dist for Docker)
+RUN mkdir -p dist && npm run build -- --outDir dist
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine
