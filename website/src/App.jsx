@@ -6,7 +6,10 @@ import { api, fetchStaticRegistry } from './lib/api';
 import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
 
 const A2ARegistry = () => {
-  const [currentPage, setCurrentPage] = useState('home'); // 'home' or 'submit'
+  // Initialize page from URL path
+  const [currentPage, setCurrentPage] = useState(() => {
+    return window.location.pathname === '/submit' ? 'submit' : 'home';
+  });
   const [agents, setAgents] = useState([]);
   const [filteredAgents, setFilteredAgents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -214,14 +217,30 @@ const A2ARegistry = () => {
   // Handle page navigation
   useEffect(() => {
     const handleNavigate = (e) => {
-      if (e.target.tagName === 'A' && e.target.pathname === '/submit') {
+      // Handle clicks on links
+      const link = e.target.closest('a');
+      if (link && link.pathname === '/submit') {
         e.preventDefault();
         setCurrentPage('submit');
+        window.history.pushState({}, '', '/submit');
+      } else if (link && link.pathname === '/' && link.origin === window.location.origin) {
+        e.preventDefault();
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
       }
     };
 
+    // Handle browser back/forward
+    const handlePopState = () => {
+      setCurrentPage(window.location.pathname === '/submit' ? 'submit' : 'home');
+    };
+
     document.addEventListener('click', handleNavigate);
-    return () => document.removeEventListener('click', handleNavigate);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      document.removeEventListener('click', handleNavigate);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   if (currentPage === 'submit') {

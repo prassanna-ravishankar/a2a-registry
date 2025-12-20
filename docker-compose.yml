@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: a2a_user
       POSTGRES_PASSWORD: a2a_password
     ports:
-      - "5433:5432"
+      - "17432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations/versions/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
@@ -30,18 +30,18 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
+      DATABASE_URL_OVERRIDE: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
       API_HOST: 0.0.0.0
       API_PORT: 8000
       API_RELOAD: "true"
-      CORS_ORIGINS: '["http://localhost:5174","http://localhost:5173","http://localhost:3000"]'
+      CORS_ORIGINS: '["http://localhost:17173","http://localhost:5173","http://localhost:5174","http://localhost:3000","https://www.a2aregistry.org"]'
       POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
       POSTHOG_HOST: ${POSTHOG_HOST:-https://us.posthog.com}
       POSTHOG_ENABLED: ${POSTHOG_ENABLED:-false}
       HEALTH_CHECK_INTERVAL_SECONDS: 300
       HEALTH_CHECK_TIMEOUT_SECONDS: 10
     ports:
-      - "8001:8000"
+      - "17001:8000"
     volumes:
       - ./backend:/app
       - ./agents:/agents
@@ -57,7 +57,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
+      DATABASE_URL_OVERRIDE: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
       HEALTH_CHECK_INTERVAL_SECONDS: 300
       HEALTH_CHECK_TIMEOUT_SECONDS: 10
     volumes:
@@ -72,11 +72,11 @@ services:
       - api
     working_dir: /app
     environment:
-      VITE_API_URL: http://localhost:8001
+      VITE_API_URL: http://localhost:17001
       VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
       VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://us.posthog.com}
     ports:
-      - "5174:5173"
+      - "17173:5173"
     volumes:
       - ./website:/app
       - frontend_node_modules:/app/node_modules
