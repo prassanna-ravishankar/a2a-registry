@@ -67,8 +67,18 @@ class AgentBase(BaseModel):
 
 
 class AgentCreate(AgentBase):
-    """Model for creating a new agent (POST /agents)"""
+    """Model for creating a new agent (POST /agents) - full payload"""
     pass
+
+
+class AgentRegister(BaseModel):
+    """Simplified registration - just provide the wellKnownURI"""
+    wellKnownURI: HttpUrl = Field(alias="wellKnownURI")
+
+    # Optional overrides (if not in agent card)
+    author: Optional[str] = None
+
+    model_config = {"populate_by_name": True}
 
 
 class AgentInDB(AgentBase):

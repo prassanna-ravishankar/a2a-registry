@@ -14,13 +14,14 @@ from .models import (
     AgentCreate,
     AgentFlag,
     AgentPublic,
+    AgentRegister,
     HealthStatus,
     PaginatedAgents,
     RegistryStats,
     UptimeMetrics,
 )
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
-from .utils import track_api_query, verify_well_known_uri
+from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 
 
 @asynccontextmanager
@@ -82,12 +83,71 @@ async def health_check():
 # ============================================================================
 
 
-@router.post("/agents", response_model=AgentPublic, status_code=201)
-async def register_agent(agent: AgentCreate, request: Request):
+@router.post("/agents/register", response_model=AgentPublic, status_code=201)
+async def register_agent_simple(registration: AgentRegister, request: Request):
     """
-    Register a new agent.
+    Register an agent by its wellKnownURI (simplified flow).
+
+    Just provide the wellKnownURI and we'll fetch the agent card automatically.
+    The agent card must be accessible and contain valid A2A Protocol fields.
+
+    Example:
+        POST /api/agents/register
+        {"wellKnownURI": "https://example.com/.well-known/agent.json"}
+    """
+    well_known_uri = str(registration.wellKnownURI)
+    track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
+
+    # Check if already exists
+    agent_repo = AgentRepository(db)
+    existing = await agent_repo.get_by_well_known_uri(well_known_uri)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Agent already registered. Use PUT /agents/{{id}} to update.",
+        )
+
+    # Fetch the agent card from the wellKnownURI
+    agent_card, error = await fetch_agent_card(well_known_uri)
+    if error:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
+
+    # Build AgentCreate from fetched agent card
+    try:
+        agent_data = AgentCreate(
+            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
+            name=agent_card["name"],
+            description=agent_card["description"],
+            author=registration.author or agent_card.get("provider", {}).get("organization", "Unknown"),
+            wellKnownURI=well_known_uri,
+            url=agent_card["url"],
+            version=agent_card["version"],
+            provider=agent_card.get("provider"),
+            documentationUrl=agent_card.get("documentationUrl"),
+            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
+            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
+            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
+            skills=agent_card.get("skills", []),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
+
+    # Create agent
+    try:
+        created_agent = await agent_repo.create(agent_data)
+        result = await agent_repo.get_by_id(created_agent.id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
+
+
+@router.post("/agents", response_model=AgentPublic, status_code=201)
+async def register_agent_full(agent: AgentCreate, request: Request):
+    """
+    Register a new agent (full payload).
 
     Validates ownership by fetching wellKnownURI and comparing key fields.
+    For a simpler flow, use POST /agents/register with just the wellKnownURI.
     """
     track_api_query("POST /agents", author=agent.author)
 

@@ -1,7 +1,7 @@
 """Utility functions for agent validation and tracking"""
 
 import aiohttp
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from .config import settings
 from .models import AgentCreate
@@ -73,6 +73,48 @@ async def verify_well_known_uri(agent_data: AgentCreate) -> Tuple[bool, str]:
         return False, f"Network error accessing {well_known_uri}: {e}"
     except Exception as e:
         return False, f"Unexpected error: {e}"
+
+
+async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]], Optional[str]]:
+    """
+    Fetch an agent card from a wellKnownURI.
+
+    Args:
+        well_known_uri: The URL to fetch the agent card from
+
+    Returns:
+        Tuple of (agent_card_dict or None, error_message or None)
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                well_known_uri,
+                timeout=aiohttp.ClientTimeout(total=settings.health_check_timeout_seconds),
+                headers={
+                    "User-Agent": "A2A-Registry/1.0",
+                    "Accept": "application/json",
+                },
+            ) as response:
+                if response.status != 200:
+                    return None, f"Agent card endpoint returned HTTP {response.status}"
+
+                try:
+                    agent_card = await response.json()
+                except Exception as e:
+                    return None, f"Invalid JSON in agent card: {e}"
+
+                # Validate required A2A fields
+                required_fields = ["name", "description", "url", "version", "capabilities"]
+                missing = [f for f in required_fields if f not in agent_card]
+                if missing:
+                    return None, f"Agent card missing required fields: {', '.join(missing)}"
+
+                return agent_card, None
+
+    except aiohttp.ClientError as e:
+        return None, f"Network error fetching agent card: {e}"
+    except Exception as e:
+        return None, f"Unexpected error: {e}"
 
 
 def track_event(event_name: str, properties: dict = None):
