@@ -17,23 +17,12 @@ const SubmitForm = () => {
     setSuccess(false);
 
     try {
-      // First fetch the agent data from the wellKnownURI
-      const response = await fetch(wellKnownURI);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch agent card: HTTP ${response.status}`);
-      }
-
-      const agentData = await response.json();
-
-      // Add the wellKnownURI to the data
-      agentData.wellKnownURI = wellKnownURI;
-
-      // Submit to our API
-      const result = await api.registerAgent(agentData);
+      // Use simplified registration - backend fetches the agent card
+      const result = await api.registerAgentByURI(wellKnownURI);
 
       setSuccess(true);
       setSubmittedAgent(result);
-      trackAgentSubmission(true, agentData.name);
+      trackAgentSubmission(true, result.name);
       setWellKnownURI('');
     } catch (err) {
       setError(err.message || 'Failed to register agent');
@@ -153,13 +142,22 @@ const SubmitForm = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-cyan-400 mt-0.5">•</span>
-                  <span>Must serve valid A2A Protocol agent card</span>
+                  <span>
+                    Must serve a valid{' '}
+                    <a
+                      href="https://a2a-protocol.org/latest/specification/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300"
+                    >
+                      A2A Protocol agent card
+                    </a>
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-cyan-400 mt-0.5">•</span>
                   <span>
-                    Name and description must match between submission and
-                    well-known endpoint
+                    Required fields: name, description, url, version, capabilities
                   </span>
                 </li>
               </ul>

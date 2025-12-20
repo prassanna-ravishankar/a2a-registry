@@ -65,11 +65,19 @@ export const api = {
     return fetchAPI('/stats');
   },
 
-  // Register a new agent
+  // Register a new agent (full payload)
   async registerAgent(agentData) {
     return fetchAPI('/agents', {
       method: 'POST',
       body: JSON.stringify(agentData),
+    });
+  },
+
+  // Register agent by wellKnownURI (simplified - backend fetches the agent card)
+  async registerAgentByURI(wellKnownURI, author = null) {
+    return fetchAPI('/agents/register', {
+      method: 'POST',
+      body: JSON.stringify({ wellKnownURI, author }),
     });
   },
 
