@@ -2,7 +2,9 @@ name: Deploy A2A Registry
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
     paths:
       - 'backend/**'
       - 'website/**'
