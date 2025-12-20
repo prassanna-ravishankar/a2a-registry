@@ -86,7 +86,29 @@ uv run ruff format .
 
 ## Deployment
 
-See `/k8s` directory for Kubernetes deployment manifests.
+### Kubernetes (GKE)
+
+The backend is deployed to GKE using Helm. See `/helm/a2aregistry/` for the chart.
+
+```bash
+# Deploy to GKE
+helm upgrade --install a2aregistry ./helm/a2aregistry \
+  --namespace a2aregistry \
+  --create-namespace \
+  --set image.tag=latest
+
+# Create secrets (required before first deploy)
+kubectl create secret generic a2aregistry-secrets -n a2aregistry \
+  --from-literal=DB_PASSWORD="..." \
+  --from-literal=POSTHOG_API_KEY="" \
+  --from-literal=SECRET_KEY="..."
+```
+
+### Docker Compose (Local Development)
+
+```bash
+docker-compose up
+```
 
 ## Architecture
 
