@@ -33,19 +33,13 @@ services:
       DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
       API_HOST: 0.0.0.0
       API_PORT: 8000
-      API_RELOAD: "true"
-      CORS_ORIGINS: '["http://localhost:5174","http://localhost:5173","http://localhost:3000"]'
-      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
-      POSTHOG_HOST: ${POSTHOG_HOST:-https://us.posthog.com}
-      POSTHOG_ENABLED: ${POSTHOG_ENABLED:-false}
+      API_RELOAD: "false"
+      CORS_ORIGINS: '["http://localhost:8080"]'
+      POSTHOG_ENABLED: "false"
       HEALTH_CHECK_INTERVAL_SECONDS: 300
       HEALTH_CHECK_TIMEOUT_SECONDS: 10
     ports:
       - "8001:8000"
-    volumes:
-      - ./backend:/app
-      - ./agents:/agents
-    command: python run.py
 
   # Health Check Worker
   worker:
@@ -60,28 +54,21 @@ services:
       DATABASE_URL: postgresql://a2a_user:a2a_password@postgres:5432/a2a_registry
       HEALTH_CHECK_INTERVAL_SECONDS: 300
       HEALTH_CHECK_TIMEOUT_SECONDS: 10
-    volumes:
-      - ./backend:/app
     command: python worker.py
 
-  # Frontend (development)
+  # Frontend (production build with nginx)
   frontend:
-    image: node:20-alpine
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8001/api
+        VITE_POSTHOG_HOST: https://us.posthog.com
     container_name: a2a-registry-frontend
     depends_on:
       - api
-    working_dir: /app
-    environment:
-      VITE_API_URL: http://localhost:8001
-      VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
-      VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-https://us.posthog.com}
     ports:
-      - "5174:5173"
-    volumes:
-      - ./website:/app
-      - frontend_node_modules:/app/node_modules
-    command: sh -c "npm install && npm run dev -- --host"
+      - "8080:80"
 
 volumes:
   postgres_data:
-  frontend_node_modules:

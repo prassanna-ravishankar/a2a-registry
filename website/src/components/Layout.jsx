@@ -46,7 +46,6 @@ const Layout = ({
                 agentCount={agentCount}
                 onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             />
-            {stats && <StatsBar stats={stats} />}
 
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Mobile Sidebar Overlay */}
@@ -84,6 +83,7 @@ const Layout = ({
                 </div>
 
                 <main className="flex-1 flex flex-col relative min-w-0 md:border-r border-zinc-800">
+                    {stats && <StatsBar stats={stats} />}
                     {children}
                 </main>
 
