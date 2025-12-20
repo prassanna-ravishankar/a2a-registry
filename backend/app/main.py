@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -58,6 +58,15 @@ app.add_middleware(
 router = APIRouter()
 
 
+async def verify_internal_api_key(x_api_key: str = Header(None, alias="X-API-Key")):
+    """Verify internal API key for protected endpoints"""
+    if not settings.internal_api_key:
+        raise HTTPException(status_code=503, detail="Registration not configured")
+    if x_api_key != settings.internal_api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    return True
+
+
 @router.get("/")
 async def root():
     """API root - basic info"""
@@ -83,17 +92,15 @@ async def health_check():
 # ============================================================================
 
 
-@router.post("/agents/register", response_model=AgentPublic, status_code=201)
+@router.post("/agents/register", response_model=AgentPublic, status_code=201, dependencies=[Depends(verify_internal_api_key)])
 async def register_agent_simple(registration: AgentRegister, request: Request):
     """
-    Register an agent by its wellKnownURI (simplified flow).
+    Register an agent by its wellKnownURI (internal API - requires X-API-Key header).
 
     Just provide the wellKnownURI and we'll fetch the agent card automatically.
     The agent card must be accessible and contain valid A2A Protocol fields.
 
-    Example:
-        POST /api/agents/register
-        {"wellKnownURI": "https://example.com/.well-known/agent.json"}
+    This endpoint is protected and only accessible by the frontend UI.
     """
     well_known_uri = str(registration.wellKnownURI)
     track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
@@ -141,13 +148,15 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
 
 
-@router.post("/agents", response_model=AgentPublic, status_code=201)
+@router.post("/agents", response_model=AgentPublic, status_code=201, dependencies=[Depends(verify_internal_api_key)])
 async def register_agent_full(agent: AgentCreate, request: Request):
     """
-    Register a new agent (full payload).
+    Register a new agent with full payload (internal API - requires X-API-Key header).
 
     Validates ownership by fetching wellKnownURI and comparing key fields.
     For a simpler flow, use POST /agents/register with just the wellKnownURI.
+
+    This endpoint is protected and only accessible by the frontend UI.
     """
     track_api_query("POST /agents", author=agent.author)
 

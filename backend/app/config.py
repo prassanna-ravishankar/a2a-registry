@@ -55,5 +55,8 @@ class Settings(BaseSettings):
     rate_limit_submissions_per_hour: int = 10
     rate_limit_enabled: bool = True
 
+    # Internal API key (for UI-only endpoints like registration)
+    internal_api_key: str = ""
+
 
 settings = Settings()

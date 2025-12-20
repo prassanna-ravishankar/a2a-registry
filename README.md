@@ -16,15 +16,9 @@ The A2A Registry is the discovery layer for AI agents. We index **live, hosted a
 
 ### Register Your Agent
 
-**Option 1: API (Recommended)**
+**Option 1: Web UI (Recommended)**
 
-```bash
-curl -X POST https://beta.a2aregistry.org/api/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{"wellKnownURI": "https://your-agent.com/.well-known/agent.json"}'
-```
-
-That's it. We fetch your agent card and register it automatically.
+Visit [a2aregistry.org](https://www.a2aregistry.org) and submit your agent's `wellKnownURI`. We fetch your agent card and register it automatically.
 
 **Option 2: GitHub PR**
 
@@ -67,15 +61,17 @@ Base URL: `https://beta.a2aregistry.org/api`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/agents/register` | POST | Register agent by wellKnownURI |
 | `/agents` | GET | List agents (with filtering) |
-| `/agents` | POST | Register agent (full payload) |
 | `/agents/{id}` | GET | Get agent details |
-| `/agents/{id}` | DELETE | Remove agent (ownership required) |
 | `/agents/{id}/health` | GET | Get health status |
 | `/agents/{id}/uptime` | GET | Get uptime metrics |
 | `/stats` | GET | Registry statistics |
 | `/health` | GET | API health check |
+
+**Internal endpoints** (UI only, require authentication):
+| `/agents/register` | POST | Register agent by wellKnownURI |
+| `/agents` | POST | Register agent (full payload) |
+| `/agents/{id}` | DELETE | Remove agent |
 
 ### Query Parameters (GET /agents)
 
@@ -84,19 +80,6 @@ Base URL: `https://beta.a2aregistry.org/api`
 - `author` - Filter by author name
 - `limit` - Max results (default: 50, max: 100)
 - `offset` - Pagination offset
-
-### Registration (POST /agents/register)
-
-```json
-{
-  "wellKnownURI": "https://your-agent.com/.well-known/agent.json",
-  "author": "Your Name (optional, defaults to provider.organization)"
-}
-```
-
-We fetch your agent card and validate:
-- Required A2A fields: `name`, `description`, `url`, `version`, `capabilities`
-- Endpoint is accessible and returns valid JSON
 
 ## Agent Card Format
 
