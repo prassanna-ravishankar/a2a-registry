@@ -188,11 +188,7 @@ config:
 #   kubectl create secret generic a2aregistry-secrets -n a2aregistry \
 #     --from-literal=DB_PASSWORD="..." \
 #     --from-literal=POSTHOG_API_KEY="" \
-#     --from-literal=INTERNAL_API_KEY="..." \
 #     --from-literal=SECRET_KEY="..."
-#
-# INTERNAL_API_KEY: Required for agent registration endpoints (POST /agents, POST /agents/register)
-#                   The frontend must send this key in the X-API-Key header
 secrets:
   external: true
   name: a2aregistry-secrets

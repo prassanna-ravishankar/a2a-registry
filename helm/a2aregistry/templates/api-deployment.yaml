@@ -60,12 +60,6 @@ spec:
               name: {{ .Values.secrets.name }}
               key: POSTHOG_API_KEY
               optional: true
-        - name: INTERNAL_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ .Values.secrets.name }}
-              key: INTERNAL_API_KEY
-              optional: true
         envFrom:
         - configMapRef:
             name: a2aregistry-config
