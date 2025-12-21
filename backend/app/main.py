@@ -22,6 +22,7 @@ from .models import (
 )
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
+from .validators import validate_well_known_uri
 
 
 @asynccontextmanager
@@ -93,6 +94,11 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     """
     well_known_uri = str(registration.wellKnownURI)
     track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
+
+    # Validate wellKnownURI format
+    uri_errors = validate_well_known_uri(well_known_uri)
+    if uri_errors:
+        raise HTTPException(status_code=400, detail="; ".join(uri_errors))
 
     # Check if already exists
     agent_repo = AgentRepository(db)

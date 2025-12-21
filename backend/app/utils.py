@@ -5,6 +5,7 @@ from typing import Any, Optional, Tuple
 
 from .config import settings
 from .models import AgentCreate
+from .validators import validate_agent_card, validate_well_known_uri
 
 try:
     from posthog import Posthog
@@ -103,11 +104,10 @@ async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]
                 except Exception as e:
                     return None, f"Invalid JSON in agent card: {e}"
 
-                # Validate required A2A fields
-                required_fields = ["name", "description", "url", "version", "capabilities"]
-                missing = [f for f in required_fields if f not in agent_card]
-                if missing:
-                    return None, f"Agent card missing required fields: {', '.join(missing)}"
+                # Validate agent card structure using validators module
+                validation_errors = validate_agent_card(agent_card)
+                if validation_errors:
+                    return None, "Agent card validation failed: " + "; ".join(validation_errors)
 
                 return agent_card, None
 
