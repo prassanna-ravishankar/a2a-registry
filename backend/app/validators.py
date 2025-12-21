@@ -6,28 +6,39 @@ https://github.com/a2aproject/a2a-inspector/blob/main/backend/validators.py
 from typing import Any
 
 
-def validate_agent_card(card_data: dict[str, Any]) -> list[str]:
+def validate_agent_card(card_data: dict[str, Any], strict: bool = False) -> list[str]:
     """
     Validate the structure and fields of an agent card.
 
     Based on A2A Protocol specification:
     https://a2a-protocol.org/latest/specification/
 
+    Args:
+        card_data: The agent card dictionary to validate
+        strict: If True, require all A2A Protocol fields. If False (default),
+                only require core fields for backwards compatibility.
+
     Returns a list of error strings (empty if valid).
     """
     errors: list[str] = []
 
-    # Required fields per A2A Protocol AgentCard spec
-    required_fields = frozenset([
+    # Core required fields (always required)
+    core_required = frozenset([
         "name",
         "description",
         "url",
         "version",
+    ])
+
+    # Extended required fields (only in strict mode)
+    extended_required = frozenset([
         "capabilities",
         "defaultInputModes",
         "defaultOutputModes",
         "skills",
     ])
+
+    required_fields = core_required | extended_required if strict else core_required
 
     # Check for presence of all required fields
     for field in required_fields:
@@ -62,9 +73,17 @@ def validate_agent_card(card_data: dict[str, Any]) -> list[str]:
         if not isinstance(card_data["capabilities"], dict):
             errors.append("Field 'capabilities' must be an object.")
 
-    # Validate 'defaultInputModes' and 'defaultOutputModes' are arrays of strings
-    for field in ["defaultInputModes", "defaultOutputModes"]:
-        if field in card_data:
+    # Validate input/output modes (support both old and new field names)
+    # Old: inputModes, outputModes
+    # New: defaultInputModes, defaultOutputModes
+    mode_fields = [
+        ("defaultInputModes", "inputModes"),
+        ("defaultOutputModes", "outputModes"),
+    ]
+    for new_name, old_name in mode_fields:
+        # Check new name first, fall back to old name
+        field = new_name if new_name in card_data else old_name if old_name in card_data else None
+        if field and field in card_data:
             value = card_data[field]
             if not isinstance(value, list):
                 errors.append(f"Field '{field}' must be an array of strings.")
@@ -73,15 +92,12 @@ def validate_agent_card(card_data: dict[str, Any]) -> list[str]:
             elif not all(isinstance(item, str) for item in value):
                 errors.append(f"All items in '{field}' must be strings.")
 
-    # Validate 'skills' array
+    # Validate 'skills' array (if present)
     if "skills" in card_data:
         skills = card_data["skills"]
         if not isinstance(skills, list):
             errors.append("Field 'skills' must be an array of AgentSkill objects.")
-        elif not skills:
-            errors.append("Field 'skills' must not be empty. Agent must have at least one skill.")
-        else:
-            # Validate each skill
+        elif skills:  # Only validate if non-empty (empty skills is allowed)
             skill_errors = _validate_skills(skills)
             errors.extend(skill_errors)
 
