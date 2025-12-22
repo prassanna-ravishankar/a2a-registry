@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Activity, Menu } from 'lucide-react';
+import { Search, Menu, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -43,11 +43,19 @@ const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => 
                 </div>
             </div>
 
-            {/* Right: Metrics */}
-            <div className="hidden md:flex items-center gap-4 text-xs font-mono">
-                <div className="text-zinc-500">
+            {/* Right: Metrics & Submit */}
+            <div className="flex items-center gap-4 text-xs font-mono">
+                <div className="hidden md:block text-zinc-500">
                     AGENTS_ACTIVE: <span className="text-zinc-200">{agentCount}</span>
                 </div>
+                <a
+                    href="/submit"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500 transition-all text-[10px] md:text-xs font-mono uppercase tracking-wider"
+                >
+                    <Plus className="w-3 h-3" />
+                    <span className="hidden md:inline">SUBMIT_AGENT</span>
+                    <span className="md:hidden">SUBMIT</span>
+                </a>
             </div>
         </header>
     );
