@@ -1,0 +1,58 @@
+{
+  "name": "VAP-E",
+  "description": "AI Media Execution Layer - Image and video generation for autonomous agents with financial determinism, tier-based access, and circuit breaker protection.",
+  "url": "https://api.vapagent.com",
+  "wellKnownURI": "https://api.vapagent.com/.well-known/agent-card.json",
+  "author": {
+    "name": "vapagent",
+    "url": "https://vapagent.com"
+  },
+  "protocolVersion": "0.3.0",
+  "version": "3.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": true,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "generate-image",
+      "name": "Image Generation",
+      "description": "Generate AI images from text descriptions using FLUX, SDXL, and other models. Cost is estimated upfront and tracked after completion."
+    },
+    {
+      "id": "check-balance",
+      "name": "Balance Check",
+      "description": "Check agent account balance including available, reserved, and usable amounts."
+    },
+    {
+      "id": "task-status",
+      "name": "Task Status",
+      "description": "Get the current status of a previously submitted task."
+    }
+  ],
+  "tags": [
+    "image-generation",
+    "video-generation",
+    "media",
+    "ai",
+    "flux",
+    "financial-determinism",
+    "tier-based-access"
+  ],
+  "pricing": {
+    "model": "pay-per-use",
+    "currency": "USD",
+    "minimumDeposit": 1.00,
+    "imageGeneration": {
+      "fluxSchnell": 0.04,
+      "fluxPro": 0.08
+    }
+  },
+  "authentication": {
+    "type": "bearer",
+    "registration": "https://api.vapagent.com/docs#/agents/register_agent_v3_agents_post"
+  }
+}
