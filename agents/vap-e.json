@@ -1,6 +1,6 @@
 {
   "name": "VAP-E",
-  "description": "AI Media Execution Layer - Image and video generation for autonomous agents with financial determinism, tier-based access, and circuit breaker protection.",
+  "description": "Financially deterministic execution and orchestration layer for AI media tasks, designed for autonomous agents.",
   "url": "https://api.vapagent.com",
   "wellKnownURI": "https://api.vapagent.com/.well-known/agent-card.json",
   "author": {
@@ -8,51 +8,40 @@
     "url": "https://vapagent.com"
   },
   "protocolVersion": "0.3.0",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "capabilities": {
     "streaming": false,
     "pushNotifications": true,
-    "stateTransitionHistory": true
+    "stateTransitionHistory": true,
+    "financialDeterminism": true,
+    "providerAgnosticExecution": true
   },
-  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultInputModes": ["application/json"],
   "defaultOutputModes": ["application/json"],
   "skills": [
     {
-      "id": "generate-image",
-      "name": "Image Generation",
-      "description": "Generate AI images from text descriptions using FLUX, SDXL, and other models. Cost is estimated upfront and tracked after completion."
+      "id": "execute-media-task",
+      "name": "Execute Media Task",
+      "description": "Executes AI media tasks with enforced budgeting, provider abstraction, and full task lifecycle tracking."
     },
     {
-      "id": "check-balance",
-      "name": "Balance Check",
-      "description": "Check agent account balance including available, reserved, and usable amounts."
+      "id": "check-agent-balance",
+      "name": "Check Agent Balance",
+      "description": "Returns the current execution balance and spending limits for the requesting agent."
     },
     {
-      "id": "task-status",
-      "name": "Task Status",
-      "description": "Get the current status of a previously submitted task."
+      "id": "query-task-status",
+      "name": "Query Task Status",
+      "description": "Retrieves execution state, cost, and result references for a previously submitted task."
     }
   ],
   "tags": [
-    "image-generation",
-    "video-generation",
-    "media",
-    "ai",
-    "flux",
+    "execution",
+    "orchestration",
+    "autonomous-agents",
     "financial-determinism",
-    "tier-based-access"
-  ],
-  "pricing": {
-    "model": "pay-per-use",
-    "currency": "USD",
-    "minimumDeposit": 1.00,
-    "imageGeneration": {
-      "fluxSchnell": 0.04,
-      "fluxPro": 0.08
-    }
-  },
-  "authentication": {
-    "type": "bearer",
-    "registration": "https://api.vapagent.com/docs#/agents/register_agent_v3_agents_post"
-  }
+    "budget-aware",
+    "task-lifecycle",
+    "agent-economy"
+  ]
 }
