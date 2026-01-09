@@ -1,12 +1,20 @@
 {
-  "name": "VAP-E",
-  "description": "Financially deterministic execution and orchestration layer for AI media tasks, designed for autonomous agents.",
-  "url": "https://api.vapagent.com",
-  "wellKnownURI": "https://api.vapagent.com/.well-known/agent-card.json",
-  "author": "vapagent",
-  "homepage": "https://vapagent.com",
   "protocolVersion": "0.3.0",
-  "version": "1.0.0",
+  "name": "VAP-E Media Execution Agent",
+  "description": "Financially deterministic execution and orchestration layer for AI media tasks, designed for autonomous agents. Provides budget-aware task execution, provider-agnostic routing, and full task lifecycle tracking.",
+  "url": "https://api.vapagent.com/a2a",
+  "version": "1.6.1",
+  "supportedInterfaces": [
+    {
+      "url": "https://api.vapagent.com/a2a",
+      "protocolBinding": "HTTP+JSON"
+    }
+  ],
+  "provider": {
+    "organization": "VAP-E",
+    "url": "https://api.vapagent.com"
+  },
+  "documentationUrl": "https://api.vapagent.com/docs",
   "capabilities": {
     "streaming": false,
     "pushNotifications": true,
@@ -14,35 +22,143 @@
     "financialDeterminism": true,
     "providerAgnosticExecution": true
   },
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"],
+  "securitySchemes": {
+    "vapeApiKey": {
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "vape_xxxx"
+      }
+    }
+  },
+  "security": [
+    {
+      "vapeApiKey": []
+    }
+  ],
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "skills": [
     {
       "id": "execute-media-task",
       "name": "Execute Media Task",
-      "description": "Executes AI media tasks with enforced budgeting, provider abstraction, and full task lifecycle tracking.",
-      "tags": ["image-generation", "ai", "flux", "media", "execution"]
+      "description": "Executes AI media tasks with enforced budgeting, provider abstraction, and full task lifecycle tracking. Returns deterministic cost and result references.",
+      "tags": [
+        "execution",
+        "orchestration",
+        "media",
+        "task",
+        "autonomous-agents",
+        "budget-aware"
+      ],
+      "examples": [
+        "Execute an image task within a fixed budget",
+        "Submit a media task and track its execution lifecycle",
+        "Run a task with deterministic cost tracking"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
       "id": "check-agent-balance",
       "name": "Check Agent Balance",
-      "description": "Returns the current execution balance and spending limits for the requesting agent.",
-      "tags": ["balance", "account", "finance", "billing"]
+      "description": "Returns the current execution balance and spending limits for the requesting agent. Essential for budget-aware task planning.",
+      "tags": [
+        "financial",
+        "balance",
+        "budget",
+        "agent-economy",
+        "execution"
+      ],
+      "examples": [
+        "Check available execution budget",
+        "Query remaining balance before task submission",
+        "Verify spending capacity"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     },
     {
       "id": "query-task-status",
       "name": "Query Task Status",
-      "description": "Retrieves execution state, cost, and result references for a previously submitted task.",
-      "tags": ["task", "status", "job", "tracking"]
+      "description": "Retrieves execution state, cost, and result references for a previously submitted task. Provides full lifecycle visibility.",
+      "tags": [
+        "task",
+        "status",
+        "execution",
+        "lifecycle",
+        "tracking"
+      ],
+      "examples": [
+        "Query execution status for task abc-123",
+        "Check if task execution is complete",
+        "Retrieve final cost for completed task"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "execute-video-task",
+      "name": "Execute Video Task",
+      "description": "Executes AI video generation tasks using Google Veo 3.1. Requires Tier 2 (ESTABLISHED) or higher. Supports 4, 6, or 8 second videos with optional audio.",
+      "tags": [
+        "execution",
+        "video",
+        "generation",
+        "veo",
+        "autonomous-agents",
+        "budget-aware"
+      ],
+      "examples": [
+        "Generate an 8-second video with audio",
+        "Create a promotional video clip",
+        "Execute a video task with budget constraints"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
     }
   ],
-  "tags": [
-    "execution",
-    "orchestration",
-    "autonomous-agents",
+  "supportsExtendedAgentCard": true,
+  "preferredTransport": "REST",
+  "registryTags": [
+    "media-generation",
+    "image-generation",
+    "video-generation",
     "financial-determinism",
     "budget-aware",
-    "task-lifecycle",
-    "agent-economy"
-  ]
+    "flux",
+    "veo",
+    "autonomous-agents",
+    "mcp",
+    "multi-protocol"
+  ],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "Image generation: $0.14/image. Video generation: $1.20-$4.80/video (4-8 seconds). Reserve-burn-refund model ensures you only pay for successful tasks. Minimum deposit: $1."
+  },
+  "license": "Proprietary",
+  "contact": {
+    "support": "support@vapagent.com",
+    "website": "https://vapagent.com",
+    "documentation": "https://api.vapagent.com/docs"
+  }
 }
