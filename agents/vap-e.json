@@ -14,6 +14,9 @@
     "organization": "VAP-E",
     "url": "https://api.vapagent.com"
   },
+  "author": "VAP-E",
+  "wellKnownURI": "https://api.vapagent.com/.well-known/agent-card.json",
+  "homepage": "https://vapagent.com",
   "documentationUrl": "https://api.vapagent.com/docs",
   "capabilities": {
     "streaming": false,
@@ -157,8 +160,6 @@
   },
   "license": "Proprietary",
   "contact": {
-    "support": "support@vapagent.com",
-    "website": "https://vapagent.com",
-    "documentation": "https://api.vapagent.com/docs"
+    "email": "support@vapagent.com"
   }
 }
