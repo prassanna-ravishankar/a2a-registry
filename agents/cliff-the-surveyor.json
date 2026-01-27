@@ -88,12 +88,12 @@
   "defaultInputModes": ["text/plain"],
   "defaultOutputModes": ["text/plain"],
   "provider": {
-    "organization": "Thornton Tomasetti | CORE Studio",
+    "organization": "CORE studio | Thornton Tomasetti",
     "url": "https://www.thorntontomasetti.com/core-studio"
   },
   "preferredTransport": "REST",
   "documentationUrl": "https://www.thorntontomasetti.com/core-studio",
-  "author": "Thornton Tomasetti CORE | Studio",
+  "author": "CORE studio | Thornton Tomasetti",
   "wellKnownURI": "https://hlqd132yo4.execute-api.us-east-1.amazonaws.com/.well-known/agent.json",
   "homepage": "https://www.thorntontomasetti.com/core-studio",
   "license": "Proprietary",
