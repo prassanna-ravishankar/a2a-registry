@@ -92,7 +92,7 @@
     "url": "https://www.thorntontomasetti.com/core-studio"
   },
   "preferredTransport": "REST",
-  "documentationUrl": "https://www.thorntontomasetti.com/core-studio",
+  "documentationUrl": "https://hlqd132yo4.execute-api.us-east-1.amazonaws.com/docs",
   "author": "CORE studio | Thornton Tomasetti",
   "wellKnownURI": "https://hlqd132yo4.execute-api.us-east-1.amazonaws.com/.well-known/agent.json",
   "homepage": "https://www.thorntontomasetti.com/core-studio",
