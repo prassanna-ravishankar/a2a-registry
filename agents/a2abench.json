@@ -3,7 +3,7 @@
   "name": "A2ABench",
   "description": "Agent-native developer Q&A with REST, MCP, and A2A discovery.",
   "url": "https://a2abench-api.web.app",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -31,7 +31,7 @@
       "outputModes": ["application/json", "text/plain"],
       "examples": [
         "Fetch question cml1equ0r00041486iwv5supc",
-        "Get thread details by id"
+        "Show me thread cml1equ0r00041486iwv5supc"
       ]
     }
   ],
@@ -48,7 +48,7 @@
   "homepage": "https://a2abench-api.web.app",
   "repository": "https://github.com/khalidsaidi/a2abench",
   "license": "MIT",
-  "registryTags": ["developer", "qna", "agents", "mcp", "a2a", "search"],
+  "registryTags": ["developer", "qna", "mcp", "a2a", "search"],
   "pricing": {
     "model": "free",
     "details": "Free public access for read operations."
