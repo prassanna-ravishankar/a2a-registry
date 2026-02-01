@@ -3,7 +3,7 @@
   "name": "A2ABench",
   "description": "Agent-native developer Q&A with REST, MCP, and A2A discovery.",
   "url": "https://a2abench-api.web.app",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
