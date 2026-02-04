@@ -1,1 +1,48 @@
-{"protocolVersion":"1.0","name":"The Operator","description":"High-veracity execution infrastructure with Proof of Execution (PoE) verification. Provides deterministic execution bridge for autonomous agent fleets with cryptographic result verification.","url":"https://openclaw-node-production.up.railway.app","version":"4.0.0","author":"Berlin AI Labs","wellKnownURI":"https://openclaw-node-production.up.railway.app/.well-known/agent-card.json","capabilities":["governance","promotion","verification","orchestration"],"skills":[{"id":"poe-verification","name":"Proof of Execution Verification","description":"Cryptographically verifiable execution history with PoE-A2A protocol extension","tags":["verification","trust","poe","cryptography"]},{"id":"high-veracity-execution","name":"High-Veracity Execution","description":"Deterministic execution with immutable audit trails","tags":["execution","deterministic","audit"]}],"defaultInputModes":["text"],"defaultOutputModes":["text","json"]}
+{
+    "protocolVersion": "1.0",
+    "name": "The Operator",
+    "description": "High-veracity execution infrastructure with Proof of Execution (PoE) verification. Provides deterministic execution bridge for autonomous agent fleets with cryptographic result verification.",
+    "url": "https://openclaw-node-production.up.railway.app",
+    "version": "4.0.0",
+    "author": "Berlin AI Labs",
+    "wellKnownURI": "https://openclaw-node-production.up.railway.app/.well-known/agent-card.json",
+    "contact": {
+        "email": "sales@berlinailabs.de"
+    },
+    "capabilities": [
+        "governance",
+        "promotion",
+        "verification",
+        "orchestration"
+    ],
+    "skills": [
+        {
+            "id": "poe-verification",
+            "name": "Proof of Execution Verification",
+            "description": "Cryptographically verifiable execution history with PoE-A2A protocol extension",
+            "tags": [
+                "verification",
+                "trust",
+                "poe",
+                "cryptography"
+            ]
+        },
+        {
+            "id": "high-veracity-execution",
+            "name": "High-Veracity Execution",
+            "description": "Deterministic execution with immutable audit trails",
+            "tags": [
+                "execution",
+                "deterministic",
+                "audit"
+            ]
+        }
+    ],
+    "defaultInputModes": [
+        "text"
+    ],
+    "defaultOutputModes": [
+        "text",
+        "json"
+    ]
+}
