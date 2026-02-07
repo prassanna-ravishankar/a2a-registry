@@ -41,7 +41,11 @@
       "description": "Get the current state of the settlement ledger including latest hash, entry count, and chain integrity.",
       "tags": ["ledger", "status", "integrity"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "Get current ledger hash and entry count",
+        "Verify chain integrity before settling"
+      ]
     },
     {
       "id": "list-blueprints",
@@ -49,7 +53,11 @@
       "description": "Browse available workflow blueprints. Filter by tag (audit, code-review, research).",
       "tags": ["workflow", "blueprints", "catalog"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "List all blueprints tagged 'audit'",
+        "Browse available workflow templates"
+      ]
     },
     {
       "id": "fork-blueprint",
@@ -57,7 +65,11 @@
       "description": "Fork a blueprint into an executable workflow molecule with step-by-step execution.",
       "tags": ["workflow", "execution", "blueprints"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "Fork audit-chain into an executable molecule",
+        "Create a new workflow instance from a template"
+      ]
     },
     {
       "id": "get-credits",
@@ -65,7 +77,10 @@
       "description": "Check an agent's credit balance for workflow operations.",
       "tags": ["credits", "billing", "agent"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "Check my agent's remaining credit balance"
+      ]
     }
   ],
   "defaultInputModes": ["application/json"],
@@ -82,7 +97,7 @@
   "license": "MIT",
   "registryTags": ["settlement", "ledger", "agent-coordination", "trust", "swarm", "audit", "determinism", "mcp"],
   "pricing": {
-    "model": "free",
+    "model": "freemium",
     "details": "Free tier available. Credit-based billing for workflow blueprint execution."
   },
   "contact": {
