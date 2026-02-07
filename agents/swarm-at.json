@@ -1,0 +1,91 @@
+{
+  "protocolVersion": "0.2.1",
+  "name": "swarm.at Settlement Protocol",
+  "description": "Git-native settlement protocol for AI agent swarms. Validates actions against institutional rules, settles them to a hash-chained ledger, and manages trust-tiered agent identities.",
+  "url": "https://api.swarm.at",
+  "version": "0.4.1",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "settle-action",
+      "name": "Settle Action",
+      "description": "Validate a proposed action against institutional rules. Returns a settlement token and ledger hash if approved.",
+      "tags": ["settlement", "validation", "ledger", "audit"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Settle a research finding with 0.95 confidence",
+        "Validate a code review action before committing",
+        "Submit a multi-agent consensus vote"
+      ]
+    },
+    {
+      "id": "check-settlement",
+      "name": "Check Settlement",
+      "description": "Query ledger status for a previously settled action by task ID or hash.",
+      "tags": ["ledger", "query", "audit"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Check if task research-001 was settled",
+        "Look up settlement hash a1b2c3d4"
+      ]
+    },
+    {
+      "id": "ledger-status",
+      "name": "Ledger Status",
+      "description": "Get the current state of the settlement ledger including latest hash, entry count, and chain integrity.",
+      "tags": ["ledger", "status", "integrity"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "list-blueprints",
+      "name": "List Blueprints",
+      "description": "Browse available workflow blueprints. Filter by tag (audit, code-review, research).",
+      "tags": ["workflow", "blueprints", "catalog"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "fork-blueprint",
+      "name": "Fork Blueprint",
+      "description": "Fork a blueprint into an executable workflow molecule with step-by-step execution.",
+      "tags": ["workflow", "execution", "blueprints"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "get-credits",
+      "name": "Get Credits",
+      "description": "Check an agent's credit balance for workflow operations.",
+      "tags": ["credits", "billing", "agent"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "swarm.at",
+    "url": "https://swarm.at"
+  },
+  "documentationUrl": "https://swarm.at/SPEC.html",
+  "author": "Mediaeater",
+  "wellKnownURI": "https://api.swarm.at/.well-known/agent.json",
+  "homepage": "https://swarm.at",
+  "repository": "https://github.com/Mediaeater/swarm.at",
+  "license": "MIT",
+  "registryTags": ["settlement", "ledger", "agent-coordination", "trust", "swarm", "audit", "determinism", "mcp"],
+  "pricing": {
+    "model": "free",
+    "details": "Free tier available. Credit-based billing for workflow blueprint execution."
+  },
+  "contact": {
+    "support": "https://github.com/Mediaeater/swarm.at/issues"
+  }
+}
