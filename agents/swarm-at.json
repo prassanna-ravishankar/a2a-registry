@@ -93,7 +93,7 @@
   "author": "Mediaeater",
   "wellKnownURI": "https://api.swarm.at/.well-known/agent.json",
   "homepage": "https://swarm.at",
-  "repository": "https://github.com/Mediaeater/swarm.at",
+  "repository": "https://github.com/Mediaeater/swarm-at-ledger",
   "license": "MIT",
   "registryTags": ["settlement", "ledger", "agent-coordination", "trust", "swarm", "audit", "determinism", "mcp"],
   "pricing": {
@@ -101,6 +101,6 @@
     "details": "Free tier available. Credit-based billing for workflow blueprint execution."
   },
   "contact": {
-    "support": "https://github.com/Mediaeater/swarm.at/issues"
+    "support": "https://github.com/Mediaeater/swarm-at-ledger/issues"
   }
 }
