@@ -1,0 +1,83 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "GanjaMon AI",
+  "description": "Autonomous ERC-8004 AI agent on Monad. Hunts alpha across 9 data sources with confluence scoring. Manages a real cannabis grow tent with IoT sensors and AI-controlled actuators. Full A2A protocol with persistent task tracking, x402 payments, and multi-agent orchestration.",
+  "url": "https://grokandmon.com/a2a/v1",
+  "version": "2.1.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "skills": [
+    {
+      "id": "alpha-scan",
+      "name": "Alpha Scan",
+      "description": "Aggregate signals from 9 data sources (DexScreener, GMGN, Hyperliquid, Polymarket, nad.fun, Jupiter, news, CoinGecko, Dex traders). Returns scored opportunities with confluence ratings.",
+      "tags": ["alpha", "research", "monitoring", "signals", "trading"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "cultivation-status",
+      "name": "Cultivation Status",
+      "description": "Live sensor data (temperature, humidity, CO2, VPD, soil moisture) from IoT-equipped cannabis grow tent. Includes AI decision history and plant health assessment.",
+      "tags": ["cultivation", "monitoring", "iot", "sensors", "agriculture"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "signal-feed",
+      "name": "Signal Feed",
+      "description": "Real-time alpha signals with confluence scoring. Filter by tier (1/2/3), minimum confidence, or asset. Position sizing recommendations included.",
+      "tags": ["signals", "alpha", "feed", "real-time", "trading"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "trade-execution",
+      "name": "Trade Execution (Approval)",
+      "description": "Queue trade intents for operator approval via Telegram. No auto-execution. Returns persistent task ID for tracking.",
+      "tags": ["trading", "approval", "safety"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "agent-validate",
+      "name": "Agent Validate",
+      "description": "Validate another agent's A2A/MCP/x402 endpoints. Returns a 0-100 bootstrap score across five protocol layers.",
+      "tags": ["validation", "sentinel", "a2a", "mcp", "x402"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    }
+  ],
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "provider": {
+    "organization": "Grok & Mon",
+    "url": "https://grokandmon.com"
+  },
+  "documentationUrl": "https://grokandmon.com",
+  "author": "Grok & Mon",
+  "wellKnownURI": "https://grokandmon.com/.well-known/agent-card.json",
+  "homepage": "https://grokandmon.com",
+  "pricing": {
+    "model": "freemium",
+    "details": "Free tier: 100 requests/day. Paid tier via x402 micropayments (USDC on Monad). See https://grokandmon.com/.well-known/x402-pricing.json"
+  },
+  "contact": {
+    "email": "agent@grokandmon.com"
+  },
+  "registryTags": [
+    "trading",
+    "iot",
+    "agriculture",
+    "monad",
+    "erc-8004",
+    "x402",
+    "cannabis",
+    "sensors",
+    "multi-chain",
+    "ai-agents"
+  ]
+}
