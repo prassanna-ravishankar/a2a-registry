@@ -6,8 +6,7 @@
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
-    "pushNotifications": false,
-    "stateTransitionHistory": false
+    "pushNotifications": false
   },
   "skills": [
     {
