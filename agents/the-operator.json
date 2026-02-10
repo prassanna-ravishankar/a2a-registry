@@ -9,6 +9,8 @@
     "contact": {
         "email": "sales@berlinailabs.de"
     },
+    "homepage": "https://berlinailabs.de",
+    "repository": "https://github.com/yogami/spy-agent-openclaw",
     "capabilities": [
         "governance",
         "promotion",
