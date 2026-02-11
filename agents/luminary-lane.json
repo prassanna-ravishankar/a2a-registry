@@ -7,6 +7,16 @@
   "description": "AI-powered brand automation platform that extracts brand DNA, discovers optimal marketing channels, generates on-brand content, and orchestrates multi-channel campaigns. Lane helps startups and SMBs automate their marketing with AI agents.",
   "url": "https://www.luminarylane.app",
   "version": "1.0.0",
+  "documentationUrl": "https://www.luminarylane.app/a2a/",
+  "homepage": "https://www.luminarylane.app",
+  "pricing": {
+    "model": "subscription",
+    "details": "https://www.luminarylane.app/pricing/"
+  },
+  "contact": {
+    "email": "support@luminarylane.app",
+    "support": "https://www.luminarylane.app/contact/"
+  },
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -59,6 +69,5 @@
   "provider": {
     "organization": "Luminary Lane",
     "url": "https://www.luminarylane.app"
-  },
-  "documentationUrl": "https://www.luminarylane.app/a2a/"
+  }
 }
