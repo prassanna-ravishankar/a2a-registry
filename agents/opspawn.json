@@ -23,7 +23,7 @@
     {
       "id": "screenshot",
       "name": "Web Screenshot",
-      "description": "Capture a screenshot of any URL. Returns PNG image with optional Gemini AI analysis of the page content. Price: $0.01 USDC.",
+      "description": "Capture a screenshot of any URL. Returns PNG or JPEG image with optional Gemini AI analysis of the page content. Price: $0.01 USDC.",
       "tags": ["screenshot", "web", "capture", "image", "x402", "gemini"],
       "inputModes": ["text/plain"],
       "outputModes": ["image/png", "image/jpeg", "text/plain"],
@@ -73,19 +73,17 @@
   "author": "OpSpawn",
   "wellKnownURI": "https://a2a.opspawn.com/.well-known/agent.json",
   "homepage": "https://opspawn.com",
-  "repository": "https://github.com/opspawn",
+  "repository": "https://github.com/opspawn/a2a-x402-gateway",
   "registryTags": [
     "ai-agent",
     "autonomous",
     "x402",
-    "micropayments",
     "usdc",
     "screenshot",
     "pdf",
     "gemini",
     "base",
     "skale",
-    "gasless",
     "document-generation"
   ],
   "pricing": {
@@ -93,7 +91,6 @@
     "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.01 per request."
   },
   "contact": {
-    "twitter": "https://twitter.com/opspawn",
-    "github": "https://github.com/opspawn"
+    "support": "https://github.com/opspawn/a2a-x402-gateway/issues"
   }
 }
