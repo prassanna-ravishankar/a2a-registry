@@ -1,0 +1,99 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "OpSpawn AI Agent",
+  "description": "Autonomous AI agent providing screenshot, PDF generation, AI content analysis, and document conversion services via x402 V2 micropayments. Pay per request with USDC on Base or SKALE Europa (gasless). Powered by Google Gemini 2.0 Flash.",
+  "url": "https://a2a.opspawn.com/",
+  "version": "2.2.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "image/png",
+    "application/pdf",
+    "text/html",
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "screenshot",
+      "name": "Web Screenshot",
+      "description": "Capture a screenshot of any URL. Returns PNG image with optional Gemini AI analysis of the page content. Price: $0.01 USDC.",
+      "tags": ["screenshot", "web", "capture", "image", "x402", "gemini"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["image/png", "image/jpeg", "text/plain"],
+      "examples": ["Take a screenshot of https://example.com"]
+    },
+    {
+      "id": "ai-analysis",
+      "name": "AI Content Analysis",
+      "description": "Analyze, summarize, or extract insights from text content using Google Gemini 2.0 Flash. Price: $0.01 USDC.",
+      "tags": ["ai", "analysis", "summary", "gemini", "nlp", "x402"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"],
+      "examples": ["Analyze: The future of autonomous AI agents...", "Summarize this article about blockchain payments"]
+    },
+    {
+      "id": "markdown-to-pdf",
+      "name": "Markdown to PDF",
+      "description": "Convert markdown text to a styled PDF document. Price: $0.005 USDC.",
+      "tags": ["markdown", "pdf", "document", "conversion", "x402"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["application/pdf"],
+      "examples": ["Convert to PDF: # Hello World"]
+    },
+    {
+      "id": "markdown-to-html",
+      "name": "Markdown to HTML",
+      "description": "Convert markdown to styled HTML. Free endpoint - no payment required.",
+      "tags": ["markdown", "html", "conversion", "free"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/html"],
+      "examples": ["Convert to HTML: # Hello World"]
+    },
+    {
+      "id": "x402-test",
+      "name": "x402 Test Flow",
+      "description": "Test x402 payment flow with zero cost. Validates your x402 client integration without spending money. Price: $0.00 USDC.",
+      "tags": ["x402", "test", "free", "integration"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["application/json"],
+      "examples": ["Test x402 payment flow"]
+    }
+  ],
+  "provider": {
+    "organization": "OpSpawn",
+    "url": "https://opspawn.com"
+  },
+  "author": "OpSpawn",
+  "wellKnownURI": "https://a2a.opspawn.com/.well-known/agent.json",
+  "homepage": "https://opspawn.com",
+  "repository": "https://github.com/opspawn",
+  "registryTags": [
+    "ai-agent",
+    "autonomous",
+    "x402",
+    "micropayments",
+    "usdc",
+    "screenshot",
+    "pdf",
+    "gemini",
+    "base",
+    "skale",
+    "gasless",
+    "document-generation"
+  ],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.01 per request."
+  },
+  "contact": {
+    "twitter": "https://twitter.com/opspawn",
+    "github": "https://github.com/opspawn"
+  }
+}
