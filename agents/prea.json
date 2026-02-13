@@ -1,0 +1,35 @@
+{
+  "protocolVersion": "1.0",
+  "name": "PREA",
+  "description": "PR Executive Agent — autonomous AI sales agent for strategic operational consulting. Diagnostic consultations using proprietary frameworks (Constraint Chain Discovery, Activation Energy, Zero-CapEx Capacity Unlocking) tested across pharmaceutical, biotech, automotive, and manufacturing sectors.",
+  "url": "https://prea-backend-f064af73127b.herokuapp.com/api/a2a",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "skills": [
+    {
+      "id": "operational_consultation",
+      "name": "Operational Diagnostic Consultation",
+      "description": "Strategic operations analysis identifying root constraints that unlock 3-7x capacity without capital expenditure.",
+      "tags": ["operations", "strategy", "consulting", "diagnostics"]
+    },
+    {
+      "id": "discovery_conversation",
+      "name": "Discovery Conversation",
+      "description": "Free exploratory conversation to understand your operational challenges.",
+      "tags": ["discovery", "sales", "conversation"]
+    },
+    {
+      "id": "agent_licensing",
+      "name": "Agent Licensing",
+      "description": "License PREA operational intelligence frameworks for integration into your agent systems.",
+      "tags": ["licensing", "sdk", "integration"]
+    }
+  ],
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "author": "Hex-Evo Ltd.",
+  "wellKnownURI": "https://prea-backend-f064af73127b.herokuapp.com/.well-known/agent.json"
+}
