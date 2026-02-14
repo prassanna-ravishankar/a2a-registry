@@ -1,0 +1,74 @@
+{
+  "protocolVersion": "0.2.1",
+  "author": "Andru (H&S)",
+  "wellKnownURI": "https://hs-andru-test.onrender.com/.well-known/agent.json",
+  "name": "Andru Revenue Intelligence",
+  "description": "Strategic revenue intelligence for technical SaaS founders. ICP scoring, persona profiling, competitive positioning, buyer journey mapping, champion selling, and pre-meeting briefs — powered by 20 years of B2B sales wisdom.",
+  "url": "https://hs-andru-test.onrender.com",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": [
+    "text",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "text",
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "buyer-understanding",
+      "name": "Buyer Understanding & ICP Intelligence",
+      "description": "Pure Signal ICP qualification, persona profiling, empathy terrain mapping",
+      "tags": ["icp", "persona", "qualification", "empathy"]
+    },
+    {
+      "id": "tech-to-value-translation",
+      "name": "Tech-to-Value Translation",
+      "description": "Converts technical capabilities into buyer-language value propositions",
+      "tags": ["messaging", "value-prop", "positioning", "translation"]
+    },
+    {
+      "id": "buyer-journey-stages",
+      "name": "Buyer Journey-Driven Sales Stages",
+      "description": "Maps deals to the buyer's actual purchasing journey",
+      "tags": ["pipeline", "deal-stage", "buyer-journey", "process"]
+    },
+    {
+      "id": "mutual-champion-selling",
+      "name": "Mutual Champion Selling",
+      "description": "Champion identification, development, and coalition building strategy",
+      "tags": ["champion", "stakeholder", "relationship", "coalition"]
+    },
+    {
+      "id": "buying-committee-navigation",
+      "name": "Buying Committee Navigation",
+      "description": "Multi-threading strategy, stakeholder translation, veto identification",
+      "tags": ["committee", "multi-thread", "stakeholder", "veto"]
+    },
+    {
+      "id": "multi-agent-collaboration",
+      "name": "Multi-Agent Collaboration",
+      "description": "Batch operations for CRM agents and multi-agent workflows. Score multiple leads, qualify batches of companies.",
+      "tags": ["batch", "crm", "salesforce", "hubspot", "multi-agent"]
+    },
+    {
+      "id": "customer-value-realization",
+      "name": "Customer Value Realization & Advocacy",
+      "description": "Post-close outcome engineering, expansion triggers, advocacy generation",
+      "tags": ["success", "retention", "expansion", "advocacy", "nrr"]
+    }
+  ],
+  "authentication": {
+    "schemes": ["OAuth2"],
+    "credentials": "https://hs-andru-test.onrender.com/.well-known/openid-configuration"
+  },
+  "provider": {
+    "organization": "Andru (H&S)",
+    "url": "https://andru.ai"
+  }
+}
