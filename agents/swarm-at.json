@@ -1,9 +1,9 @@
 {
   "protocolVersion": "0.2.1",
   "name": "swarm.at Settlement Protocol",
-  "description": "Git-native settlement protocol for AI agent swarms. Validates actions against institutional rules, settles them to a hash-chained ledger, and manages trust-tiered agent identities.",
+  "description": "Git-native information settlement protocol for autonomous agent workflows. Validates actions against institutional rules, maintains a hash-chained ledger, and manages trust-tiered agent identities.",
   "url": "https://api.swarm.at",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -70,17 +70,6 @@
         "Fork audit-chain into an executable molecule",
         "Create a new workflow instance from a template"
       ]
-    },
-    {
-      "id": "get-credits",
-      "name": "Get Credits",
-      "description": "Check an agent's credit balance for workflow operations.",
-      "tags": ["credits", "billing", "agent"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": [
-        "Check my agent's remaining credit balance"
-      ]
     }
   ],
   "defaultInputModes": ["application/json"],
@@ -96,10 +85,6 @@
   "repository": "https://github.com/Mediaeater/swarm-at-ledger",
   "license": "MIT",
   "registryTags": ["settlement", "ledger", "agent-coordination", "trust", "swarm", "audit", "determinism", "mcp"],
-  "pricing": {
-    "model": "freemium",
-    "details": "Free tier available. Credit-based billing for workflow blueprint execution."
-  },
   "contact": {
     "support": "https://github.com/Mediaeater/swarm-at-ledger/issues"
   }
