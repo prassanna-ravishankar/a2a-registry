@@ -74,6 +74,15 @@
       "inputModes": ["application/json"],
       "outputModes": ["application/json"],
       "examples": ["Scan this JavaScript code for vulnerabilities"]
+    },
+    {
+      "id": "dep-audit",
+      "name": "Dependency Vulnerability Audit",
+      "description": "Scan dependency lists for known CVEs using OSV.dev. Supports npm, pip, and Go ecosystems. Price: $0.10 USDC.",
+      "tags": ["security", "dep-audit", "vulnerability", "dependencies", "cve"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": ["Audit my npm dependencies for vulnerabilities"]
     }
   ],
   "provider": {
@@ -98,7 +107,7 @@
   ],
   "pricing": {
     "model": "pay-per-use",
-    "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.05 per request."
+    "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.10 per request."
   },
   "contact": {
     "support": "https://github.com/opspawn/a2a-x402-gateway/issues"
