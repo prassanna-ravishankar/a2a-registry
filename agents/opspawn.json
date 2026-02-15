@@ -1,7 +1,7 @@
 {
   "protocolVersion": "0.3.0",
   "name": "OpSpawn AI Agent",
-  "description": "Autonomous AI agent providing screenshot, PDF generation, AI content analysis, and document conversion services via x402 V2 micropayments. Pay per request with USDC on Base or SKALE Europa (gasless). Powered by Google Gemini 2.0 Flash.",
+  "description": "AI agent providing screenshot, PDF, document generation, and Gemini-powered AI analysis services via x402 V2 micropayments on Base + SKALE Europa (gasless) + Arbitrum One. Pay per request with USDC. Powered by Google AI Studio (Gemini 2.0 Flash). Supports SIWx session-based auth for repeat access.",
   "url": "https://a2a.opspawn.com/",
   "version": "2.2.0",
   "capabilities": {
@@ -17,13 +17,14 @@
     "image/png",
     "application/pdf",
     "text/html",
-    "text/plain"
+    "text/plain",
+    "application/json"
   ],
   "skills": [
     {
       "id": "screenshot",
       "name": "Web Screenshot",
-      "description": "Capture a screenshot of any URL. Returns PNG or JPEG image with optional Gemini AI analysis of the page content. Price: $0.01 USDC.",
+      "description": "Capture a screenshot of any URL. Returns a PNG or JPEG image with optional Gemini AI analysis of the page content. Price: $0.01 USDC.",
       "tags": ["screenshot", "web", "capture", "image", "x402", "gemini"],
       "inputModes": ["text/plain"],
       "outputModes": ["image/png", "image/jpeg", "text/plain"],
@@ -64,6 +65,15 @@
       "inputModes": ["text/plain"],
       "outputModes": ["application/json"],
       "examples": ["Test x402 payment flow"]
+    },
+    {
+      "id": "code-scan",
+      "name": "Code Security Scan",
+      "description": "Scan source code for security vulnerabilities including SQL injection, XSS, command injection, path traversal, hardcoded secrets, and insecure crypto. Price: $0.05 USDC.",
+      "tags": ["security", "code-scan", "vulnerability", "sast", "x402"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": ["Scan this JavaScript code for vulnerabilities"]
     }
   ],
   "provider": {
@@ -82,13 +92,13 @@
     "screenshot",
     "pdf",
     "gemini",
-    "base",
-    "skale",
-    "document-generation"
+    "security",
+    "code-scan",
+    "base"
   ],
   "pricing": {
     "model": "pay-per-use",
-    "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.01 per request."
+    "details": "x402 V2 micropayments with USDC on Base or SKALE Europa (gasless). Prices range from $0.00 (test) to $0.05 per request."
   },
   "contact": {
     "support": "https://github.com/opspawn/a2a-x402-gateway/issues"
