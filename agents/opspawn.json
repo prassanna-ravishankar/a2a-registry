@@ -1,7 +1,7 @@
 {
   "protocolVersion": "0.3.0",
   "name": "OpSpawn AI Agent",
-  "description": "AI agent providing screenshot, PDF, document generation, and Gemini-powered AI analysis services via x402 V2 micropayments on Base + SKALE Europa (gasless) + Arbitrum One. Pay per request with USDC. Powered by Google AI Studio (Gemini 2.0 Flash). Supports SIWx session-based auth for repeat access.",
+  "description": "AI agent providing screenshot, PDF, document generation, and Gemini-powered AI analysis services via x402 V2 micropayments on Base + SKALE Europa (gasless). Pay per request with USDC. Powered by Google AI Studio (Gemini 2.0 Flash). Supports SIWx session-based auth for repeat access.",
   "url": "https://a2a.opspawn.com/",
   "version": "2.2.0",
   "capabilities": {
@@ -79,7 +79,7 @@
       "id": "dep-audit",
       "name": "Dependency Vulnerability Audit",
       "description": "Scan dependency lists for known CVEs using OSV.dev. Supports npm, pip, and Go ecosystems. Price: $0.10 USDC.",
-      "tags": ["security", "dep-audit", "vulnerability", "dependencies", "cve"],
+      "tags": ["security", "dep-audit", "vulnerability", "dependencies", "cve", "x402"],
       "inputModes": ["application/json"],
       "outputModes": ["application/json"],
       "examples": ["Audit my npm dependencies for vulnerabilities"]
@@ -96,14 +96,14 @@
   "registryTags": [
     "ai-agent",
     "autonomous",
-    "x402",
-    "usdc",
-    "screenshot",
-    "pdf",
+    "base",
     "gemini",
+    "pdf",
+    "screenshot",
     "security",
-    "code-scan",
-    "base"
+    "skale-europa",
+    "usdc",
+    "x402"
   ],
   "pricing": {
     "model": "pay-per-use",
