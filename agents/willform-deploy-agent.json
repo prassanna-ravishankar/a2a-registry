@@ -11,12 +11,31 @@
   },
   "skills": [
     {
+      "id": "chart_list",
+      "name": "List Chart Types",
+      "description": "List available workload types (web-app, stateful-db, worker, cronjob) with their capabilities.",
+      "tags": ["chart", "workload", "catalog"],
+      "examples": [
+        "What deployment types are available?",
+        "Show chart options"
+      ]
+    },
+    {
+      "id": "deploy_preflight",
+      "name": "Pre-Deployment Check",
+      "description": "Validate a deployment before creating it. Checks quota, balance, image accessibility, chart type suitability, and returns cost estimates.",
+      "tags": ["deploy", "validate", "preflight", "check"],
+      "examples": [
+        "Check if I can deploy this image",
+        "Validate deployment config before creating",
+        "How much will this deployment cost?"
+      ]
+    },
+    {
       "id": "deploy_create",
       "name": "Create Deployment",
-      "description": "Deploy containers to Kubernetes using web-app, stateful-db, worker, or cronjob chart types. Includes pre-deployment validation, cost estimation, and automatic domain assignment.",
+      "description": "Deploy a container using the appropriate chart type: web-app (HTTP services), stateful-db (databases with persistent volumes), worker (background processors), or cronjob (scheduled tasks). Call deploy_preflight first to validate.",
       "tags": ["deploy", "kubernetes", "container", "database", "cronjob"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
       "examples": [
         "Deploy nginx:latest as a web app",
         "Deploy postgres:16 as a stateful database with 20GB persistent volume",
@@ -25,79 +44,71 @@
       ]
     },
     {
+      "id": "namespace_manage",
+      "name": "Manage Namespaces",
+      "description": "Get namespace details, update name or resource allocation, list or delete namespaces.",
+      "tags": ["namespace", "manage", "quota"],
+      "examples": [
+        "Show namespace details",
+        "Increase namespace cores to 8",
+        "Rename my namespace"
+      ]
+    },
+    {
       "id": "deploy_manage",
       "name": "Manage Deployments",
-      "description": "Full lifecycle management: status, stop, restart, scale replicas, update environment variables, diagnose failures, view logs and Kubernetes events.",
+      "description": "Get status, list, stop, restart, delete, scale replicas, update env vars, diagnose failures, and view logs or K8s events.",
       "tags": ["deploy", "manage", "logs", "diagnose", "scale", "env"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
       "examples": [
         "Show deployment status",
+        "Stop my deployment",
+        "Get deployment logs",
+        "Diagnose why my deployment is failing",
         "Scale to 3 replicas",
         "Update DATABASE_URL env var",
-        "Diagnose why my deployment is failing",
-        "Get deployment logs"
+        "Show K8s events for my deployment"
       ]
     },
     {
       "id": "deploy_expose",
-      "name": "Expose Database Externally",
-      "description": "Expose stateful-db deployments externally via Cloudflare Tunnel for local client access (psql, redis-cli). Supports HTTP and TCP protocols.",
-      "tags": ["deploy", "expose", "tunnel", "tcp", "database"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "name": "Expose Deployment",
+      "description": "Expose a stateful-db deployment externally via Cloudflare Tunnel for local client access. Supports HTTP and TCP protocols.",
+      "tags": ["deploy", "expose", "tunnel", "external", "tcp"],
       "examples": [
-        "Expose my PostgreSQL database for local access",
-        "Remove external access from my Redis instance"
-      ]
-    },
-    {
-      "id": "namespace_manage",
-      "name": "Manage Namespaces",
-      "description": "Create, update, suspend, resume, and delete Kubernetes namespaces with resource quota management.",
-      "tags": ["namespace", "kubernetes", "quota", "suspend"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
-      "examples": [
-        "Create a namespace with 4 CPU cores",
-        "Suspend all deployments in my namespace",
-        "Resume namespace after adding credits"
+        "Expose my PostgreSQL database externally",
+        "Remove external access from my Redis",
+        "I need to connect to my database from my local machine"
       ]
     },
     {
       "id": "credits_manage",
-      "name": "Credits & Billing",
-      "description": "Check credit balance, view transaction history, and monitor compute/memory/storage charges.",
-      "tags": ["credits", "billing", "balance", "cost"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "name": "Check Credits",
+      "description": "Check credit balance for compute billing.",
+      "tags": ["credits", "billing", "balance"],
       "examples": [
         "Check my balance",
-        "How much am I spending per hour?"
+        "How many credits do I have?"
       ]
     },
     {
       "id": "domain_manage",
-      "name": "Custom Domains",
-      "description": "Add and remove custom domains for web-app deployments with DNS verification.",
+      "name": "Manage Domains",
+      "description": "Add or remove custom domains for deployments.",
       "tags": ["domain", "dns", "custom"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
       "examples": [
-        "Add custom domain app.example.com to my deployment",
-        "Remove custom domain"
+        "Add custom domain example.com",
+        "Remove domain from deployment"
       ]
     },
     {
       "id": "agent_manage",
-      "name": "Namespace AI Agent",
-      "description": "Interact with the per-namespace Willy AI agent for infrastructure operations, tool invocation, and chat-based management.",
-      "tags": ["agent", "ai", "willy", "mcp"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "name": "Namespace Agent",
+      "description": "Interact with the per-namespace Willy AI agent. Invoke tools, send chat messages, or check agent status.",
+      "tags": ["agent", "willy", "ai", "mcp"],
       "examples": [
-        "Ask the agent to check pod health",
-        "Invoke agent tool to list running services"
+        "Check agent status for my namespace",
+        "Ask the agent to list running pods",
+        "Invoke agent tool to scale deployment"
       ]
     }
   ],
