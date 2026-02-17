@@ -1,0 +1,134 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Willform Deploy Agent",
+  "description": "Deploy and manage containerized applications on Kubernetes with pay-per-use billing via x402 payment protocol. Supports four workload types: web apps, databases (StatefulSet with persistent volumes), background workers, and scheduled cronjobs. Includes per-namespace AI agent (Willy) for infrastructure operations.",
+  "url": "https://agent.willform.ai/a2a",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "skills": [
+    {
+      "id": "deploy_create",
+      "name": "Create Deployment",
+      "description": "Deploy containers to Kubernetes using web-app, stateful-db, worker, or cronjob chart types. Includes pre-deployment validation, cost estimation, and automatic domain assignment.",
+      "tags": ["deploy", "kubernetes", "container", "database", "cronjob"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Deploy nginx:latest as a web app",
+        "Deploy postgres:16 as a stateful database with 20GB persistent volume",
+        "Deploy a background worker for queue processing",
+        "Schedule a cronjob to run every hour"
+      ]
+    },
+    {
+      "id": "deploy_manage",
+      "name": "Manage Deployments",
+      "description": "Full lifecycle management: status, stop, restart, scale replicas, update environment variables, diagnose failures, view logs and Kubernetes events.",
+      "tags": ["deploy", "manage", "logs", "diagnose", "scale", "env"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Show deployment status",
+        "Scale to 3 replicas",
+        "Update DATABASE_URL env var",
+        "Diagnose why my deployment is failing",
+        "Get deployment logs"
+      ]
+    },
+    {
+      "id": "deploy_expose",
+      "name": "Expose Database Externally",
+      "description": "Expose stateful-db deployments externally via Cloudflare Tunnel for local client access (psql, redis-cli). Supports HTTP and TCP protocols.",
+      "tags": ["deploy", "expose", "tunnel", "tcp", "database"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Expose my PostgreSQL database for local access",
+        "Remove external access from my Redis instance"
+      ]
+    },
+    {
+      "id": "namespace_manage",
+      "name": "Manage Namespaces",
+      "description": "Create, update, suspend, resume, and delete Kubernetes namespaces with resource quota management.",
+      "tags": ["namespace", "kubernetes", "quota", "suspend"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Create a namespace with 4 CPU cores",
+        "Suspend all deployments in my namespace",
+        "Resume namespace after adding credits"
+      ]
+    },
+    {
+      "id": "credits_manage",
+      "name": "Credits & Billing",
+      "description": "Check credit balance, view transaction history, and monitor compute/memory/storage charges.",
+      "tags": ["credits", "billing", "balance", "cost"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Check my balance",
+        "How much am I spending per hour?"
+      ]
+    },
+    {
+      "id": "domain_manage",
+      "name": "Custom Domains",
+      "description": "Add and remove custom domains for web-app deployments with DNS verification.",
+      "tags": ["domain", "dns", "custom"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Add custom domain app.example.com to my deployment",
+        "Remove custom domain"
+      ]
+    },
+    {
+      "id": "agent_manage",
+      "name": "Namespace AI Agent",
+      "description": "Interact with the per-namespace Willy AI agent for infrastructure operations, tool invocation, and chat-based management.",
+      "tags": ["agent", "ai", "willy", "mcp"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Ask the agent to check pod health",
+        "Invoke agent tool to list running services"
+      ]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "Willform",
+    "url": "https://willform.ai"
+  },
+  "preferredTransport": "JSONRPC",
+  "documentationUrl": "https://agent.willform.ai/.well-known/agent.json",
+  "author": "Willform",
+  "wellKnownURI": "https://agent.willform.ai/.well-known/agent.json",
+  "homepage": "https://willform.ai",
+  "repository": "https://github.com/wo-o/willform-agent",
+  "registryTags": [
+    "kubernetes",
+    "deployment",
+    "infrastructure",
+    "x402",
+    "payment",
+    "container",
+    "paas",
+    "devops",
+    "cloud"
+  ],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "x402 USDC payment protocol. Compute: $0.04/core/hr, Memory: $0.005/GB/hr, Storage: $0.0001/GB/hr. Min top-up $20, max $100 per payment. Pre-launch: not yet publicly available."
+  },
+  "contact": {
+    "support": "https://github.com/wo-o/willform-agent/issues"
+  }
+}
