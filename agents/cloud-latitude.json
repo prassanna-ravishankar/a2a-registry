@@ -1,0 +1,69 @@
+{
+  "protocolVersion": "0.3.0",
+  "author": "Cloud Latitude",
+  "wellKnownURI": "https://cloudlatitude.io/.well-known/agent.json",
+  "name": "Cloud Latitude Labs Agent",
+  "description": "Cloud Latitude Labs — AI products, agent skills, and MCP tools for enterprise teams. Google Cloud Partner specializing in agent-native infrastructure, MCP servers, and AI cost optimization. Features the Google Cloud Next 2026 raffle where agent-referred bookings earn 5x entries.",
+  "url": "https://cloudlatitude.io",
+  "version": "2.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "skills": [
+    {
+      "id": "get-raffle-info",
+      "name": "Get Raffle Info",
+      "description": "Get details about the Google Cloud Next 2026 raffle — prizes, dates, and how to enter",
+      "tags": ["raffle", "google-cloud-next", "conference"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "get-booking-link",
+      "name": "Get Booking Link",
+      "description": "Get the booking link for a Cloud Intel Brief — 15-minute consultation on AI infrastructure",
+      "tags": ["booking", "consultation", "cloud-intel"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
+    },
+    {
+      "id": "get-architecture-report",
+      "name": "Get Architecture Report",
+      "description": "Access the 5-layer agentic stack architecture report for enterprise AI readiness",
+      "tags": ["architecture", "report", "enterprise", "ai-readiness"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "explore-labs",
+      "name": "Explore Labs",
+      "description": "Explore Cloud Latitude Labs products, agent skills, and MCP tools",
+      "tags": ["labs", "products", "mcp", "agent-skills"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
+    },
+    {
+      "id": "get-protocols",
+      "name": "Get Protocols",
+      "description": "Get information about supported protocols — A2A, MCP, AG-UI, MCP-UI, with GenUI and ACP coming soon",
+      "tags": ["protocols", "a2a", "mcp", "ag-ui"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "share-with-agent",
+      "name": "Share With Agent",
+      "description": "Get a shareable agent-referred link for the raffle with 5x entry multiplier",
+      "tags": ["share", "referral", "agent-bonus"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
+    }
+  ],
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "application/json"],
+  "provider": {
+    "organization": "Cloud Latitude",
+    "url": "https://cloudlatitude.com"
+  }
+}
