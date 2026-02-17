@@ -108,7 +108,7 @@
     "url": "https://willform.ai"
   },
   "preferredTransport": "JSONRPC",
-  "documentationUrl": "https://agent.willform.ai/.well-known/agent.json",
+  "documentationUrl": "https://agent.willform.ai",
   "author": "Willform",
   "wellKnownURI": "https://agent.willform.ai/.well-known/agent.json",
   "homepage": "https://willform.ai",
