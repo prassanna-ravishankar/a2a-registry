@@ -1,0 +1,19 @@
+{
+  "author": "YourGitHubUsername",
+  "wellKnownURI": "https://xrpl-referee.onrender.com/.well-known/agent.json",
+  "agent_card": {
+    "schemaVersion": "1.0",
+    "name": "XRPL AI Referee Pro",
+    "description": "Independent task auditor. Fees: 0.1 XRP per audit.",
+    "url": "https://xrpl-referee.onrender.com",
+    "agentVersion": "1.0.0",
+    "skills": [
+      {
+        "id": "work-verification",
+        "name": "Work Verification",
+        "description": "Validates if a task's output matches its requirements.",
+        "tags": ["audit", "xrpl", "verification", "legal-tech"]
+      }
+    ]
+  }
+}
