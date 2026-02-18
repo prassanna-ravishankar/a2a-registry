@@ -2,7 +2,7 @@
   "protocolVersion": "1.0",
   "name": "Gloria",
   "description": "AI-powered crypto news intelligence. Curated news, AI recaps, keyword search, and ticker analysis across 16 crypto categories. Real-time coverage of Bitcoin, Ethereum, DeFi, AI, Solana, and more.",
-  "url": "http://lucid.itsgloria.ai:3004/",
+  "url": "https://lucid.itsgloria.ai/",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -52,7 +52,7 @@
   "preferredTransport": "REST",
   "documentationUrl": "https://itsgloria.ai",
   "author": "Crypto Briefing",
-  "wellKnownURI": "http://lucid.itsgloria.ai:3004/.well-known/agent-card.json",
+  "wellKnownURI": "https://lucid.itsgloria.ai/.well-known/agent-card.json",
   "homepage": "https://itsgloria.ai",
   "repository": "https://github.com/cryptobriefing/gloria-lucid-agent",
   "license": "MIT",
