@@ -55,9 +55,10 @@
   "wellKnownURI": "http://lucid.itsgloria.ai:3004/.well-known/agent-card.json",
   "homepage": "https://itsgloria.ai",
   "repository": "https://github.com/cryptobriefing/gloria-lucid-agent",
+  "license": "MIT",
   "registryTags": ["crypto", "news", "ai", "trading", "data", "intelligence", "x402", "paid"],
   "pricing": {
-    "model": "paid",
+    "model": "pay-per-use",
     "details": "x402 micropayments via USDC on Base. News: $0.03, Recaps: $0.10, Search: $0.05, Ticker Summary: $0.031 per request."
   },
   "contact": {
