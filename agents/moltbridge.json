@@ -11,6 +11,16 @@
     "url": "https://sagemindai.io"
   },
   "documentationUrl": "https://api.moltbridge.ai/docs",
+  "homepage": "https://moltbridge.ai",
+  "license": "Proprietary",
+  "registryTags": ["trust", "networking", "identity", "verification", "attestation", "agent-discovery"],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "Per-query pricing. Broker discovery: $0.02, Capability match: $0.01, Credibility packet: $0.05, Introduction: $0.10"
+  },
+  "contact": {
+    "email": "support@moltbridge.ai"
+  },
   "capabilities": {
     "streaming": false,
     "pushNotifications": true,
