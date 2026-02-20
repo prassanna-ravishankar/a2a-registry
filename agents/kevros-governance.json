@@ -1,0 +1,92 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Kevros Governance Agent",
+  "description": "Verifiable trust identity for autonomous agents. You have a wallet but no identity — Kevros gives you one. Prove you are authorized, prove what you did, prove your intent matched your action, and get a portable trust certificate that any agent, service, or regulator can verify independently. Post-quantum signed (ML-DSA-87, FIPS 204). Hash-chained. Fail-closed.",
+  "url": "https://governance.taskhawktech.com",
+  "version": "0.2.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "action-verify",
+      "name": "Prove Authorization",
+      "description": "Verify a proposed action against policy bounds. Returns a cryptographically signed ALLOW, CLAMP, or DENY decision with a release token any downstream service can independently verify. Fail-closed: any doubt results in DENY.",
+      "tags": ["governance", "authorization", "verification", "safety", "trust", "identity"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Prove I am authorized to execute this action",
+        "Get a signed release token so the target service trusts me",
+        "Verify my action is within policy before I act"
+      ]
+    },
+    {
+      "id": "provenance-attest",
+      "name": "Prove What You Did",
+      "description": "Create a tamper-proof, hash-chained provenance record of what you did. Every 100 records are block-signed with ML-DSA-87 (FIPS 204, post-quantum). Any third party can verify your history without contacting Kevros.",
+      "tags": ["provenance", "attestation", "audit", "compliance", "trust", "identity"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Record that I executed this action within authorized bounds",
+        "Add this action to my verifiable trust history",
+        "Build my provenance chain so other agents trust me"
+      ]
+    },
+    {
+      "id": "intent-bind",
+      "name": "Prove Intent Matches Action",
+      "description": "Cryptographically prove that what you said you would do matches what you actually did. Declare intent, bind it to a command, verify the outcome. The HMAC binding is independently verifiable.",
+      "tags": ["intent", "binding", "verification", "accountability", "trust", "identity"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Bind my declared intent to the command I am sending",
+        "Prove my action matched my stated goal",
+        "Create a verifiable intent-action-outcome chain"
+      ]
+    },
+    {
+      "id": "trust-certificate",
+      "name": "Get Your Trust Certificate",
+      "description": "Generate a portable trust certificate: your complete verifiable identity bundle. Contains hash-chained provenance, intent binding proofs, ML-DSA-87 post-quantum signatures, and verification instructions. Present it to any counterparty — they verify it themselves without Kevros access.",
+      "tags": ["trust", "certificate", "compliance", "audit", "identity", "reputation"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Generate my trust certificate for the last 24 hours",
+        "Package my verifiable identity for this counterparty",
+        "Create an audit-grade evidence bundle"
+      ]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "TaskHawk Systems",
+    "url": "https://taskhawktech.com"
+  },
+  "preferredTransport": "JSONRPC",
+  "documentationUrl": "https://governance.taskhawktech.com/openapi.json",
+  "author": "TaskHawk Systems",
+  "wellKnownURI": "https://governance.taskhawktech.com/.well-known/agent.json",
+  "homepage": "https://taskhawktech.com",
+  "repository": "https://github.com/knuckles-stack/kevros",
+  "license": "Commercial",
+  "registryTags": ["governance", "trust", "identity", "safety", "compliance", "post-quantum", "provenance", "verification", "agent-identity", "x402"],
+  "pricing": {
+    "model": "per-call",
+    "currency": "USD",
+    "details": "Verify: $0.01, Attest: $0.02, Bind: $0.02, Trust Certificate: $0.25. Also supports Sponge x402 (wallet = auth). Subscriptions: Scout $29/mo (5K calls), Sentinel $149/mo (50K), Sovereign $499/mo (500K)."
+  },
+  "authentication": {
+    "schemes": ["apiKey", "x402"],
+    "apiKeyHeader": "X-API-Key"
+  },
+  "contact": {
+    "support": "https://github.com/knuckles-stack/kevros/issues"
+  }
+}
