@@ -1,0 +1,70 @@
+{
+  "protocolVersion": "0.2.1",
+  "name": "anybrowse",
+  "description": "Autonomous web browsing agent. Converts any URL to clean, LLM-ready Markdown. Powered by real Chrome browsers with x402 micropayments on Base.",
+  "url": "https://anybrowse.dev",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "scrape",
+      "name": "Web Scraping",
+      "description": "Convert any URL to clean, LLM-optimized Markdown. Uses real Chrome browsers with JavaScript rendering.",
+      "tags": ["web-scraping", "markdown", "browser", "llm"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Scrape https://example.com to markdown",
+        "Get the content of this webpage as clean text"
+      ]
+    },
+    {
+      "id": "crawl",
+      "name": "Search and Crawl",
+      "description": "Search Google for a query and scrape the top results to Markdown.",
+      "tags": ["search", "crawling", "google", "research"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Search for 'latest AI news' and scrape top results",
+        "Crawl the web for information about a topic"
+      ]
+    },
+    {
+      "id": "search",
+      "name": "Web Search",
+      "description": "Google search results as structured JSON.",
+      "tags": ["search", "google", "serp"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Search Google for 'machine learning tutorials'",
+        "Find web results for a query"
+      ]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "anybrowse",
+    "url": "https://anybrowse.dev"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://anybrowse.dev",
+  "author": "anybrowse",
+  "wellKnownURI": "https://anybrowse.dev/.well-known/agent-card.json",
+  "homepage": "https://anybrowse.dev",
+  "license": "MIT",
+  "registryTags": ["web-scraping", "browsing", "markdown", "llm", "autonomous", "x402", "micropayments", "base"],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "x402 micropayments: $0.003 USDC per scrape, $0.005 per crawl, $0.002 per search. Payments on Base mainnet via USDC."
+  },
+  "contact": {
+    "support": "https://anybrowse.dev"
+  }
+}
