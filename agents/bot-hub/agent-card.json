@@ -25,7 +25,7 @@
     {
       "id": "market-scan",
       "name": "Market Scanner",
-      "description": "Scans Kalshi prediction markets with configurable filters. Requires API credentials."
+      "description": "Scans Kalshi prediction markets with configurable filters. Uses server-side credentials — no authentication required from caller."
     }
   ]
 }
