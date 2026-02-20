@@ -1,70 +1,130 @@
 {
   "protocolVersion": "0.2.1",
   "name": "anybrowse",
-  "description": "Autonomous web browsing agent. Converts any URL to clean, LLM-ready Markdown. Powered by real Chrome browsers with x402 micropayments on Base.",
+  "description": "Autonomous web browsing agent. Converts any URL to clean, LLM-ready Markdown via real Chrome browsers with x402 micropayments on Base.",
   "url": "https://anybrowse.dev",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
-    "pushNotifications": false,
-    "stateTransitionHistory": false
+    "pushNotifications": false
   },
   "skills": [
     {
       "id": "scrape",
       "name": "Web Scraping",
       "description": "Convert any URL to clean, LLM-optimized Markdown. Uses real Chrome browsers with JavaScript rendering.",
-      "tags": ["web-scraping", "markdown", "browser", "llm"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "web-scraping",
+        "markdown",
+        "browser",
+        "llm"
+      ],
       "examples": [
         "Scrape https://example.com to markdown",
-        "Get the content of this webpage as clean text"
+        "Get the content of this webpage"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
       ]
     },
     {
       "id": "crawl",
       "name": "Search and Crawl",
       "description": "Search Google for a query and scrape the top results to Markdown.",
-      "tags": ["search", "crawling", "google", "research"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "search",
+        "crawling",
+        "google",
+        "research"
+      ],
       "examples": [
-        "Search for 'latest AI news' and scrape top results",
-        "Crawl the web for information about a topic"
+        "Search for 'latest AI news' and scrape results",
+        "Crawl top results for a query"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
       ]
     },
     {
       "id": "search",
       "name": "Web Search",
       "description": "Google search results as structured JSON.",
-      "tags": ["search", "google", "serp"],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "search",
+        "google",
+        "serp"
+      ],
       "examples": [
-        "Search Google for 'machine learning tutorials'",
-        "Find web results for a query"
+        "Search Google for 'machine learning tutorials'"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
       ]
     }
   ],
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"],
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "provider": {
     "organization": "anybrowse",
     "url": "https://anybrowse.dev"
   },
-  "preferredTransport": "REST",
-  "documentationUrl": "https://anybrowse.dev",
   "author": "anybrowse",
   "wellKnownURI": "https://anybrowse.dev/.well-known/agent-card.json",
   "homepage": "https://anybrowse.dev",
-  "license": "MIT",
-  "registryTags": ["web-scraping", "browsing", "markdown", "llm", "autonomous", "x402", "micropayments", "base"],
-  "pricing": {
-    "model": "pay-per-use",
-    "details": "x402 micropayments: $0.003 USDC per scrape, $0.005 per crawl, $0.002 per search. Payments on Base mainnet via USDC."
+  "registryTags": [
+    "web-scraping",
+    "browsing",
+    "markdown",
+    "llm",
+    "crawling",
+    "search",
+    "autonomous",
+    "x402"
+  ],
+  "protocols": [
+    "a2a",
+    "x402"
+  ],
+  "x402": {
+    "facilitator": "https://anybrowse.dev/facilitator",
+    "network": "base",
+    "asset": "USDC",
+    "assetAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "payTo": "0x8D76E8FB38541d70dF74b14660c39b4c5d737088",
+    "endpoints": {
+      "/scrape": {
+        "method": "POST",
+        "price": "0.003",
+        "currency": "USDC"
+      },
+      "/crawl": {
+        "method": "POST",
+        "price": "0.005",
+        "currency": "USDC"
+      },
+      "/serp/search": {
+        "method": "POST",
+        "price": "0.002",
+        "currency": "USDC"
+      }
+    }
   },
-  "contact": {
-    "support": "https://anybrowse.dev"
+  "identity": {
+    "basename": "anybrowse.base.eth",
+    "wallet": "0x8D76E8FB38541d70dF74b14660c39b4c5d737088",
+    "network": "base-mainnet"
   }
 }
