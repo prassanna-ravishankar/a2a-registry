@@ -1,1 +1,31 @@
-
+{
+  "protocolVersion": "0.2.1",
+  "name": "Bot Hub",
+  "description": "Prediction market intelligence agent for Kalshi. Provides portfolio status, weather forecast edge calculations, and market scanning capabilities.",
+  "url": "https://baconhollow.com",
+  "version": "1.0.0",
+  "author": "baconhollow",
+  "wellKnownURI": "https://baconhollow.com/.well-known/agent-card.json",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "portfolio-status",
+      "name": "Portfolio Status",
+      "description": "Returns current positions, balances, and P&L for all trading bots. Read-only."
+    },
+    {
+      "id": "weather-forecast-edge",
+      "name": "Weather Forecast Edge",
+      "description": "Calculates trading edge for Kalshi weather markets using GFS forecast data and normal CDF probability model. Covers 20 US cities."
+    },
+    {
+      "id": "market-scan",
+      "name": "Market Scanner",
+      "description": "Scans Kalshi prediction markets with configurable filters. Requires API credentials."
+    }
+  ]
+}
