@@ -6,6 +6,8 @@
   "version": "1.0.0",
   "author": "baconhollow",
   "wellKnownURI": "https://baconhollow.com/.well-known/agent-card.json",
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -15,17 +17,20 @@
     {
       "id": "portfolio-status",
       "name": "Portfolio Status",
-      "description": "Returns current positions, balances, and P&L for all trading bots. Read-only."
+      "description": "Returns current positions, balances, and P&L for all trading bots. Read-only.",
+      "tags": ["trading", "portfolio", "kalshi"]
     },
     {
       "id": "weather-forecast-edge",
       "name": "Weather Forecast Edge",
-      "description": "Calculates trading edge for Kalshi weather markets using GFS forecast data and normal CDF probability model. Covers 20 US cities."
+      "description": "Calculates trading edge for Kalshi weather markets using GFS forecast data and normal CDF probability model. Covers 20 US cities.",
+      "tags": ["weather", "forecasting", "kalshi", "probability"]
     },
     {
       "id": "market-scan",
       "name": "Market Scanner",
-      "description": "Scans Kalshi prediction markets with configurable filters. Uses server-side credentials — no authentication required from caller."
+      "description": "Scans Kalshi prediction markets with configurable filters. Uses server-side credentials — no authentication required from caller.",
+      "tags": ["markets", "kalshi", "prediction-markets", "scanning"]
     }
   ]
 }
