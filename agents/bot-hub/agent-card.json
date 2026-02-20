@@ -39,7 +39,6 @@
       "outputModes": ["application/json"]
     }
   ],
-  "repository": "https://github.com/baconhollow/Bot_Hub",
   "pricing": {
     "model": "free"
   }
