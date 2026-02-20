@@ -78,7 +78,7 @@
   "license": "Commercial",
   "registryTags": ["governance", "trust", "identity", "safety", "compliance", "post-quantum", "provenance", "verification", "agent-identity", "x402"],
   "pricing": {
-    "model": "per-call",
+    "model": "pay-per-use",
     "currency": "USD",
     "details": "Verify: $0.01, Attest: $0.02, Bind: $0.02, Trust Certificate: $0.25. Also supports Sponge x402 (wallet = auth). Subscriptions: Scout $29/mo (5K calls), Sentinel $149/mo (50K), Sovereign $499/mo (500K)."
   },
