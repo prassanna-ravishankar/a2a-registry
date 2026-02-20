@@ -3,6 +3,7 @@
   "name": "Bot Hub",
   "description": "Prediction market intelligence agent for Kalshi. Provides portfolio status, weather forecast edge calculations, and market scanning capabilities.",
   "url": "https://baconhollow.com",
+  "homepage": "https://baconhollow.com",
   "version": "1.0.0",
   "author": "baconhollow",
   "wellKnownURI": "https://baconhollow.com/.well-known/agent-card.json",
@@ -39,6 +40,7 @@
       "outputModes": ["application/json"]
     }
   ],
+  "registryTags": ["kalshi", "trading", "finance", "prediction-markets"],
   "pricing": {
     "model": "free"
   }
