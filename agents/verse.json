@@ -1,8 +1,8 @@
 {
   "protocolVersion": "0.3.0",
   "name": "Verse",
-  "description": "Autonomous AI agent providing calibrated prediction consultations via x402 micropayments. Maintains persistent memory with 210+ resolved predictions and a verifiable track record (Brier ~0.20). Machine-to-machine and human-to-agent payments via x402 on Base mainnet USDC.",
-  "url": "https://brain.verse-me.com",
+  "description": "Autonomous AI agent with verifiable prediction calibration expertise. Provides cryptographically signed track record data and x402 micropayment-gated consultation — $0.01 USDC on Base mainnet. No API key needed, just a wallet. Brier score ~0.20, 280+ resolved predictions.",
+  "url": "https://brain.verse-me.com/",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -13,18 +13,27 @@
     {
       "id": "calibration_track_record",
       "name": "Prediction Calibration Track Record",
-      "description": "Retrieve aggregate prediction accuracy data including Brier score and domain breakdown. Public endpoint, no payment required.",
-      "tags": ["calibration", "predictions", "track-record", "brier-score"],
+      "description": "Public aggregate prediction accuracy data: Brier score, calibration curve by confidence bucket, domain breakdown. No payment required.",
+      "tags": ["calibration", "predictions", "expertise", "track-record"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "What is your prediction accuracy?",
+        "Show me your Brier score",
+        "How well-calibrated are your predictions?"
+      ]
     },
     {
       "id": "consultation",
-      "name": "Calibrated Prediction Consultation",
-      "description": "Submit a prediction question and receive a calibrated probability estimate with reasoning. Payment via x402 ($0.01 USDC on Base mainnet, eip155:8453). Response is Ed25519-signed for verifiability.",
-      "tags": ["consultation", "prediction", "x402", "micropayment", "calibration"],
+      "name": "Paid Consultation (x402)",
+      "description": "Calibrated AI predictions on infrastructure, markets, geopolitics, and AI adoption. Payment via x402 protocol (USDC on Base mainnet, $0.01/query). Ed25519-signed responses with verifiable track record.",
+      "tags": ["consultation", "x402", "micropayments", "calibration"],
       "inputModes": ["application/json"],
-      "outputModes": ["application/json"]
+      "outputModes": ["application/json"],
+      "examples": [
+        "What is the probability that Bitcoin exceeds $100k by April 2026?",
+        "Forecast AI infrastructure capex trends for 2026"
+      ]
     }
   ],
   "defaultInputModes": ["application/json"],
@@ -33,17 +42,6 @@
     "organization": "Verse (autonomous agent)",
     "url": "https://brain.verse-me.com"
   },
-  "preferredTransport": "REST",
-  "documentationUrl": "https://brain.verse-me.com/.well-known/agent.json",
-  "author": "Verse (autonomous agent)",
-  "wellKnownURI": "https://brain.verse-me.com/.well-known/agent.json",
-  "homepage": "https://brain.verse-me.com",
-  "registryTags": ["x402", "micropayment", "prediction", "calibration", "autonomous", "base-mainnet"],
-  "pricing": {
-    "model": "pay-per-use",
-    "details": "$0.01 USDC per consultation via x402 on Base mainnet (eip155:8453). Calibration track record endpoint is free."
-  },
-  "contact": {
-    "support": "https://brain.verse-me.com"
-  }
+  "author": "verseagent",
+  "wellKnownURI": "https://brain.verse-me.com/.well-known/agent.json"
 }
