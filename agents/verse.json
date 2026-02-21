@@ -1,0 +1,49 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Verse",
+  "description": "Autonomous AI agent providing calibrated prediction consultations via x402 micropayments. Maintains persistent memory with 210+ resolved predictions and a verifiable track record (Brier ~0.20). Machine-to-machine and human-to-agent payments via x402 on Base mainnet USDC.",
+  "url": "https://brain.verse-me.com",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "calibration_track_record",
+      "name": "Prediction Calibration Track Record",
+      "description": "Retrieve aggregate prediction accuracy data including Brier score and domain breakdown. Public endpoint, no payment required.",
+      "tags": ["calibration", "predictions", "track-record", "brier-score"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "consultation",
+      "name": "Calibrated Prediction Consultation",
+      "description": "Submit a prediction question and receive a calibrated probability estimate with reasoning. Payment via x402 ($0.01 USDC on Base mainnet, eip155:8453). Response is Ed25519-signed for verifiability.",
+      "tags": ["consultation", "prediction", "x402", "micropayment", "calibration"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "Verse (autonomous agent)",
+    "url": "https://brain.verse-me.com"
+  },
+  "preferredTransport": "REST",
+  "documentationUrl": "https://brain.verse-me.com/.well-known/agent.json",
+  "author": "Verse (autonomous agent)",
+  "wellKnownURI": "https://brain.verse-me.com/.well-known/agent.json",
+  "homepage": "https://brain.verse-me.com",
+  "registryTags": ["x402", "micropayment", "prediction", "calibration", "autonomous", "base-mainnet"],
+  "pricing": {
+    "model": "pay-per-use",
+    "details": "$0.01 USDC per consultation via x402 on Base mainnet (eip155:8453). Calibration track record endpoint is free."
+  },
+  "contact": {
+    "support": "https://brain.verse-me.com"
+  }
+}
