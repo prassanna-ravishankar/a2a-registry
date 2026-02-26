@@ -55,7 +55,12 @@
       "description": "Engages visitors in Spanish, English, French, German, and other languages. Shares the story of El Vórtice, César Yagüe's artistic vision, and the philosophy of Visual Medicine.",
       "tags": ["multilingual", "engagement", "storytelling"],
       "inputModes": ["text/plain"],
-      "outputModes": ["text/plain"]
+      "outputModes": ["text/plain"],
+      "examples": [
+        "Tell me about Visual Medicine in Spanish",
+        "Who is César Yagüe?",
+        "What is the story of El Vórtice?"
+      ]
     },
     {
       "id": "a2a-collaboration",
