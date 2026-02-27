@@ -251,9 +251,28 @@ asyncio.run(main())
     }
 
 
+# ASGI app for hosted/streamable HTTP deployment (e.g. uvicorn, gunicorn)
+# Usage: uvicorn a2a_registry.mcp_server:http_app
+http_app = mcp.http_app()
+
+
 def main():
-    """Main entry point for the MCP server."""
-    mcp.run()
+    """Main entry point for the MCP server.
+
+    Transport is selected via MCP_TRANSPORT env var:
+      - stdio (default): for local / Claude Desktop use
+      - http: for hosted / streamable HTTP deployment
+    """
+    import os
+
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    host = os.environ.get("MCP_HOST", "0.0.0.0")
+    port = int(os.environ.get("MCP_PORT", "8080"))
+
+    if transport == "http":
+        mcp.run(transport="http", host=host, port=port)
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

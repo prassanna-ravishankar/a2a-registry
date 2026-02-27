@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "a2a-registry-client"
-version = "0.4.2"
+version = "0.4.3"
 description = "Python client library for the A2A Registry"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,7 @@ classifiers = [
 dependencies = [
     "requests>=2.31.0",
     "pydantic>=2.0.0",
-    "fastmcp>=2.0.0",
+    "fastmcp>=3.0.0",
 ]
 
 [project.optional-dependencies]
