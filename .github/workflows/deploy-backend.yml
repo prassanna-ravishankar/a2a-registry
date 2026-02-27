@@ -12,6 +12,10 @@ on:
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GKE_CLUSTER: clusterkit
