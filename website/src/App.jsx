@@ -5,25 +5,40 @@ import Submit from './pages/Submit';
 import { api, fetchStaticRegistry } from './lib/api';
 import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
 
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 const A2ARegistry = () => {
   // Initialize page from URL path
   const [currentPage, setCurrentPage] = useState(() => {
     return window.location.pathname === '/submit' ? 'submit' : 'home';
   });
   const [agents, setAgents] = useState([]);
-  const [filteredAgents, setFilteredAgents] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [conformanceFilter, setConformanceFilter] = useState('all'); // 'all', 'standard', 'non-standard'
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [stats, setStats] = useState(null);
+  const [useStaticFallback, setUseStaticFallback] = useState(false);
+
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const LIMIT = 50;
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Close inspection on Escape
       if (e.key === 'Escape') {
         setSelectedAgent(null);
       }
@@ -33,19 +48,49 @@ const A2ARegistry = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Load data from API (with fallback to static registry)
+  // Fetch from API with given offset, optionally appending results
+  const fetchFromAPI = useCallback(async (offset, append = false) => {
+    const skillParam = selectedSkills.length === 1 ? selectedSkills[0] : undefined;
+
+    const data = await api.getAgents({
+      search: debouncedSearch || undefined,
+      skill: skillParam,
+      limit: LIMIT,
+      offset,
+    });
+
+    const agentList = data.agents || [];
+    const totalCount = data.total ?? agentList.length;
+
+    if (debouncedSearch) {
+      trackSearch(debouncedSearch, totalCount);
+    }
+
+    if (append) {
+      setAgents(prev => [...prev, ...agentList]);
+    } else {
+      setAgents(agentList);
+    }
+    setTotal(totalCount);
+  }, [debouncedSearch, selectedSkills]);
+
+  // Initial load and re-fetch when filters change (reset to page 0)
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      setPage(0);
+
       try {
-        const data = await api.getAgents({ limit: 1000 });
-        const agentList = data.agents || [];
-        setAgents(agentList);
-        setFilteredAgents(agentList);
+        await fetchFromAPI(0, false);
+        setUseStaticFallback(false);
         setLoading(false);
 
         try {
           const statsData = await api.getStats();
-          setStats(statsData);
+          if (!cancelled) setStats(statsData);
         } catch {
           // stats are non-critical
         }
@@ -54,22 +99,73 @@ const A2ARegistry = () => {
         try {
           const data = await fetchStaticRegistry();
           const agentList = data.agents || [];
-          setAgents(agentList);
-          setFilteredAgents(agentList);
-          setLoading(false);
+          if (!cancelled) {
+            setAgents(agentList);
+            setTotal(agentList.length);
+            setUseStaticFallback(true);
+            setLoading(false);
+          }
         } catch {
-          setError('Failed to load agent registry');
-          setLoading(false);
+          if (!cancelled) {
+            setError('Failed to load agent registry');
+            setLoading(false);
+          }
         }
       }
     };
 
     loadData();
-  }, []);
+    return () => { cancelled = true; };
+  }, [debouncedSearch, selectedSkills, conformanceFilter]);
+
+  // Load more handler
+  const handleLoadMore = useCallback(async () => {
+    const nextPage = page + 1;
+    const offset = nextPage * LIMIT;
+    setLoadingMore(true);
+    try {
+      await fetchFromAPI(offset, true);
+      setPage(nextPage);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, fetchFromAPI]);
+
+  // Client-side filtering for static fallback
+  const filteredAgents = useMemo(() => {
+    if (!useStaticFallback) return agents;
+
+    let filtered = agents.filter(agent =>
+      agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (agent.author && agent.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      agent.skills.some(skill =>
+        skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    );
+
+    if (selectedSkills.length > 0) {
+      filtered = filtered.filter(agent =>
+        agent.skills.some(skill =>
+          skill.tags.some(tag => selectedSkills.includes(tag))
+        )
+      );
+    }
+
+    if (conformanceFilter === 'standard') {
+      filtered = filtered.filter(agent => agent.conformance !== false);
+    } else if (conformanceFilter === 'non-standard') {
+      filtered = filtered.filter(agent => agent.conformance === false);
+    }
+
+    return filtered;
+  }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter]);
+
+  const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
   // URL Synchronization
   useEffect(() => {
-    // 1. Handle initial load from URL
     if (!loading && agents.length > 0) {
       const params = new URLSearchParams(window.location.search);
       const agentId = params.get('agent');
@@ -81,7 +177,6 @@ const A2ARegistry = () => {
   }, [loading, agents]);
 
   useEffect(() => {
-    // 2. Update URL when selection changes
     const params = new URLSearchParams(window.location.search);
     if (selectedAgent) {
       const agentId = selectedAgent.id;
@@ -98,7 +193,7 @@ const A2ARegistry = () => {
     }
   }, [selectedAgent]);
 
-  // Handle browser back/forward
+  // Handle browser back/forward for agent deep-links
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
@@ -115,42 +210,8 @@ const A2ARegistry = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [agents]);
 
-  // Filtering Logic
-  useEffect(() => {
-    let filtered = agents.filter(agent =>
-      agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (agent.author && agent.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      agent.skills.some(skill =>
-        skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    );
-
-    if (searchTerm) {
-      trackSearch(searchTerm, filtered.length);
-    }
-
-    if (selectedSkills.length > 0) {
-      filtered = filtered.filter(agent =>
-        agent.skills.some(skill =>
-          skill.tags.some(tag => selectedSkills.includes(tag))
-        )
-      );
-    }
-
-    if (conformanceFilter === 'standard') {
-      filtered = filtered.filter(agent => agent.conformance !== false);
-    } else if (conformanceFilter === 'non-standard') {
-      filtered = filtered.filter(agent => agent.conformance === false);
-    }
-
-    setFilteredAgents(filtered);
-  }, [searchTerm, selectedSkills, conformanceFilter, agents]);
-
   // Extract all tags for filter list
   const allTags = useMemo(() => {
-    // Filter agents first based on conformance filter for relevant tags
     let relevantAgents = agents;
     if (conformanceFilter === 'standard') {
       relevantAgents = agents.filter(agent => agent.conformance !== false);
@@ -178,10 +239,7 @@ const A2ARegistry = () => {
       const newSkills = prev.includes(tag)
         ? prev.filter(t => t !== tag)
         : [...prev, tag];
-
-      // Track filter change
       trackFilterChange('skill', tag);
-
       return newSkills;
     });
   }, []);
@@ -194,7 +252,6 @@ const A2ARegistry = () => {
   // Handle page navigation
   useEffect(() => {
     const handleNavigate = (e) => {
-      // Handle clicks on links
       const link = e.target.closest('a');
       if (link && link.pathname === '/submit') {
         e.preventDefault();
@@ -207,7 +264,6 @@ const A2ARegistry = () => {
       }
     };
 
-    // Handle browser back/forward
     const handlePopState = () => {
       setCurrentPage(window.location.pathname === '/submit' ? 'submit' : 'home');
     };
@@ -224,12 +280,14 @@ const A2ARegistry = () => {
     return <Submit />;
   }
 
+  const showLoadMore = !useStaticFallback && displayedAgents.length < total;
 
   return (
     <Layout
       searchTerm={searchTerm}
       setSearchTerm={setSearchTerm}
-      agentCount={filteredAgents.length}
+      agentCount={displayedAgents.length}
+      total={total}
       allTags={allTags}
       selectedSkills={selectedSkills}
       toggleSkillFilter={toggleSkillFilter}
@@ -240,11 +298,14 @@ const A2ARegistry = () => {
       stats={stats}
     >
       <AgentGrid
-        agents={filteredAgents}
+        agents={displayedAgents}
         loading={loading}
+        loadingMore={loadingMore}
         error={error}
         selectedAgent={selectedAgent}
         onAgentSelect={handleAgentSelect}
+        onLoadMore={showLoadMore ? handleLoadMore : null}
+        total={total}
         onClearFilters={() => {
           setSearchTerm('');
           setSelectedSkills([]);
