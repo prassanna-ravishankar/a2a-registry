@@ -1,65 +1,118 @@
 {
-  "protocolVersion": "0.2.1",
   "name": "PolicyCheck",
-  "description": "Pre-purchase seller policy analysis service agent for AI purchasing agents. Analyzes return policies, shipping terms, warranty coverage, and terms of service to assess buyer protection and risk levels before completing e-commerce transactions.",
-  "url": "https://legaleasy.tools/api/a2a",
+  "description": "Seller policy risk intelligence for AI-powered commerce. Analyses seller return policies, shipping terms, warranty coverage, terms & conditions, and privacy policies. Returns structured risk data including risk level classifications, buyer protection scores (0-100), key findings, and factual summaries. Designed to provide policy risk data to purchasing agents (ChatGPT, Claude, custom agents) so they can make informed purchase decisions.",
   "version": "1.0.0",
+  "url": "https://policycheck.tools/api/a2a",
+  "wellKnownURI": "https://policycheck.tools/.well-known/agent.json",
+  "homepage": "https://policycheck.tools",
+  "license": "Apache-2.0",
+  "pricing": {
+    "model": "freemium",
+    "details": "https://policycheck.tools/pricing"
+  },
+  "contact": {
+    "email": "support@policycheck.tools"
+  },
+  "protocolVersion": "0.2.0",
   "capabilities": {
     "streaming": false,
-    "pushNotifications": false
+    "pushNotifications": false,
+    "signed_assessments": {
+      "version": "1.0",
+      "assessment_endpoint": "/api/v1/signed-assessment",
+      "verify_endpoint": "/api/v1/verify",
+      "jwks_endpoint": "/.well-known/jwks.json",
+      "signing_algorithm": "Ed25519"
+    }
   },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
   "skills": [
     {
       "id": "comprehensive-policy-analysis",
       "name": "Comprehensive Policy Analysis",
-      "description": "Full analysis of a seller's policies including returns, shipping, warranty, and terms of service. Returns risk level, buyer protection score, key findings, and actionable recommendation.",
-      "tags": ["policy", "analysis", "risk", "buyer-protection", "e-commerce"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "description": "Full analysis of a seller's return, shipping, warranty, and terms policies. Accepts policy URLs or raw text. Returns risk level (low/medium/high/critical), buyer protection score (0-100), key findings in plain English, risk flags, and a factual summary. Provides risk data to inform purchase decisions.",
+      "tags": ["policy","risk-assessment","buyer-protection","commerce","returns","shipping","warranty","terms","compliance","consumer-protection","pre-purchase","due-diligence"],
+      "examples": [
+        "Analyse all policies for https://example-store.com before I purchase wireless earbuds for $79.99",
+        "Check the return and shipping policies at this URL: https://store.com/policies/refund-policy",
+        "What are the risks in these terms of service? [raw text]"
+      ]
     },
     {
       "id": "quick-risk-check",
       "name": "Quick Risk Check",
-      "description": "Fast risk assessment of a seller URL. Returns risk level and buyer protection score in under 3 seconds.",
-      "tags": ["risk", "quick", "score"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "description": "Auto-discovers and analyses policy pages from a seller's base URL. Crawls common policy paths (/policies/refund-policy, /policies/shipping-policy, /terms-of-service etc.) and returns a quick risk score. Best for fast pre-purchase screening when you only have the seller's homepage URL.",
+      "tags": ["quick-check","auto-discovery","risk-score","seller-screening"],
+      "examples": [
+        "Quick risk check on https://techgadgets-store.com",
+        "Get risk data for this seller: https://example-shop.com"
+      ]
     },
     {
-      "id": "returns-policy-analysis",
-      "name": "Returns Policy Analysis",
-      "description": "Focused analysis of return and refund policies.",
-      "tags": ["returns", "refunds", "policy"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "id": "return-policy-analysis",
+      "name": "Return Policy Analysis",
+      "description": "Focused analysis of a seller's return/refund policy. Extracts return window (days), restocking fees, who pays return shipping, exchange-only or store-credit restrictions, final sale items, and condition requirements.",
+      "tags": ["returns","refunds","restocking-fee","return-window"],
+      "examples": [
+        "What's the return policy at https://store.com/policies/refund-policy",
+        "Analyse this return policy text for hidden restrictions"
+      ]
     },
     {
       "id": "shipping-policy-analysis",
       "name": "Shipping Policy Analysis",
-      "description": "Focused analysis of shipping policies.",
-      "tags": ["shipping", "delivery", "tracking"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "description": "Focused analysis of a seller's shipping policy. Extracts free shipping thresholds, delivery timeframes, international availability, handling time, carriers, and tracking availability.",
+      "tags": ["shipping","delivery","free-shipping","tracking"],
+      "examples": [
+        "How long does shipping take from this store?",
+        "Does this seller offer free shipping and tracking?"
+      ]
     },
     {
       "id": "warranty-analysis",
       "name": "Warranty Analysis",
-      "description": "Focused analysis of warranty coverage.",
-      "tags": ["warranty", "guarantee", "coverage"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "description": "Focused analysis of product or seller warranty. Extracts warranty duration, type (limited/full/lifetime/manufacturer), coverage details, exclusions, and claim process.",
+      "tags": ["warranty","guarantee","coverage","exclusions"],
+      "examples": [
+        "What does the warranty cover for this product?",
+        "Are there any warranty exclusions I should know about?"
+      ]
     },
     {
-      "id": "terms-analysis",
+      "id": "terms-and-conditions-analysis",
       "name": "Terms & Conditions Analysis",
-      "description": "Legal risk analysis. Checks for binding arbitration, class action waivers, liability caps, termination rights.",
-      "tags": ["terms", "legal", "arbitration", "liability", "consumer-rights"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
+      "description": "Legal risk analysis of terms and conditions. Checks for binding arbitration clauses, class action waivers, liability caps, termination rights, auto-renewal terms, governing law/jurisdiction, and data practices. Especially important for high-value purchases or ongoing subscriptions.",
+      "tags": ["terms","legal","arbitration","liability","class-action","jurisdiction","auto-renewal","consumer-rights"],
+      "examples": [
+        "Are there any legal red flags in these terms of service?",
+        "Does this company have binding arbitration or class action waivers?"
+      ]
+    },
+    {
+      "id": "signed-assessment",
+      "name": "Signed Seller Assessment",
+      "description": "Generates a cryptographically signed seller policy assessment. Returns an Ed25519-signed envelope containing risk score, flags, and buyer protection data that agents can present as verifiable proof of seller policy analysis during checkout. Signatures can be independently verified via the JWKS endpoint.",
+      "tags": ["trust","verification","signed","cryptographic","checkout","agent-identity"],
+      "examples": [
+        "Get a signed seller assessment for https://amazon.com",
+        "Generate verifiable seller trust data for this merchant"
+      ]
     }
   ],
-  "defaultInputModes": ["text/plain", "application/json"],
-  "defaultOutputModes": ["application/json"],
-  "author": "LegalEasy",
-  "wellKnownURI": "https://legaleasy.tools/.well-known/agent.json"
+  "provider": {
+    "organization": "PolicyCheck",
+    "url": "https://policycheck.tools"
+  },
+  "author": "PolicyCheck",
+  "documentationUrl": "https://policycheck.tools/docs/a2a",
+  "security": [{ "apiKey": [] }],
+  "securitySchemes": {
+    "apiKey": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key",
+      "description": "API key for authenticated access. Free tier: 100 requests/minute. Contact api@policycheck.tools for higher limits."
+    }
+  }
 }
