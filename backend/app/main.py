@@ -230,6 +230,7 @@ async def list_agents(
     capability: Optional[str] = None,
     author: Optional[str] = None,
     search: Optional[str] = None,
+    conformance: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -241,6 +242,7 @@ async def list_agents(
     - skill: Filter by skill ID
     - capability: Filter by A2A capability (e.g., "streaming")
     - author: Filter by author name (case-insensitive partial match)
+    - conformance: Filter by conformance ("standard" or "non-standard")
     - limit: Max results to return (default: 50, max: 100)
     - offset: Pagination offset (default: 0)
     """
@@ -250,6 +252,7 @@ async def list_agents(
         capability=capability,
         author=author,
         search=search,
+        conformance=conformance,
         limit=limit,
         offset=offset,
     )
@@ -258,12 +261,17 @@ async def list_agents(
     if limit > 100:
         limit = 100
 
+    # Validate conformance param
+    if conformance not in (None, "standard", "non-standard"):
+        conformance = None
+
     agent_repo = AgentRepository(db)
     agents, total = await agent_repo.list_agents(
         skill=skill,
         capability=capability,
         author=author,
         search=search,
+        conformance=conformance,
         limit=limit,
         offset=offset,
     )

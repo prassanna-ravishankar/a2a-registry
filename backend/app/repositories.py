@@ -98,6 +98,7 @@ class AgentRepository:
         capability: Optional[str] = None,
         author: Optional[str] = None,
         search: Optional[str] = None,
+        conformance: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -131,6 +132,11 @@ class AgentRepository:
             )
             params.append(f"%{search}%")
             param_idx += 1
+
+        if conformance == "standard":
+            where_clauses.append("(conformance IS NULL OR conformance = true)")
+        elif conformance == "non-standard":
+            where_clauses.append("conformance = false")
 
         where_clause = " AND ".join(where_clauses)
 
