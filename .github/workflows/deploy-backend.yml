@@ -33,18 +33,11 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - name: Check for backend changes
-        id: changes
-        run: |
-          git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo "backend=true" >> $GITHUB_OUTPUT || echo "backend=false" >> $GITHUB_OUTPUT
       - uses: astral-sh/setup-uv@v7
-        if: steps.changes.outputs.backend == 'true'
         with:
           enable-cache: true
+          working-directory: backend
       - run: uv run --extra dev pytest tests/ -v
-        if: steps.changes.outputs.backend == 'true'
 
   build-and-push:
     name: Build & Push
