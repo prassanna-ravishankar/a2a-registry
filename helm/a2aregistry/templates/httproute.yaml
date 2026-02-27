@@ -30,7 +30,19 @@ spec:
     - group: ""
       kind: Service
       name: a2aregistry-api
-      namespace: {{ .Release.Namespace }}  # Cross-namespace reference to a2aregistry namespace
+      namespace: {{ .Release.Namespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  # MCP server (prefix /mcp)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /mcp
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: a2aregistry-api
+      namespace: {{ .Release.Namespace }}
       port: {{ .Values.api.service.port }}
       weight: 1
   # Frontend routes (everything else)
@@ -42,7 +54,7 @@ spec:
     - group: ""
       kind: Service
       name: a2aregistry-frontend
-      namespace: {{ .Release.Namespace }}  # Cross-namespace reference to a2aregistry namespace
+      namespace: {{ .Release.Namespace }}
       port: {{ .Values.frontend.service.port }}
       weight: 1
 {{- end }}

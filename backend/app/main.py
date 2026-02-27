@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .database import db
+from .mcp_server import mcp
 from .models import (
     AgentCreate,
     AgentFlag,
@@ -460,6 +461,9 @@ app.include_router(router)
 
 # Include router at /api prefix (for GKE Gateway HTTPRoute)
 app.include_router(router, prefix="/api")
+
+# Mount MCP server at /mcp (streamable HTTP transport for hosted MCP)
+app.mount("/mcp", mcp.http_app())
 
 
 # ============================================================================

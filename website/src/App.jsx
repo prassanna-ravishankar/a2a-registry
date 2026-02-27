@@ -24,7 +24,7 @@ const A2ARegistry = () => {
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [conformanceFilter, setConformanceFilter] = useState('non-standard'); // 'all', 'standard', 'non-standard'
+  const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -310,7 +310,7 @@ const A2ARegistry = () => {
         onClearFilters={() => {
           setSearchTerm('');
           setSelectedSkills([]);
-          setConformanceFilter('non-standard');
+          setConformanceFilter('standard');
         }}
       />
     </Layout>
