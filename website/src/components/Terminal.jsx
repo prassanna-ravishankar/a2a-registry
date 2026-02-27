@@ -121,10 +121,7 @@ const Terminal = ({ agent }) => {
                         agentConfig.url,
                         taskId,
                         agentConfig.transport,
-                        (task) => {
-                            // Optional: update UI with task status changes
-                            console.log('Task status update:', task.status?.state);
-                        }
+                        () => {}
                     );
 
                     responseText = extractTaskText(completedTask);
