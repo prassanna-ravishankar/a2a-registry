@@ -110,8 +110,11 @@ class AgentRepository:
         param_idx = 1
 
         if skill:
-            where_clauses.append(f"skills::jsonb @> ${param_idx}::jsonb")
-            params.append(json.dumps([{"id": skill}]))
+            # Match agents where any skill has the given tag
+            where_clauses.append(
+                f"EXISTS (SELECT 1 FROM jsonb_array_elements(skills::jsonb) s WHERE s->'tags' @> ${param_idx}::jsonb)"
+            )
+            params.append(json.dumps([skill]))
             param_idx += 1
 
         if capability:
@@ -134,7 +137,7 @@ class AgentRepository:
             param_idx += 1
 
         if conformance == "standard":
-            where_clauses.append("(conformance IS NULL OR conformance = true)")
+            where_clauses.append("conformance = true")
         elif conformance == "non-standard":
             where_clauses.append("conformance = false")
 

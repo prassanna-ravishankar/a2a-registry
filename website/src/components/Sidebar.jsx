@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, Cpu, Database, Network } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import LiveFeed from './LiveFeed';
 
@@ -54,24 +54,38 @@ const Sidebar = ({
 
                     {/* Skill Cloud */}
                     <div className="space-y-3">
-                        <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Skill Modules</div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {allTags.slice(0, 15).map(tag => (
-                                <Badge
-                                    key={tag}
-                                    variant="outline"
-                                    className={`
-                                        cursor-pointer text-[10px] font-mono rounded-none border transition-all
-                                        ${selectedSkills.includes(tag)
-                                            ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-400'
-                                            : 'bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-600'
-                                        }
-                                    `}
-                                    onClick={() => toggleSkillFilter(tag)}
+                        <div className="flex items-center justify-between">
+                            <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Skill Modules</div>
+                            {selectedSkills.length > 0 && (
+                                <button
+                                    onClick={() => selectedSkills.forEach(t => toggleSkillFilter(t))}
+                                    className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
                                 >
-                                    {tag}
-                                </Badge>
-                            ))}
+                                    <X className="w-2.5 h-2.5" /> clear
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {allTags.slice(0, 20).map(tag => {
+                                const active = selectedSkills.includes(tag);
+                                return (
+                                    <Badge
+                                        key={tag}
+                                        variant="outline"
+                                        className={`
+                                            cursor-pointer text-[10px] font-mono rounded-none border transition-all flex items-center gap-1
+                                            ${active
+                                                ? 'bg-emerald-900/20 border-emerald-500/50 text-emerald-400'
+                                                : 'bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-600'
+                                            }
+                                        `}
+                                        onClick={() => toggleSkillFilter(tag)}
+                                    >
+                                        {tag}
+                                        {active && <X className="w-2.5 h-2.5 ml-0.5" />}
+                                    </Badge>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
