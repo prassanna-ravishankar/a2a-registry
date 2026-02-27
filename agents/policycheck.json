@@ -1,0 +1,65 @@
+{
+  "protocolVersion": "0.2.1",
+  "name": "PolicyCheck",
+  "description": "Pre-purchase seller policy analysis service agent for AI purchasing agents. Analyzes return policies, shipping terms, warranty coverage, and terms of service to assess buyer protection and risk levels before completing e-commerce transactions.",
+  "url": "https://legaleasy.tools/api/a2a",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "skills": [
+    {
+      "id": "comprehensive-policy-analysis",
+      "name": "Comprehensive Policy Analysis",
+      "description": "Full analysis of a seller's policies including returns, shipping, warranty, and terms of service. Returns risk level, buyer protection score, key findings, and actionable recommendation.",
+      "tags": ["policy", "analysis", "risk", "buyer-protection", "e-commerce"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "quick-risk-check",
+      "name": "Quick Risk Check",
+      "description": "Fast risk assessment of a seller URL. Returns risk level and buyer protection score in under 3 seconds.",
+      "tags": ["risk", "quick", "score"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "returns-policy-analysis",
+      "name": "Returns Policy Analysis",
+      "description": "Focused analysis of return and refund policies.",
+      "tags": ["returns", "refunds", "policy"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "shipping-policy-analysis",
+      "name": "Shipping Policy Analysis",
+      "description": "Focused analysis of shipping policies.",
+      "tags": ["shipping", "delivery", "tracking"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "warranty-analysis",
+      "name": "Warranty Analysis",
+      "description": "Focused analysis of warranty coverage.",
+      "tags": ["warranty", "guarantee", "coverage"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "terms-analysis",
+      "name": "Terms & Conditions Analysis",
+      "description": "Legal risk analysis. Checks for binding arbitration, class action waivers, liability caps, termination rights.",
+      "tags": ["terms", "legal", "arbitration", "liability", "consumer-rights"],
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["application/json"]
+    }
+  ],
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "author": "LegalEasy",
+  "wellKnownURI": "https://legaleasy.tools/.well-known/agent.json"
+}
