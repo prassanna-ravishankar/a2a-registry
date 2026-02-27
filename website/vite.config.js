@@ -40,7 +40,7 @@ export default defineConfig({
     cssCodeSplit: true,
     cssMinify: 'lightningcss',
     sourcemap: false,
-    target: 'es2015',
+    target: 'esnext',
     assetsInlineLimit: 8192, // Increased from 4096 to inline more assets
     reportCompressedSize: true,
     chunkSizeWarningLimit: 600,

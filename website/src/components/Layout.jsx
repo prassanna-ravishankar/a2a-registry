@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import InspectionDeck from './InspectionDeck';
+import StatsBar from './StatsBar';
 import { Button } from '@/components/ui/button';
 
 const Layout = ({
@@ -16,7 +17,8 @@ const Layout = ({
     conformanceFilter,
     setConformanceFilter,
     selectedAgent,
-    onCloseInspection
+    onCloseInspection,
+    stats
 }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -81,6 +83,7 @@ const Layout = ({
                 </div>
 
                 <main className="flex-1 flex flex-col relative min-w-0 md:border-r border-zinc-800">
+                    {stats && <StatsBar stats={stats} />}
                     {children}
                 </main>
 

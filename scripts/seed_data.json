@@ -1,0 +1,26 @@
+{
+  "wellKnownURIs": [
+    "https://prassanna-ravishankar--code-agent-code-agent-app.modal.run/.well-known/agent.json",
+    "https://coinrailz.com/.well-known/agent-card.json",
+    "https://prassanna-ravishankar--data-agent-data-agent-app.modal.run/.well-known/agent.json",
+    "https://hello.a2aregistry.org/.well-known/agent-card.json",
+    "https://prassanna-ravishankar--planning-agent-planning-agent-app.modal.run/.well-known/agent.json",
+    "https://cesaryague.es/.well-known/agent.json",
+    "https://anybrowse.dev/.well-known/agent-card.json",
+    "https://node-basic.replit.app/.well-known/agent.json",
+    "https://governance.taskhawktech.com/.well-known/agent.json",
+    "https://baconhollow.com/.well-known/agent-card.json",
+    "https://lucid.itsgloria.ai/.well-known/agent-card.json",
+    "https://api.moltbridge.ai/.well-known/agent.json",
+    "https://cloudlatitude.io/.well-known/agent.json",
+    "https://agent.willform.ai/.well-known/agent.json",
+    "https://hs-andru-test.onrender.com/.well-known/agent.json",
+    "https://a2a.opspawn.com/.well-known/agent.json",
+    "https://api.swarm.at/.well-known/agent.json",
+    "https://legaleasy.tools/.well-known/agent.json",
+    "https://www.luminarylane.app/.well-known/agent-card.json",
+    "https://grokandmon.com/.well-known/agent-card.json",
+    "https://openclaw-node-production.up.railway.app/.well-known/agent-card.json",
+    "https://api.vapagent.com/.well-known/agent-card.json"
+  ]
+}

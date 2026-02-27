@@ -8,75 +8,49 @@
 
 ## Overview
 
-The A2A Registry solves the critical problem of agent discovery in the AI ecosystem. **Unlike other registries that index code repositories or implementations, we exclusively index live, hosted agents that are actively running and accessible.** Using a "Git as a Database" model, we leverage GitHub for transparent data submission, validation, and hosting. The registry is accessible both to humans via our website and to agents programmatically via a static API endpoint.
+The A2A Registry is the discovery layer for AI agents. We index **live, hosted agents** that implement the [A2A Protocol](https://a2a-protocol.org), making them discoverable by other agents and applications.
 
-## Key Features
-
-- **Live Agents Only**: We index operational, hosted agents - not just code or implementations
-- **Open Source**: Fully transparent, community-driven development
-- **A2A Protocol Compliant**: Uses official A2A Protocol AgentCard specification
-- **Simple Submission**: Submit agents via GitHub Pull Requests
-- **Automatic Validation**: CI/CD pipeline validates both A2A compliance and registry requirements
-- **Multiple Access Methods**: Web UI, JSON API, and Python client
-- **No Backend Required**: Static hosting via GitHub Pages
+**Key principle**: We trust the agent card. If your agent publishes a valid `.well-known/agent.json`, you can register it with a single API call.
 
 ## Quick Start
 
-### For Agent Developers (Submitting an Agent)
+### Register Your Agent
 
-**Important**: We only accept live, hosted agents that are publicly accessible. Your agent must be deployed and operational before submission.
+**Option 1: API (Recommended)**
+
+```bash
+curl -X POST https://beta.a2aregistry.org/api/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"wellKnownURI": "https://your-agent.com/.well-known/agent.json"}'
+```
+
+That's it. We fetch your agent card and register it automatically.
+
+**Option 2: GitHub PR**
 
 1. Fork this repository
-2. Create a new JSON file in `/agents/` directory (e.g., `/agents/my-agent.json`)
-3. Follow the [Official A2A AgentCard specification](https://a2a-protocol.org/latest/specification/#55-agentcard-object-structure)
-4. Include required registry fields: `author` and `wellKnownURI`
-5. Ensure your agent is live and responds to A2A Protocol requests
-6. Submit a Pull Request
-7. Our CI will validate your submission for both A2A compliance and registry requirements
+2. Add your agent JSON to `/agents/your-agent.json`
+3. Submit a Pull Request
 
-Example agent entry (A2A Protocol compliant):
-```json
-{
-  "protocolVersion": "0.3.0",
-  "name": "WeatherBot",
-  "description": "Provides real-time weather information and forecasts",
-  "url": "https://api.weatherbot.example.com/a2a",
-  "version": "1.0.0",
-  "capabilities": {
-    "streaming": true,
-    "pushNotifications": false
-  },
-  "skills": [
-    {
-      "id": "current-weather",
-      "name": "Current Weather",
-      "description": "Get current weather conditions",
-      "tags": ["weather", "current"],
-      "inputModes": ["text/plain", "application/json"],
-      "outputModes": ["application/json"]
-    }
-  ],
-  "defaultInputModes": ["text/plain", "application/json"],
-  "defaultOutputModes": ["application/json"],
-  "author": "Weather Services Inc",
-  "wellKnownURI": "https://weatherbot.example.com/.well-known/agent.json"
-}
+### Find Agents
+
+**Web UI**: [a2aregistry.org](https://www.a2aregistry.org)
+
+**API**:
+```bash
+# List all agents
+curl https://beta.a2aregistry.org/api/agents
+
+# Filter by skill
+curl https://beta.a2aregistry.org/api/agents?skill=weather
+
+# Get stats
+curl https://beta.a2aregistry.org/api/stats
 ```
 
-### For Agent Consumers (Finding Agents)
-
-#### Via Web Browser
-Visit [https://www.a2aregistry.org](https://www.a2aregistry.org) to browse and search the registry.
-
-#### Via API
+**Python Client**:
 ```bash
-curl https://www.a2aregistry.org/registry.json
-```
-
-#### Via Python Client
-```bash
-uv pip install a2a-registry-client
-# Or using pip: pip install a2a-registry-client
+pip install a2a-registry-client
 ```
 
 ```python
@@ -84,165 +58,146 @@ from a2a_registry import Registry
 
 registry = Registry()
 agents = registry.get_all()
-
-# Find agents with specific skills
-weather_agents = registry.find_by_skill("weather-forecast")
+weather_agents = registry.find_by_skill("weather")
 ```
 
-#### Via MCP (Model Context Protocol)
+## API Reference
 
-Enable AI assistants like Claude to discover and query agents directly:
+Base URL: `https://beta.a2aregistry.org/api`
 
-```bash
-uvx a2a-registry-client
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/agents/register` | POST | Register agent by wellKnownURI |
+| `/agents` | GET | List agents (with filtering) |
+| `/agents` | POST | Register agent (full payload) |
+| `/agents/{id}` | GET | Get agent details |
+| `/agents/{id}` | DELETE | Remove agent (ownership verified) |
+| `/agents/{id}/health` | GET | Get health status |
+| `/agents/{id}/uptime` | GET | Get uptime metrics |
+| `/stats` | GET | Registry statistics |
+| `/health` | GET | API health check |
 
-Add to your Claude Desktop configuration:
+### Query Parameters (GET /agents)
+
+- `skill` - Filter by skill ID
+- `capability` - Filter by A2A capability (streaming, pushNotifications)
+- `author` - Filter by author name
+- `limit` - Max results (default: 50, max: 100)
+- `offset` - Pagination offset
+
+## Agent Card Format
+
+Your `.well-known/agent.json` should follow the [A2A Protocol AgentCard specification](https://a2a-protocol.org/latest/specification/):
+
 ```json
 {
-  "mcpServers": {
-    "a2a-registry": {
-      "command": "uvx",
-      "args": ["a2a-registry-client"]
+  "protocolVersion": "0.3.0",
+  "name": "WeatherBot",
+  "description": "Real-time weather information and forecasts",
+  "url": "https://api.weatherbot.com/a2a",
+  "version": "1.0.0",
+  "provider": {
+    "organization": "Weather Services Inc",
+    "url": "https://weatherbot.com"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "current-weather",
+      "name": "Current Weather",
+      "description": "Get current weather conditions",
+      "tags": ["weather", "forecast"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["application/json"]
     }
-  }
+  ]
 }
 ```
 
-Once configured, AI assistants can search agents, filter by capabilities, and query metadata in natural language.
+## Architecture
 
-**📖 [Complete MCP Integration Guide](MCP_INTEGRATION.md)**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    a2aregistry.org                          │
+├─────────────────────────────────────────────────────────────┤
+│  Frontend (React)  │  API (FastAPI)  │  Worker (Background) │
+│   - Browse agents  │  - CRUD agents  │  - Health checks     │
+│   - Search/filter  │  - Registration │  - Uptime tracking   │
+│   - Agent details  │  - Statistics   │  - Periodic sync     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                      ┌───────┴───────┐
+                      │  PostgreSQL   │
+                      │  (Cloud SQL)  │
+                      └───────────────┘
+```
+
+**Deployment**: GKE Autopilot with Helm charts (see `/helm/a2aregistry/`)
 
 ## Project Structure
 
 ```
 a2a-registry/
-├── agents/              # Agent JSON files (the "database")
-├── docs/                # Website static files
-├── client-python/       # Python client library source
-├── .github/workflows/   # GitHub Actions for automation
-├── schemas/             # JSON Schema definitions
-└── scripts/             # Utility scripts
+├── agents/           # Agent JSON files (seeded to database)
+├── backend/          # FastAPI application
+│   ├── app/          # API routes, models, repositories
+│   ├── migrations/   # Database schema
+│   └── worker.py     # Health check background service
+├── website/          # React frontend
+├── client-python/    # Python SDK (published to PyPI)
+├── helm/             # Kubernetes deployment charts
+└── .github/          # CI/CD workflows
 ```
-
-## How It Works
-
-1. **Submission**: Developers submit agent definitions as JSON files via Pull Requests
-2. **Validation**: GitHub Actions automatically validate:
-   - JSON schema compliance
-   - Agent ownership via `.well-known/agent.json` or `.well-known/agent-card.json` verification
-3. **Publishing**: On merge, the system:
-   - Consolidates all agents into `registry.json`
-   - Deploys to GitHub Pages
-   - Updates the Python client if needed
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
-- Submitting agents
-- Improving documentation
-- Enhancing the validation pipeline
-- Developing new features
-
-## Validation Requirements
-
-All agent submissions must:
-1. Conform to the [Official A2A Protocol AgentCard specification](schemas/a2a-official.schema.json)
-2. Include all required A2A fields: `protocolVersion`, `name`, `description`, `url`, `version`, `capabilities`, `skills`, `defaultInputModes`, `defaultOutputModes`
-3. Include registry-specific fields: `author` and `wellKnownURI`
-4. Skills must have: `id`, `name`, `description`, and `tags`
-5. Match key fields between submission and the `.well-known/agent.json` or `.well-known/agent-card.json` endpoint
-   - Note: `.well-known/agent-card.json` is preferred per the A2A specification
-6. Pass all automated validation checks
-
-## API Documentation
-
-### Registry Endpoint
-- **URL**: `https://www.a2aregistry.org/registry.json`
-- **Method**: GET
-- **Response**: JSON array of all registered agents
-
-### Agent Schema
-- **A2A Protocol Schema**: [schemas/a2a-official.schema.json](schemas/a2a-official.schema.json)
-- **Registry Extensions**: [schemas/registry-agent.schema.json](schemas/registry-agent.schema.json)
-- **Official A2A Docs**: [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
 
 ## Development
 
-> **Note**: This repository contains two Python packages - the root package for scripts and the client library in `/client-python/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-### Prerequisites
-- Python 3.10+
-- Git
-
 ### Local Setup
+
 ```bash
-# Clone the repository
-git clone https://github.com/prassanna-ravishankar/a2a-registry.git
-cd a2a-registry
+# Start all services
+docker-compose up
 
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
-
-# Install the package with dependencies
-pip install .
-
-# Run validation locally
-python scripts/validate_agent.py agents/example-weather-bot.json
-
-# Generate registry.json
-python scripts/generate_registry.py agents/ > docs/registry.json
-
-# Serve website locally
-cd docs && python -m http.server 8000
+# API available at http://localhost:8000
+# Frontend at http://localhost:5173
 ```
 
-## Roadmap
+### Backend Development
 
-### Near Term: Community Growth
-**Goal**: Establish A2A Registry as the go-to directory for AI agents
+```bash
+cd backend
+uv sync
+uv run python run.py
+```
 
-- **Agent Ecosystem** - Reach 20+ high-quality agent submissions from diverse domains
-- **Enhanced Discovery** - Advanced search capabilities, agent categorization, and usage analytics
-- **Developer Experience** - SDKs for JavaScript, Go, and Rust alongside our Python client
+### Frontend Development
 
-### Medium Term: Trust & Security
-**Goal**: Build a secure, verifiable agent ecosystem
+```bash
+cd website
+npm install
+npm run dev
+```
 
-- **Agent Verification** - Cryptographic signing and verification of agent cards
-- **Trust Indicators** - Community ratings, usage metrics, and security audit badges
-- **A2A Protocol Extensions** - Registry and discovery for protocol extensions
-- **Authentication Framework** - Standardized auth patterns for agent interactions
+## Contributing
 
-### Long Term: Distributed Infrastructure
-**Goal**: Scale to support thousands of agents globally
+1. **Register your agent** - Use the API or submit a PR
+2. **Report issues** - [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
+3. **Improve the code** - PRs welcome for features and fixes
 
-- **Persistent Database** - Migration from static JSON to scalable database infrastructure when community adoption exceeds 100+ agents
-- **Federated Registries** - Support for multiple registry instances with cross-registry discovery
-- **Real-time Updates** - WebSocket/SSE support for live agent status and capability changes
-- **Global CDN** - Edge-deployed registry for low-latency agent discovery worldwide
-
-### Governance & Sustainability
-**Goal**: Transition to community-driven development
-
-- **Governance Model** - Establish steering committee and contribution guidelines
-- **Sustainability Plan** - Explore funding models for infrastructure and maintenance
-- **A2A Protocol Alignment** - Deep integration with A2A validation tools (Inspector, TCK)
-- **Standards Body** - Work towards formal standardization of agent registry protocols
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
 
-## Support
+## Links
 
-- **Issues**: [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/prassanna-ravishankar/a2a-registry/discussions)
 - **Website**: [a2aregistry.org](https://www.a2aregistry.org)
-
-## Acknowledgments
-
-Built with ❤️ by the A2A community, leveraging the [A2A Protocol](https://a2a-protocol.org/) for agent interoperability.
+- **API Docs**: [beta.a2aregistry.org/api/docs](https://beta.a2aregistry.org/api/docs)
+- **A2A Protocol**: [a2a-protocol.org](https://a2a-protocol.org)
+- **Python Client**: [PyPI](https://pypi.org/project/a2a-registry-client/)

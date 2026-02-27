@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: a2aregistry-config
+  namespace: {{ .Release.Namespace }}
+data:
+  # API Configuration
+  API_HOST: {{ .Values.config.apiHost | quote }}
+  API_PORT: {{ .Values.config.apiPort | quote }}
+  API_RELOAD: {{ .Values.config.apiReload | quote }}
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+
+  # Database Configuration (non-sensitive)
+  DATABASE_HOST: {{ .Values.database.host | quote }}
+  DATABASE_PORT: {{ .Values.database.port | quote }}
+  DATABASE_NAME: {{ .Values.database.name | quote }}
+  DATABASE_USER: {{ .Values.database.user | quote }}
+
+  # Health Check Configuration
+  HEALTH_CHECK_INTERVAL_SECONDS: {{ .Values.config.healthCheckIntervalSeconds | quote }}
+  HEALTH_CHECK_TIMEOUT_SECONDS: {{ .Values.config.healthCheckTimeoutSeconds | quote }}
+
+  # PostHog Configuration
+  {{- if .Values.posthog.enabled }}
+  POSTHOG_ENABLED: "true"
+  POSTHOG_HOST: {{ .Values.posthog.host | quote }}
+  {{- else }}
+  POSTHOG_ENABLED: "false"
+  {{- end }}

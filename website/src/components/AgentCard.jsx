@@ -3,6 +3,7 @@ import { ExternalLink, BookOpen, Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import HealthBadge from './HealthBadge';
 
 const AgentCard = ({ agent, isSelected, onClick }) => {
     return (
@@ -68,6 +69,18 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                 <p className="text-xs text-zinc-400 font-mono leading-relaxed line-clamp-3 mb-4 flex-1">
                     {agent.description}
                 </p>
+
+                {/* Health Badge */}
+                {agent.uptime_percentage !== null && agent.uptime_percentage !== undefined && (
+                    <div className="mb-3">
+                        <HealthBadge
+                            uptime={agent.uptime_percentage}
+                            avgResponseTime={agent.avg_response_time_ms}
+                            lastCheck={agent.last_health_check}
+                            size="sm"
+                        />
+                    </div>
+                )}
 
                 {/* Skills */}
                 <div className="space-y-2">

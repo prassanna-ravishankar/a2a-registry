@@ -1,0 +1,20 @@
+{{- if .Values.api.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2aregistry-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: api
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+  - port: {{ .Values.api.service.port }}
+    targetPort: {{ .Values.api.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    app: a2aregistry
+    component: api
+{{- end }}

@@ -1,16 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from './components/Layout';
 import AgentGrid from './components/AgentGrid';
+import Submit from './pages/Submit';
+import { api, fetchStaticRegistry } from './lib/api';
+import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
 
 const A2ARegistry = () => {
+  // Initialize page from URL path
+  const [currentPage, setCurrentPage] = useState(() => {
+    return window.location.pathname === '/submit' ? 'submit' : 'home';
+  });
   const [agents, setAgents] = useState([]);
   const [filteredAgents, setFilteredAgents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
+  const [conformanceFilter, setConformanceFilter] = useState('all'); // 'all', 'standard', 'non-standard'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [stats, setStats] = useState(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -25,33 +33,48 @@ const A2ARegistry = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Load real data from registry.json
+  // Load data from API (with fallback to static registry)
   useEffect(() => {
-    const controller = new AbortController();
-
-    fetch('/registry.json', {
-      signal: controller.signal,
-      cache: 'force-cache'
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
+    const loadData = async () => {
+      console.log('[A2A] Starting data load...');
+      try {
+        // Try new API first
+        console.log('[A2A] Fetching from API...');
+        const data = await api.getAgents({ limit: 1000 });
+        console.log('[A2A] API response:', data);
         const agentList = data.agents || [];
+        console.log('[A2A] Loaded', agentList.length, 'agents from API');
         setAgents(agentList);
         setFilteredAgents(agentList);
         setLoading(false);
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          console.error('Failed to load registry:', err);
+
+        // Load stats
+        try {
+          const statsData = await api.getStats();
+          console.log('[A2A] Stats loaded:', statsData);
+          setStats(statsData);
+        } catch (statsErr) {
+          console.warn('[A2A] Failed to load stats:', statsErr);
+        }
+      } catch (err) {
+        console.warn('[A2A] API failed, falling back to static registry:', err);
+        // Fallback to static registry.json
+        try {
+          const data = await fetchStaticRegistry();
+          const agentList = data.agents || [];
+          console.log('[A2A] Loaded', agentList.length, 'agents from static registry');
+          setAgents(agentList);
+          setFilteredAgents(agentList);
+          setLoading(false);
+        } catch (fallbackErr) {
+          console.error('[A2A] Failed to load registry:', fallbackErr);
           setError('Failed to load agent registry');
           setLoading(false);
         }
-      });
+      }
+    };
 
-    return () => controller.abort();
+    loadData();
   }, []);
 
   // URL Synchronization
@@ -104,6 +127,11 @@ const A2ARegistry = () => {
 
   // Filtering Logic
   useEffect(() => {
+    console.log('[A2A] Filtering - agents count:', agents.length);
+    console.log('[A2A] Filtering - searchTerm:', searchTerm);
+    console.log('[A2A] Filtering - selectedSkills:', selectedSkills);
+    console.log('[A2A] Filtering - conformanceFilter:', conformanceFilter);
+
     let filtered = agents.filter(agent =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,21 +142,32 @@ const A2ARegistry = () => {
       )
     );
 
+    console.log('[A2A] After text filter:', filtered.length);
+
+    // Track search
+    if (searchTerm) {
+      trackSearch(searchTerm, filtered.length);
+    }
+
     if (selectedSkills.length > 0) {
       filtered = filtered.filter(agent =>
         agent.skills.some(skill =>
           skill.tags.some(tag => selectedSkills.includes(tag))
         )
       );
+      console.log('[A2A] After skill filter:', filtered.length);
     }
 
     // Apply conformance filter
     if (conformanceFilter === 'standard') {
       filtered = filtered.filter(agent => agent.conformance !== false);
+      console.log('[A2A] After standard conformance filter:', filtered.length);
     } else if (conformanceFilter === 'non-standard') {
       filtered = filtered.filter(agent => agent.conformance === false);
+      console.log('[A2A] After non-standard conformance filter:', filtered.length);
     }
 
+    console.log('[A2A] Final filtered count:', filtered.length);
     setFilteredAgents(filtered);
   }, [searchTerm, selectedSkills, conformanceFilter, agents]);
 
@@ -158,12 +197,57 @@ const A2ARegistry = () => {
   }, [agents, conformanceFilter]);
 
   const toggleSkillFilter = useCallback((tag) => {
-    setSelectedSkills(prev =>
-      prev.includes(tag)
+    setSelectedSkills(prev => {
+      const newSkills = prev.includes(tag)
         ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
+        : [...prev, tag];
+
+      // Track filter change
+      trackFilterChange('skill', tag);
+
+      return newSkills;
+    });
   }, []);
+
+  const handleAgentSelect = useCallback((agent) => {
+    setSelectedAgent(agent);
+    trackAgentView(agent);
+  }, []);
+
+  // Handle page navigation
+  useEffect(() => {
+    const handleNavigate = (e) => {
+      // Handle clicks on links
+      const link = e.target.closest('a');
+      if (link && link.pathname === '/submit') {
+        e.preventDefault();
+        setCurrentPage('submit');
+        window.history.pushState({}, '', '/submit');
+      } else if (link && link.pathname === '/' && link.origin === window.location.origin) {
+        e.preventDefault();
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
+      }
+    };
+
+    // Handle browser back/forward
+    const handlePopState = () => {
+      setCurrentPage(window.location.pathname === '/submit' ? 'submit' : 'home');
+    };
+
+    document.addEventListener('click', handleNavigate);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      document.removeEventListener('click', handleNavigate);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  if (currentPage === 'submit') {
+    return <Submit />;
+  }
+
+  console.log('[A2A] Render - loading:', loading, 'agents:', agents.length, 'filteredAgents:', filteredAgents.length);
 
   return (
     <Layout
@@ -177,13 +261,14 @@ const A2ARegistry = () => {
       setConformanceFilter={setConformanceFilter}
       selectedAgent={selectedAgent}
       onCloseInspection={() => setSelectedAgent(null)}
+      stats={stats}
     >
       <AgentGrid
         agents={filteredAgents}
         loading={loading}
         error={error}
         selectedAgent={selectedAgent}
-        onAgentSelect={setSelectedAgent}
+        onAgentSelect={handleAgentSelect}
         onClearFilters={() => {
           setSearchTerm('');
           setSelectedSkills([]);

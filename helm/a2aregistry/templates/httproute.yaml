@@ -1,0 +1,48 @@
+{{- if .Values.httproute.enabled -}}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: a2aregistry
+  namespace: {{ .Values.httproute.namespace }}
+  labels:
+    app: a2aregistry
+    component: routing
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.httproute.gatewayName }}
+    namespace: {{ .Values.httproute.namespace }}
+  hostnames:
+  {{- range .Values.domains }}
+  - {{ . | quote }}
+  {{- end }}
+  rules:
+  # API routes (prefix /api)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: a2aregistry-api
+      namespace: {{ .Release.Namespace }}  # Cross-namespace reference to a2aregistry namespace
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  # Frontend routes (everything else)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: a2aregistry-frontend
+      namespace: {{ .Release.Namespace }}  # Cross-namespace reference to a2aregistry namespace
+      port: {{ .Values.frontend.service.port }}
+      weight: 1
+{{- end }}

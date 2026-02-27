@@ -1,0 +1,70 @@
+{{- if .Values.worker.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2aregistry-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: a2aregistry
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: a2aregistry
+        component: worker
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+      # Worker container
+      - name: worker
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.worker.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: DB_HOST
+          value: "{{ .Values.database.host }}"
+        - name: DB_PORT
+          value: "{{ .Values.database.port }}"
+        - name: DB_NAME
+          value: "{{ .Values.database.name }}"
+        - name: DB_USER
+          value: "{{ .Values.database.user }}"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: DB_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: a2aregistry-config
+        resources:
+          {{- toYaml .Values.worker.resources | nindent 10 }}
+
+      {{- if .Values.cloudsql.enabled }}
+      # Cloud SQL Proxy sidecar
+      - name: cloud-sql-proxy
+        image: {{ .Values.cloudsql.image }}
+        args:
+        - "--structured-logs"
+        - "--port={{ .Values.database.port }}"
+        - "{{ .Values.database.connectionName }}"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          {{- toYaml .Values.cloudsql.resources | nindent 10 }}
+      {{- end }}
+{{- end }}

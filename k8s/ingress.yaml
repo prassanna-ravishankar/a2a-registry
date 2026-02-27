@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: a2a-registry-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - www.a2aregistry.org
+    secretName: a2a-registry-tls
+  rules:
+  - host: www.a2aregistry.org
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: a2a-registry-api
+            port:
+              number: 80
+      # Static site served separately (e.g., via GitHub Pages or separate deployment)

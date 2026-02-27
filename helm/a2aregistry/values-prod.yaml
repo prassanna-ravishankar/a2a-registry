@@ -1,0 +1,36 @@
+# Production values for a2aregistry
+# Overrides values.yaml for production environment
+
+# image.tag is set via --set image.tag=$IMAGE_TAG in CI/CD
+
+# Production domains
+domains:
+  - a2aregistry.org
+  - www.a2aregistry.org
+
+# Production scaling
+api:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+worker:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+
+# Enable PostHog for production
+posthog:
+  enabled: true
+
+# Production configuration
+config:
+  apiReload: "false"
+  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org"]'
