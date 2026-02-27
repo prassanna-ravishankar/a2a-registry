@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plug } from 'lucide-react';
 import SubmitForm from '../components/SubmitForm';
 
 const Submit = () => {
@@ -35,7 +35,7 @@ const Submit = () => {
             BACK_TO_REGISTRY
           </a>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <h3 className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2">
                 PROCESS_FLOW
@@ -54,6 +54,23 @@ const Submit = () => {
                   <span>Agent added to registry</span>
                 </li>
               </ol>
+            </div>
+
+            <div className="border-t border-zinc-800 pt-4">
+              <h3 className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Plug className="w-3 h-3" />
+                MCP_SERVER
+              </h3>
+              <p className="text-xs text-zinc-500 mb-2">
+                Use the registry from any AI assistant via MCP:
+              </p>
+              <pre className="text-[10px] text-emerald-400/80 bg-zinc-900 border border-zinc-800 p-2 rounded overflow-x-auto leading-relaxed">{`{
+  "mcpServers": {
+    "a2a-registry": {
+      "url": "https://a2aregistry.org/mcp/"
+    }
+  }
+}`}</pre>
             </div>
           </div>
         </div>

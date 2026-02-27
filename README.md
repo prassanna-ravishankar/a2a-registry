@@ -12,11 +12,9 @@ The A2A Registry is the discovery layer for AI agents. We index **live, hosted a
 
 **Key principle**: We trust the agent card. If your agent publishes a valid `.well-known/agent.json`, you can register it with a single API call.
 
-## Quick Start
+## Register Your Agent
 
-### Register Your Agent
-
-**Option 1: API (Recommended)**
+Make sure your agent publishes a valid agent card at `https://your-agent.com/.well-known/agent.json`, then:
 
 ```bash
 curl -X POST https://a2aregistry.org/api/agents/register \
@@ -24,24 +22,21 @@ curl -X POST https://a2aregistry.org/api/agents/register \
   -d '{"wellKnownURI": "https://your-agent.com/.well-known/agent.json"}'
 ```
 
-That's it. We fetch your agent card and register it automatically.
+That's it. We fetch your agent card and register it automatically. The worker checks your agent's health every 30 minutes and updates conformance status.
 
-**Option 2: GitHub PR**
-
-1. Fork this repository
-2. Add your agent JSON to `/agents/your-agent.json`
-3. Submit a Pull Request
-
-### Find Agents
+## Find Agents
 
 **Web UI**: [a2aregistry.org](https://www.a2aregistry.org)
 
 **API**:
 ```bash
-# List all agents
-curl https://a2aregistry.org/api/agents
+# List standard (A2A-conformant) agents
+curl https://a2aregistry.org/api/agents?conformance=standard
 
-# Filter by skill
+# Search by keyword
+curl https://a2aregistry.org/api/agents?search=translation
+
+# Filter by skill tag
 curl https://a2aregistry.org/api/agents?skill=weather
 
 # Get stats
@@ -54,40 +49,27 @@ pip install a2a-registry-client
 ```
 
 ```python
-from a2a_registry import Registry
+from a2a_registry import APIRegistry
 
-registry = Registry()
+registry = APIRegistry()
 agents = registry.get_all()
-weather_agents = registry.find_by_skill("weather")
+results = registry.search("weather")
 ```
 
-## API Reference
-
-Base URL: `https://a2aregistry.org/api`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/agents/register` | POST | Register agent by wellKnownURI |
-| `/agents` | GET | List agents (with filtering) |
-| `/agents` | POST | Register agent (full payload) |
-| `/agents/{id}` | GET | Get agent details |
-| `/agents/{id}` | DELETE | Remove agent (ownership verified) |
-| `/agents/{id}/health` | GET | Get health status |
-| `/agents/{id}/uptime` | GET | Get uptime metrics |
-| `/stats` | GET | Registry statistics |
-| `/health` | GET | API health check |
-
-### Query Parameters (GET /agents)
-
-- `skill` - Filter by skill ID
-- `capability` - Filter by A2A capability (streaming, pushNotifications)
-- `author` - Filter by author name
-- `limit` - Max results (default: 50, max: 100)
-- `offset` - Pagination offset
+**MCP Server** (for AI assistants):
+```json
+{
+  "mcpServers": {
+    "a2a-registry": {
+      "url": "https://a2aregistry.org/mcp/"
+    }
+  }
+}
+```
 
 ## Agent Card Format
 
-Your `.well-known/agent.json` should follow the [A2A Protocol AgentCard specification](https://a2a-protocol.org/latest/specification/):
+Your `.well-known/agent.json` must follow the [A2A Protocol AgentCard specification](https://a2a-protocol.org/latest/specification/):
 
 ```json
 {
@@ -120,6 +102,33 @@ Your `.well-known/agent.json` should follow the [A2A Protocol AgentCard specific
 }
 ```
 
+## API Reference
+
+Base URL: `https://a2aregistry.org/api`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/agents/register` | POST | Register agent by wellKnownURI |
+| `/agents` | GET | List/search agents |
+| `/agents/{id}` | GET | Get agent details |
+| `/agents/{id}` | PUT | Re-fetch and update agent from wellKnownURI |
+| `/agents/{id}` | DELETE | Remove agent (ownership verified) |
+| `/agents/{id}/health` | GET | Get health status |
+| `/agents/{id}/uptime` | GET | Get uptime metrics |
+| `/stats` | GET | Registry statistics |
+
+### Query Parameters (GET /agents)
+
+| Parameter | Description |
+|-----------|-------------|
+| `search` | Full-text search across name, description, author |
+| `skill` | Filter by skill tag |
+| `capability` | Filter by A2A capability (streaming, pushNotifications) |
+| `author` | Filter by author name |
+| `conformance` | `standard` (A2A spec compliant) or `non-standard` |
+| `limit` | Max results (default: 50, max: 100) |
+| `offset` | Pagination offset |
+
 ## Architecture
 
 ```
@@ -129,7 +138,7 @@ Your `.well-known/agent.json` should follow the [A2A Protocol AgentCard specific
 │  Frontend (React)  │  API (FastAPI)  │  Worker (Background) │
 │   - Browse agents  │  - CRUD agents  │  - Health checks     │
 │   - Search/filter  │  - Registration │  - Uptime tracking   │
-│   - Agent details  │  - Statistics   │  - Periodic sync     │
+│   - Agent details  │  - MCP server   │  - Conformance check │
 └─────────────────────────────────────────────────────────────┘
                               │
                       ┌───────┴───────┐
@@ -144,9 +153,8 @@ Your `.well-known/agent.json` should follow the [A2A Protocol AgentCard specific
 
 ```
 a2a-registry/
-├── agents/           # Agent JSON files (seeded to database)
-├── backend/          # FastAPI application
-│   ├── app/          # API routes, models, repositories
+├── backend/          # FastAPI application + MCP server
+│   ├── app/          # API routes, models, repositories, MCP
 │   ├── migrations/   # Database schema
 │   └── worker.py     # Health check background service
 ├── website/          # React frontend
@@ -160,44 +168,39 @@ a2a-registry/
 ### Local Setup
 
 ```bash
-# Start all services
 docker-compose up
-
-# API available at http://localhost:8000
-# Frontend at http://localhost:5173
+# API: http://localhost:8000
+# Frontend: http://localhost:5173
 ```
 
-### Backend Development
+### Backend
 
 ```bash
 cd backend
-uv sync
-uv run python run.py
+uv run uvicorn app.main:app --reload
 ```
 
-### Frontend Development
+### Frontend
 
 ```bash
 cd website
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
 ## Contributing
 
-1. **Register your agent** - Use the API or submit a PR
-2. **Report issues** - [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
-3. **Improve the code** - PRs welcome for features and fixes
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-MIT License - see [LICENSE](LICENSE)
+- **Register your agent** — use the API above
+- **Report issues** — [GitHub Issues](https://github.com/prassanna-ravishankar/a2a-registry/issues)
+- **Improve the code** — PRs welcome for backend, frontend, and infra
 
 ## Links
 
 - **Website**: [a2aregistry.org](https://www.a2aregistry.org)
 - **API Docs**: [a2aregistry.org/api/docs](https://a2aregistry.org/api/docs)
+- **MCP Server**: [a2aregistry.org/mcp/](https://a2aregistry.org/mcp/)
 - **A2A Protocol**: [a2a-protocol.org](https://a2a-protocol.org)
 - **Python Client**: [PyPI](https://pypi.org/project/a2a-registry-client/)
+
+## License
+
+MIT

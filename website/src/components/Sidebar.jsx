@@ -91,6 +91,17 @@ const Sidebar = ({
                 </div>
             </div>
 
+            {/* MCP Access */}
+            <div className="px-3 pb-3 border-t border-zinc-800 pt-3">
+                <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-2">MCP Access</div>
+                <p className="text-[10px] text-zinc-600 mb-2 leading-relaxed">
+                    Use this registry from Claude, Cursor, or any MCP client:
+                </p>
+                <pre className="text-[9px] text-emerald-400/70 bg-zinc-900 border border-zinc-800 p-2 overflow-x-auto leading-relaxed">{`"a2a-registry": {
+  "url": "https://a2aregistry.org/mcp/"
+}`}</pre>
+            </div>
+
             {/* Live Feed - Desktop Only */}
             {!isMobile && <LiveFeed />}
         </aside>

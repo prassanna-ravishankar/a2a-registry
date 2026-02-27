@@ -4,111 +4,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A2A Registry is a community-driven, open-source directory of AI agents using a "Git as a Database" model. The registry leverages GitHub for data submission, validation, and hosting, with public access via www.a2aregistry.org and programmatic access through a static API and Python client.
+A2A Registry is a live, API-driven directory of AI agents implementing the A2A Protocol. Agents self-register via a REST API. A background worker health-checks and validates conformance every 30 minutes.
 
-## Development Setup
+**Stack**: FastAPI + PostgreSQL (Cloud SQL) + React/Vite frontend, deployed on GKE Autopilot via Helm.
 
-### Python Environment (using uv)
-```bash
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
+## Repository Structure
 
-# No explicit setup needed! Just use `uv run` for all commands
-# uv run automatically handles environment setup and dependencies
+```
+backend/          # FastAPI API + MCP server + background worker
+  app/            # Routes, models, repositories, validators, MCP
+  migrations/     # asyncpg schema migrations
+  worker.py       # Health check + conformance worker
+  tests/          # pytest unit + smoke tests
+website/          # React/Vite frontend
+client-python/    # Python SDK (a2a-registry-client on PyPI)
+helm/a2aregistry/ # Kubernetes Helm chart
+.github/workflows/
+  deploy-backend.yml  # test → build → deploy pipeline (main branch)
+  publish.yml         # frontend GitHub Pages + PyPI client publish
 ```
 
-## Common Development Commands
+## Common Commands
 
-### GitHub Actions Testing
+### Backend
 ```bash
-# Test GitHub Actions locally (requires act)
-act -j validate-pr
-act -j publish
+cd backend
+uv run uvicorn app.main:app --reload   # dev server
+uv run --extra dev pytest tests/ -v    # run tests
 ```
 
-### Python Client Development
+### Frontend
 ```bash
-# Run tests for the Python client
+cd website
+npm install && npm run dev             # dev server at http://localhost:5173
+npm run build                          # production build → docs/
+```
+
+### Python Client
+```bash
 cd client-python
 uv run pytest tests/
-
-# Build the package
-uv run python -m build
-
-# Check package before publishing
-uv run twine check dist/*
+uv build
 ```
 
-### Website Development
-```bash
-# Install dependencies
-cd website
-npm install
+## Key Endpoints (production)
 
-# Run development server
-npm run dev
-# Visit http://localhost:5173
-
-# Build for production
-npm run build
-# Outputs to ../docs folder
-```
-
-### Agent Registry Operations
-```bash
-# Validate a single agent file
-uv run python scripts/validate_agent.py agents/example-agent.json
-
-# Generate registry.json from all agent files
-uv run python scripts/generate_registry.py agents/ > docs/registry.json
-```
-
-## Architecture & Key Components
-
-### Repository Structure
-- `/agents/` - Flat directory containing individual agent JSON files (the "database")
-- `/docs/` - Static website files served via GitHub Pages at www.a2aregistry.org
-- `/scripts/` - Validation and generation scripts (uses root `pyproject.toml`)
-- `/client-python/` - Python client library source (published as `a2a-registry-client`)
-  - Has its own `pyproject.toml` for independent PyPI publishing
-- `/.github/workflows/` - GitHub Actions for automation:
-  - `validate-pr.yml` - Validates agent submissions on PRs
-  - `publish.yml` - Generates registry.json and deploys to GitHub Pages
-- `/pyproject.toml` - Root package configuration for scripts and development tools
-
-### Data Flow
-1. **Agent Submission**: Developer creates PR with new JSON file in `/agents/`
-2. **Validation**: GitHub Action validates JSON schema and verifies ownership via `/.well-known/agent.json` (or `/.well-known/agent-card.json`)
-3. **Publishing**: On merge, GitHub Action consolidates all agents into `registry.json` and deploys
-4. **Consumption**: Users access via website, API endpoint, or Python client
-
-### Agent JSON Schema
-Required fields for each agent:
-- `name`: Display name
-- `description`: Purpose explanation
-- `author`: Creator name/handle
-- `wellKnownURI`: Validation endpoint
-- `capabilities`: Object of A2A capability flags (e.g., `streaming`, `pushNotifications`, `stateTransitionHistory`)
-
-### Key Endpoints
-- Website: `https://www.a2aregistry.org`
-- API: `https://www.a2aregistry.org/registry.json`
+- Website: `https://a2aregistry.org`
+- API: `https://a2aregistry.org/api`
+- API docs: `https://a2aregistry.org/api/docs`
+- MCP server: `https://a2aregistry.org/mcp/`
 - PyPI: `pip install a2a-registry-client`
 
-## Development Phases
+## Architecture Notes
 
-### Phase 1 (MVP) - Current Focus
-- Repository setup and structure
-- Agent JSON Schema definition
-- GitHub Actions for validation and publishing
-- Basic placeholder website
+- Agent registration: `POST /api/agents/register` with `{"wellKnownURI": "..."}` — backend fetches the agent card automatically
+- Conformance: `true` = strict A2A spec compliant, `false` = non-conformant, `null` = not yet checked. Worker updates on each health check cycle.
+- `conformance IS NOT TRUE` = non-standard (includes null/unvalidated)
+- MCP server (`backend/app/mcp_server.py`) is mounted at `/mcp/` via `mcp.http_app(stateless_http=True)` — created fresh per lifespan to avoid SessionManager reuse issues in tests
+- No `agents/` directory — the old "Git as database" model was replaced by the live API + PostgreSQL backend
 
-### Phase 2 (Usability)
-- Python client library
-- Searchable website UI
-- Documentation (README, CONTRIBUTING)
+## CI/CD
 
-### Phase 3 (Growth)
-- Community outreach
-- Governance model
-- Advanced features (semantic search, health checks)
+`deploy-backend.yml` runs on push to `main` when `backend/`, `website/`, or `helm/` changes:
+1. **Test** — `uv run --extra dev pytest tests/ -v` (uses `astral-sh/setup-uv@v7`)
+2. **Build & Push** — Docker images to GCR (api, worker, frontend)
+3. **Deploy** — Helm upgrade on GKE cluster `clusterkit` in `us-central1`
+
+## Deployment
+
+GKE Autopilot, namespace `a2aregistry`, 1 replica each (api, worker, frontend).
+Resources are right-sized for a personal project — see `helm/a2aregistry/values-prod.yaml`.
+Health check interval: 1800s (30 min).
