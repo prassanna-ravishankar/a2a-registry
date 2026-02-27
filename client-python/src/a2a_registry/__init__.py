@@ -7,7 +7,7 @@ Official Python client library for the A2A Registry.
 from .api_client import APIRegistry
 from .models import Agent, Capabilities, Provider, RegistryMetadata, RegistryResponse, Skill
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __all__ = ["APIRegistry", "Agent", "Skill", "Capabilities", "Provider", "RegistryMetadata", "RegistryResponse"]
 
 # Async API client (requires aiohttp)
