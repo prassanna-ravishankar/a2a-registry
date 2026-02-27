@@ -143,4 +143,4 @@ jobs:
           echo ""
           kubectl get svc -n a2aregistry
           echo ""
-          kubectl get httproute -n torale | grep a2aregistry
+          kubectl get httproute -n clusterkit | grep a2aregistry
