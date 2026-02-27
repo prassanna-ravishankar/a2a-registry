@@ -172,8 +172,7 @@ posthog:
 # Gateway API HTTPRoute configuration
 httproute:
   enabled: true
-  # HTTPRoute must be in torale namespace (Gateway's namespace)
-  namespace: torale
+  namespace: clusterkit
   gatewayName: clusterkit-gateway
 
 # ConfigMap for non-sensitive configuration
