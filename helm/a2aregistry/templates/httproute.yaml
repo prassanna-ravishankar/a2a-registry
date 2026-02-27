@@ -9,7 +9,7 @@ metadata:
     app: a2aregistry
     component: routing
   annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   parentRefs:
   - group: gateway.networking.k8s.io
