@@ -2,24 +2,22 @@
 """Health check worker - background service to monitor agent health"""
 
 import asyncio
-import logging
 import time
 from pathlib import Path
 from typing import List
 
 import aiohttp
+import structlog
 
 from app.config import settings
 from app.database import db
+from app.logging_config import configure_logging, get_logger
 from app.repositories import AgentRepository, HealthCheckRepository
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+configure_logging(json_logs=True)
+logger = get_logger(__name__)
 
 
 async def check_agent_health(
@@ -37,6 +35,7 @@ async def check_agent_health(
         session: Aiohttp session for making requests
         health_repo: Repository for recording results
     """
+    bound_logger = logger.bind(agent_id=agent_id)
     start_time = time.time()
     status_code = None
     success = False
@@ -67,12 +66,12 @@ async def check_agent_health(
             )
 
             if success:
-                logger.debug(
-                    f"✅ Agent {agent_id}: {status_code} in {response_time_ms}ms"
+                bound_logger.debug(
+                    "health_check_ok", status_code=status_code, response_time_ms=response_time_ms
                 )
             else:
-                logger.warning(
-                    f"⚠️  Agent {agent_id}: HTTP {status_code}"
+                bound_logger.warning(
+                    "health_check_degraded", status_code=status_code
                 )
 
     except asyncio.TimeoutError:
@@ -85,7 +84,7 @@ async def check_agent_health(
             success=False,
             error_message=error_message,
         )
-        logger.warning(f"⏱️  Agent {agent_id}: {error_message}")
+        bound_logger.warning("health_check_timeout", response_time_ms=response_time_ms)
 
     except aiohttp.ClientError as e:
         response_time_ms = int((time.time() - start_time) * 1000)
@@ -97,7 +96,7 @@ async def check_agent_health(
             success=False,
             error_message=error_message,
         )
-        logger.warning(f"❌ Agent {agent_id}: {error_message}")
+        bound_logger.warning("health_check_network_error", error=error_message)
 
     except Exception as e:
         response_time_ms = int((time.time() - start_time) * 1000)
@@ -109,12 +108,12 @@ async def check_agent_health(
             success=False,
             error_message=error_message,
         )
-        logger.error(f"💥 Agent {agent_id}: {error_message}")
+        bound_logger.error("health_check_error", error=error_message)
 
 
 async def health_check_cycle():
     """Run a single health check cycle for all agents"""
-    logger.info("🏥 Starting health check cycle")
+    logger.info("health_check_cycle_start")
     start_time = time.time()
 
     agent_repo = AgentRepository(db)
@@ -123,7 +122,7 @@ async def health_check_cycle():
     # Get all active agents
     try:
         agents, total = await agent_repo.list_agents(limit=10000)
-        logger.info(f"📊 Checking health for {total} agents")
+        logger.info("health_check_cycle_agents", total=total)
 
         # Create shared session for all requests
         async with aiohttp.ClientSession() as session:
@@ -154,51 +153,46 @@ async def health_check_cycle():
             deleted = await db.execute(
                 "DELETE FROM health_checks WHERE checked_at < NOW() - INTERVAL '90 days'"
             )
-            logger.info(f"🗑️  Pruned old health check records: {deleted}")
+            logger.info("health_check_pruned", deleted=deleted)
         except Exception as prune_err:
-            logger.warning(f"Failed to prune health_checks: {prune_err}")
+            logger.warning("health_check_prune_failed", error=str(prune_err))
 
         elapsed = time.time() - start_time
-        logger.info(f"✅ Health check cycle completed in {elapsed:.1f}s")
+        logger.info("health_check_cycle_done", elapsed_s=round(elapsed, 1))
 
         # Write heartbeat for liveness probe
         HEARTBEAT_FILE.write_text(str(time.time()))
 
     except Exception as e:
-        logger.error(f"❌ Health check cycle failed: {e}")
+        logger.error("health_check_cycle_failed", error=str(e))
 
 
 async def health_check_worker():
     """Main worker loop - runs health checks at configured interval"""
-    logger.info("🚀 Health check worker starting")
-    logger.info(f"⏱️  Check interval: {settings.health_check_interval_seconds}s")
-    logger.info(f"⏱️  Request timeout: {settings.health_check_timeout_seconds}s")
-
+    logger.info("worker_starting")
+    logger.info("worker_config", check_interval=settings.health_check_interval_seconds, timeout=settings.health_check_timeout_seconds)
     # Connect to database
     await db.connect()
-    logger.info("✅ Database connected")
+    logger.info("database_connected")
 
     try:
         while True:
             try:
                 await health_check_cycle()
             except Exception as e:
-                logger.error(f"❌ Error in health check cycle: {e}")
+                logger.error("health_check_cycle_error", error=str(e))
 
             # Wait for next cycle
-            logger.info(
-                f"😴 Sleeping for {settings.health_check_interval_seconds}s"
-            )
+            logger.info("worker_sleeping", seconds=settings.health_check_interval_seconds)
             await asyncio.sleep(settings.health_check_interval_seconds)
 
     except KeyboardInterrupt:
-        logger.info("👋 Shutting down health check worker")
+        logger.info("worker_shutdown")
     finally:
         await db.disconnect()
-        logger.info("👋 Database disconnected")
+        logger.info("database_disconnected")
 
 
 if __name__ == "__main__":
-    logger.info("🏥 A2A Registry Health Check Worker")
-    logger.info("=" * 60)
+    logger.info("worker_init")
     asyncio.run(health_check_worker())

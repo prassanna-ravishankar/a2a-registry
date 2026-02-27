@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .database import db
+from .logging_config import configure_logging, get_logger
 from .models import (
     AgentCreate,
     AgentFlag,
@@ -25,6 +26,8 @@ from .models import (
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 from .validators import validate_well_known_uri
+
+logger = get_logger(__name__)
 
 # Simple in-memory rate limiter: {ip: [timestamps]}
 _submission_timestamps: dict[str, list[float]] = defaultdict(list)
@@ -49,14 +52,15 @@ def _check_rate_limit(ip: str) -> bool:
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
+    configure_logging(json_logs=settings.log_json, log_level=settings.log_level)
     await db.connect()
-    print("✅ Database connected")
+    logger.info("database_connected")
 
     yield
 
     # Shutdown
     await db.disconnect()
-    print("👋 Database disconnected")
+    logger.info("database_disconnected")
 
 
 app = FastAPI(
@@ -74,6 +78,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = int((time.time() - start) * 1000)
+    logger.info(
+        "request",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    return response
+
 
 # Create router for all API endpoints
 router = APIRouter()
@@ -118,6 +137,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
+        logger.warning("rate_limit_exceeded", ip=client_ip)
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
@@ -166,6 +186,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     try:
         created_agent = await agent_repo.create(agent_data)
         result = await agent_repo.get_by_id(created_agent.id)
+        logger.info("agent_registered", well_known_uri=well_known_uri)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
@@ -184,15 +205,18 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
+        logger.warning("rate_limit_exceeded", ip=client_ip)
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
         )
 
     # Check if already exists
+    well_known_uri = str(agent.wellKnownURI)
     agent_repo = AgentRepository(db)
-    existing = await agent_repo.get_by_well_known_uri(str(agent.wellKnownURI))
+    existing = await agent_repo.get_by_well_known_uri(well_known_uri)
     if existing:
+        logger.info("agent_duplicate", well_known_uri=well_known_uri)
         raise HTTPException(
             status_code=409,
             detail=f"Agent with wellKnownURI {agent.wellKnownURI} already exists",
@@ -207,6 +231,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     try:
         created_agent = await agent_repo.create(agent)
         result = await agent_repo.get_by_id(created_agent.id)
+        logger.info("agent_registered", well_known_uri=well_known_uri)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
