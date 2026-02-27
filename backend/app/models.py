@@ -25,7 +25,7 @@ class Capabilities(BaseModel):
     streaming: bool = False
     pushNotifications: bool = Field(False, alias="pushNotifications")
     stateTransitionHistory: bool = Field(False, alias="stateTransitionHistory")
-    extendedAgentCard: bool = Field(False, alias="extendedAgentCard")
+    extensions: Optional[list[dict]] = None
 
     model_config = {"populate_by_name": True}
 
@@ -48,6 +48,10 @@ class AgentBase(BaseModel):
 
     provider: Optional[Provider] = None
     documentationUrl: Optional[HttpUrl] = Field(None, alias="documentationUrl")
+    iconUrl: Optional[HttpUrl] = Field(None, alias="iconUrl")
+    supportsAuthenticatedExtendedCard: Optional[bool] = Field(None, alias="supportsAuthenticatedExtendedCard")
+    security: Optional[list[dict]] = None
+    securitySchemes: Optional[dict] = Field(None, alias="securitySchemes")
 
     capabilities: Capabilities
     defaultInputModes: list[str] = Field(alias="defaultInputModes")
