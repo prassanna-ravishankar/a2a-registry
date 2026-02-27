@@ -38,10 +38,17 @@ def _check_rate_limit(ip: str) -> bool:
     now = time.time()
     cutoff = now - _RATE_WINDOW
     timestamps = [t for t in _submission_timestamps[ip] if t > cutoff]
-    _submission_timestamps[ip] = timestamps
+    if not timestamps:
+        # No active timestamps in window - clean up entry and allow
+        if ip in _submission_timestamps:
+            del _submission_timestamps[ip]
+        _submission_timestamps[ip] = [now]
+        return True
     if len(timestamps) >= settings.rate_limit_submissions_per_hour:
+        _submission_timestamps[ip] = timestamps
         return False
-    _submission_timestamps[ip].append(now)
+    timestamps.append(now)
+    _submission_timestamps[ip] = timestamps
     return True
 
 
