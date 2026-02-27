@@ -21,9 +21,10 @@ class AgentRepository:
             INSERT INTO agents (
                 protocol_version, name, description, author, well_known_uri,
                 url, version, provider, documentation_url, capabilities,
-                default_input_modes, default_output_modes, skills, conformance
+                default_input_modes, default_output_modes, skills, conformance,
+                icon_url, supports_authenticated_extended_card, security_requirements, security_schemes
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING *
         """
 
@@ -43,6 +44,10 @@ class AgentRepository:
             json.dumps(agent.defaultOutputModes),
             json.dumps([skill.model_dump(mode='json') for skill in agent.skills]),
             agent.conformance,
+            str(agent.iconUrl) if agent.iconUrl else None,
+            agent.supportsAuthenticatedExtendedCard,
+            json.dumps(agent.security or []),
+            json.dumps(agent.securitySchemes or {}),
         )
 
         return self._row_to_agent(row)
@@ -122,6 +127,7 @@ class AgentRepository:
             _VALID_CAPABILITIES = {"streaming", "pushNotifications", "stateTransitionHistory"}
             if capability not in _VALID_CAPABILITIES:
                 return [], 0
+            # capability is safe to interpolate - validated against _VALID_CAPABILITIES whitelist above
             where_clauses.append(f"capabilities::jsonb ->> '{capability}' = 'true'")
 
         if author:
@@ -200,8 +206,12 @@ class AgentRepository:
                 default_input_modes = $10,
                 default_output_modes = $11,
                 skills = $12,
+                icon_url = $13,
+                supports_authenticated_extended_card = $14,
+                security_requirements = $15,
+                security_schemes = $16,
                 updated_at = NOW()
-            WHERE id = $13 AND hidden = false
+            WHERE id = $17 AND hidden = false
             RETURNING *
         """
         row = await self.db.fetchrow(
@@ -218,6 +228,10 @@ class AgentRepository:
             json.dumps(agent.defaultInputModes),
             json.dumps(agent.defaultOutputModes),
             json.dumps([skill.model_dump() for skill in agent.skills]),
+            str(agent.iconUrl) if agent.iconUrl else None,
+            agent.supportsAuthenticatedExtendedCard,
+            json.dumps(agent.security or []),
+            json.dumps(agent.securitySchemes or {}),
             agent_id,
         )
         if not row:
@@ -252,6 +266,10 @@ class AgentRepository:
             version=row["version"],
             provider=json.loads(row["provider"]) if row["provider"] else None,
             documentationUrl=row["documentation_url"],
+            iconUrl=row["icon_url"],
+            supportsAuthenticatedExtendedCard=row["supports_authenticated_extended_card"],
+            security=json.loads(row["security_requirements"]) if row["security_requirements"] else [],
+            securitySchemes=json.loads(row["security_schemes"]) if row["security_schemes"] else {},
             capabilities=json.loads(row["capabilities"]),
             defaultInputModes=json.loads(row["default_input_modes"]),
             defaultOutputModes=json.loads(row["default_output_modes"]),

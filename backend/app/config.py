@@ -55,5 +55,9 @@ class Settings(BaseSettings):
     rate_limit_submissions_per_hour: int = 10
     rate_limit_enabled: bool = True
 
+    # Logging
+    log_json: bool = True
+    log_level: str = "INFO"
+
 
 settings = Settings()

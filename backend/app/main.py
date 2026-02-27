@@ -141,6 +141,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
+    assert agent_card is not None  # invariant: error is None iff agent_card is not None
 
     # Build AgentCreate from fetched agent card
     try:
@@ -184,15 +185,18 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
+        logger.warning("rate_limit_exceeded", ip=client_ip)
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
         )
 
     # Check if already exists
+    well_known_uri = str(agent.wellKnownURI)
     agent_repo = AgentRepository(db)
-    existing = await agent_repo.get_by_well_known_uri(str(agent.wellKnownURI))
+    existing = await agent_repo.get_by_well_known_uri(well_known_uri)
     if existing:
+        logger.info("agent_duplicate", well_known_uri=well_known_uri)
         raise HTTPException(
             status_code=409,
             detail=f"Agent with wellKnownURI {agent.wellKnownURI} already exists",
@@ -207,6 +211,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     try:
         created_agent = await agent_repo.create(agent)
         result = await agent_repo.get_by_id(created_agent.id)
+        logger.info("agent_registered", well_known_uri=well_known_uri)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
@@ -297,6 +302,7 @@ async def update_agent(agent_id: UUID, request: Request):
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
+    assert agent_card is not None  # invariant: error is None iff agent_card is not None
 
     try:
         agent_data = AgentCreate(
