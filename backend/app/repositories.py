@@ -139,7 +139,7 @@ class AgentRepository:
         if conformance == "standard":
             where_clauses.append("conformance = true")
         elif conformance == "non-standard":
-            where_clauses.append("conformance = false")
+            where_clauses.append("conformance IS NOT TRUE")
 
         where_clause = " AND ".join(where_clauses)
 

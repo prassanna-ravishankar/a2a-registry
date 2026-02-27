@@ -155,9 +155,9 @@ const A2ARegistry = () => {
     }
 
     if (conformanceFilter === 'standard') {
-      filtered = filtered.filter(agent => agent.conformance !== false);
+      filtered = filtered.filter(agent => agent.conformance === true);
     } else if (conformanceFilter === 'non-standard') {
-      filtered = filtered.filter(agent => agent.conformance === false);
+      filtered = filtered.filter(agent => agent.conformance !== true);
     }
 
     return filtered;
