@@ -14,7 +14,7 @@ from .config import settings
 from .database import db
 from .mcp_server import mcp
 
-_mcp_app = mcp.http_app(path="")
+_mcp_app = mcp.http_app(path="/")
 from .models import (
     AgentCreate,
     AgentFlag,
