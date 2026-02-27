@@ -100,7 +100,7 @@ worker:
       memory: 256Mi
 
   # Liveness probe: restart worker if heartbeat file is older than 2 cycles
-  healthCheckIntervalSeconds: 300
+  healthCheckIntervalSeconds: 1800
   livenessThresholdCycles: 2
 
   # Horizontal Pod Autoscaler
@@ -185,7 +185,7 @@ config:
   apiPort: "8000"
   apiReload: "false"
   corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org"]'
-  healthCheckIntervalSeconds: "300"
+  healthCheckIntervalSeconds: "1800"
   healthCheckTimeoutSeconds: "10"
 
 # Secrets are managed externally (not created by Helm)

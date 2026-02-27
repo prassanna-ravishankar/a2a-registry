@@ -98,6 +98,7 @@ class AgentRepository:
         capability: Optional[str] = None,
         author: Optional[str] = None,
         search: Optional[str] = None,
+        conformance: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -109,8 +110,11 @@ class AgentRepository:
         param_idx = 1
 
         if skill:
-            where_clauses.append(f"skills::jsonb @> ${param_idx}::jsonb")
-            params.append(json.dumps([{"id": skill}]))
+            # Match agents where any skill has the given tag
+            where_clauses.append(
+                f"EXISTS (SELECT 1 FROM jsonb_array_elements(skills::jsonb) s WHERE s->'tags' @> ${param_idx}::jsonb)"
+            )
+            params.append(json.dumps([skill]))
             param_idx += 1
 
         if capability:
@@ -131,6 +135,11 @@ class AgentRepository:
             )
             params.append(f"%{search}%")
             param_idx += 1
+
+        if conformance == "standard":
+            where_clauses.append("conformance = true")
+        elif conformance == "non-standard":
+            where_clauses.append("conformance IS NOT TRUE")
 
         where_clause = " AND ".join(where_clauses)
 
@@ -170,6 +179,14 @@ class AgentRepository:
 
         agents = [self._row_to_agent_public(row) for row in rows]
         return agents, total
+
+    async def update_conformance(self, agent_id: UUID, conformance: Optional[bool]) -> None:
+        """Update the conformance status of an agent"""
+        await self.db.execute(
+            "UPDATE agents SET conformance = $1, updated_at = NOW() WHERE id = $2",
+            conformance,
+            agent_id,
+        )
 
     async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card"""

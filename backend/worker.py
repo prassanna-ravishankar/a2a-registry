@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.repositories import AgentRepository, HealthCheckRepository
+from app.validators import validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 
@@ -25,6 +26,7 @@ async def check_agent_health(
     well_known_uri: str,
     session: aiohttp.ClientSession,
     health_repo: HealthCheckRepository,
+    agent_repo: AgentRepository,
 ):
     """
     Check health of a single agent by pinging its wellKnownURI.
@@ -56,6 +58,14 @@ async def check_agent_health(
             # Consider 2xx responses as healthy
             success = 200 <= status_code < 300
 
+            # Read body once for both health check and conformance validation
+            card_data = None
+            if success:
+                try:
+                    card_data = await response.json()
+                except Exception:
+                    pass
+
             # Record health check
             await health_repo.create(
                 agent_id=agent_id,
@@ -69,6 +79,15 @@ async def check_agent_health(
                 bound_logger.debug(
                     "health_check_ok", status_code=status_code, response_time_ms=response_time_ms
                 )
+                # Re-validate conformance from the live agent card
+                if card_data is not None:
+                    try:
+                        errors = validate_agent_card(card_data, strict=True)
+                        conformance = len(errors) == 0
+                        await agent_repo.update_conformance(agent_id, conformance)
+                        bound_logger.debug("conformance_updated", conformance=conformance, errors=errors[:3] if errors else [])
+                    except Exception as conf_err:
+                        bound_logger.warning("conformance_check_failed", error=str(conf_err))
             else:
                 bound_logger.warning(
                     "health_check_degraded", status_code=status_code
@@ -134,6 +153,7 @@ async def health_check_cycle():
                     well_known_uri=str(agent.wellKnownURI),
                     session=session,
                     health_repo=health_repo,
+                    agent_repo=agent_repo,
                 )
                 tasks.append(task)
 
