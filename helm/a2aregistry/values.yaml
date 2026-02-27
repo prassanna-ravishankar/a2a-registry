@@ -36,14 +36,13 @@ api:
       value: "true"
       effect: NoSchedule
 
-  # Right-size resources for cost optimization
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 96Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 256Mi
 
   # Health checks
   livenessProbe:
@@ -162,11 +161,11 @@ cloudsql:
   image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.19.0
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 10m
+      memory: 32Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 64Mi
 
 # PostHog analytics configuration
 posthog:

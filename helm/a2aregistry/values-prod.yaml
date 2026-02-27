@@ -8,23 +8,33 @@ domains:
   - a2aregistry.org
   - www.a2aregistry.org
 
-# Production scaling
+# Personal project - single replicas, tight resources
 api:
-  replicaCount: 2
+  replicaCount: 1
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 5
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
 worker:
   replicaCount: 1
 
 frontend:
-  replicaCount: 2
+  replicaCount: 1
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 3
+    enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
 
 # Enable PostHog for production
 posthog:
