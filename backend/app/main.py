@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 from .config import settings
 from .database import db
 from .mcp_server import mcp
+
+_mcp_app = mcp.http_app(path="")
 from .models import (
     AgentCreate,
     AgentFlag,
@@ -56,15 +58,12 @@ def _check_rate_limit(ip: str) -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
-    # Startup
-    await db.connect()
-    print("✅ Database connected")
-
-    yield
-
-    # Shutdown
-    await db.disconnect()
-    print("👋 Database disconnected")
+    async with _mcp_app.lifespan(app):
+        await db.connect()
+        print("✅ Database connected")
+        yield
+        await db.disconnect()
+        print("👋 Database disconnected")
 
 
 app = FastAPI(
@@ -462,8 +461,8 @@ app.include_router(router)
 # Include router at /api prefix (for GKE Gateway HTTPRoute)
 app.include_router(router, prefix="/api")
 
-# Mount MCP server at /mcp (streamable HTTP transport for hosted MCP)
-app.mount("/mcp", mcp.http_app())
+# Mount MCP server at /mcp — fastmcp serves at "" (root of mount)
+app.mount("/mcp", _mcp_app)
 
 
 # ============================================================================
