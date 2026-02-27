@@ -84,10 +84,10 @@ const InspectionDeck = ({ agent, onClose }) => {
                             <div className="mt-2">
                                 <TabsContent value="registry">
                                     <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
-                                        {`from a2a_registry import Registry
+                                        {`from a2a_registry import APIRegistry
 
-registry = Registry()
-agent = registry.get_by_id("${agent.name.toLowerCase().replace(/\s+/g, '-')}")
+registry = APIRegistry()
+agent = registry.get_by_id("${agent.id}")
 print(f"Found: {agent.name}")
 
 # Connect
@@ -133,10 +133,19 @@ asyncio.run(main())`}
                         Launch Interface
                     </a>
                 </Button>
-                <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent">
-                    <FileText className="w-3 h-3 mr-2" />
-                    Documentation
-                </Button>
+                {agent.documentationUrl ? (
+                    <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent" asChild>
+                        <a href={agent.documentationUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="w-3 h-3 mr-2" />
+                            Documentation
+                        </a>
+                    </Button>
+                ) : (
+                    <Button variant="outline" disabled className="border-zinc-800 text-zinc-600 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent cursor-not-allowed">
+                        <FileText className="w-3 h-3 mr-2" />
+                        Documentation
+                    </Button>
+                )}
             </div>
         </aside>
     );

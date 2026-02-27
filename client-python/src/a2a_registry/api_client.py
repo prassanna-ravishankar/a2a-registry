@@ -253,6 +253,33 @@ class APIRegistry:
         self._set_cache(cache_key, stats)
         return stats
 
+    def register_by_uri(self, well_known_uri: str, author: Optional[str] = None) -> Agent:
+        """
+        Register an agent by its wellKnownURI (simple flow).
+
+        The registry fetches the agent card automatically from the URI.
+
+        Args:
+            well_known_uri: URL of the agent's .well-known/agent.json endpoint
+            author: Optional author override (defaults to provider.organization from card)
+
+        Returns:
+            Created agent
+
+        Raises:
+            HTTPError if registration fails
+        """
+        payload: Dict = {"wellKnownURI": well_known_uri}
+        if author:
+            payload["author"] = author
+        response = requests.post(
+            f"{self.api_url}/agents/register",
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+        return Agent(**response.json())
+
     def register_agent(self, agent_data: Dict) -> Agent:
         """
         Register a new agent.

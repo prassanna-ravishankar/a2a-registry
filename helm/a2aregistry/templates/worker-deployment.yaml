@@ -53,6 +53,15 @@ spec:
             name: a2aregistry-config
         resources:
           {{- toYaml .Values.worker.resources | nindent 10 }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "test -f /tmp/worker-heartbeat && [ $(( $(date +%s) - $(cat /tmp/worker-heartbeat | cut -d. -f1) )) -lt {{ mul .Values.worker.livenessThresholdCycles (default 300 .Values.worker.healthCheckIntervalSeconds) }} ]"
+          initialDelaySeconds: {{ mul 2 (default 300 .Values.worker.healthCheckIntervalSeconds) }}
+          periodSeconds: {{ default 300 .Values.worker.healthCheckIntervalSeconds }}
+          failureThreshold: 2
 
       {{- if .Values.cloudsql.enabled }}
       # Cloud SQL Proxy sidecar

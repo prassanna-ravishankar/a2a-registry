@@ -1,5 +1,7 @@
 """FastAPI application - main entry point"""
 
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
@@ -23,6 +25,24 @@ from .models import (
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 from .validators import validate_well_known_uri
+
+# Simple in-memory rate limiter: {ip: [timestamps]}
+_submission_timestamps: dict[str, list[float]] = defaultdict(list)
+_RATE_WINDOW = 3600  # 1 hour
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Return True if request is allowed, False if rate limit exceeded."""
+    if not settings.rate_limit_enabled:
+        return True
+    now = time.time()
+    cutoff = now - _RATE_WINDOW
+    timestamps = [t for t in _submission_timestamps[ip] if t > cutoff]
+    _submission_timestamps[ip] = timestamps
+    if len(timestamps) >= settings.rate_limit_submissions_per_hour:
+        return False
+    _submission_timestamps[ip].append(now)
+    return True
 
 
 @asynccontextmanager
@@ -95,6 +115,14 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     well_known_uri = str(registration.wellKnownURI)
     track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
 
+    # Rate limit
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
+        )
+
     # Validate wellKnownURI format
     uri_errors = validate_well_known_uri(well_known_uri)
     if uri_errors:
@@ -152,6 +180,14 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     For a simpler flow, use POST /agents/register with just the wellKnownURI.
     """
     track_api_query("POST /agents", author=agent.author)
+
+    # Rate limit
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
+        )
 
     # Check if already exists
     agent_repo = AgentRepository(db)
@@ -236,6 +272,53 @@ async def get_agent(agent_id: UUID):
         raise HTTPException(status_code=404, detail="Agent not found")
 
     return agent
+
+
+@router.put("/agents/{agent_id}", response_model=AgentPublic)
+async def update_agent(agent_id: UUID, request: Request):
+    """
+    Re-fetch and update an agent's metadata from its wellKnownURI.
+
+    Verifies ownership by fetching the wellKnownURI and updating all fields
+    from the live agent card.
+    """
+    track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
+
+    agent_repo = AgentRepository(db)
+    existing = await agent_repo.get_by_id(agent_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    well_known_uri = str(existing.wellKnownURI)
+    agent_card, error = await fetch_agent_card(well_known_uri)
+    if error:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
+
+    try:
+        agent_data = AgentCreate(
+            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
+            name=agent_card["name"],
+            description=agent_card["description"],
+            author=agent_card.get("provider", {}).get("organization", existing.author),
+            wellKnownURI=well_known_uri,
+            url=agent_card["url"],
+            version=agent_card["version"],
+            provider=agent_card.get("provider"),
+            documentationUrl=agent_card.get("documentationUrl"),
+            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
+            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
+            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
+            skills=agent_card.get("skills", []),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
+
+    try:
+        await agent_repo.update(agent_id, agent_data)
+        result = await agent_repo.get_by_id(agent_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update agent: {e}")
 
 
 @router.delete("/agents/{agent_id}", status_code=204)

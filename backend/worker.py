@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import time
+from pathlib import Path
 from typing import List
 
 import aiohttp
@@ -11,6 +12,8 @@ import aiohttp
 from app.config import settings
 from app.database import db
 from app.repositories import AgentRepository, HealthCheckRepository
+
+HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -146,8 +149,20 @@ async def health_check_cycle():
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
+        # Prune health_checks older than 90 days
+        try:
+            deleted = await db.execute(
+                "DELETE FROM health_checks WHERE checked_at < NOW() - INTERVAL '90 days'"
+            )
+            logger.info(f"🗑️  Pruned old health check records: {deleted}")
+        except Exception as prune_err:
+            logger.warning(f"Failed to prune health_checks: {prune_err}")
+
         elapsed = time.time() - start_time
         logger.info(f"✅ Health check cycle completed in {elapsed:.1f}s")
+
+        # Write heartbeat for liveness probe
+        HEARTBEAT_FILE.write_text(str(time.time()))
 
     except Exception as e:
         logger.error(f"❌ Health check cycle failed: {e}")

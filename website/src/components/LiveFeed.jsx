@@ -1,36 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'https://a2aregistry.org/api';
+
 const LiveFeed = () => {
-    const [commits, setCommits] = useState([]);
+    const [agents, setAgents] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchCommits = async () => {
+        const fetchRecentAgents = async () => {
             try {
                 const response = await fetch(
-                    'https://api.github.com/repos/prassanna-ravishankar/a2a-registry/commits?per_page=10'
+                    `${API_URL}/agents?limit=10&offset=0`
                 );
                 const data = await response.json();
-                setCommits(data);
+                setAgents(data.agents || []);
                 setLoading(false);
             } catch (error) {
-                console.error('Failed to fetch commits:', error);
+                console.error('Failed to fetch recent agents:', error);
                 setLoading(false);
             }
         };
 
-        fetchCommits();
+        fetchRecentAgents();
         // Refresh every 5 minutes
-        const interval = setInterval(fetchCommits, 5 * 60 * 1000);
+        const interval = setInterval(fetchRecentAgents, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
-
-    const formatCommitMessage = (message) => {
-        // Take first line only and truncate if needed
-        const firstLine = message.split('\n')[0];
-        return firstLine.length > 60 ? firstLine.substring(0, 57) + '...' : firstLine;
-    };
 
     const formatTimestamp = (dateString) => {
         const date = new Date(dateString);
@@ -47,6 +43,8 @@ const LiveFeed = () => {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
+    const truncate = (str, n) => str && str.length > n ? str.substring(0, n - 3) + '...' : str;
+
     return (
         <div className="border-t border-zinc-800 bg-black flex flex-col h-80">
             {/* Header */}
@@ -61,31 +59,31 @@ const LiveFeed = () => {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                 {loading ? (
                     <div className="text-zinc-600 text-[10px] font-mono">Loading activity...</div>
-                ) : commits.length === 0 ? (
+                ) : agents.length === 0 ? (
                     <div className="text-zinc-600 text-[10px] font-mono">No recent activity</div>
                 ) : (
-                    commits.map((commit) => (
+                    agents.map((agent) => (
                         <div
-                            key={commit.sha}
+                            key={agent.id}
                             className="text-[10px] font-mono group hover:bg-zinc-900/50 p-1 rounded transition-colors cursor-pointer"
-                            onClick={() => window.open(commit.html_url, '_blank')}
+                            onClick={() => window.open(agent.wellKnownURI, '_blank')}
                         >
                             <div className="flex items-start gap-2">
                                 <span className="text-zinc-600 shrink-0">
-                                    {formatTimestamp(commit.commit.author.date)}
+                                    {formatTimestamp(agent.created_at)}
                                 </span>
                                 <span className="text-amber-500 shrink-0">&gt;&gt;</span>
                                 <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors break-all">
-                                    {formatCommitMessage(commit.commit.message)}
+                                    {truncate(agent.name, 50)}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 ml-[4.5rem] mt-0.5">
                                 <span className="text-zinc-700 text-[9px]">
-                                    {commit.sha.substring(0, 7)}
+                                    {agent.author}
                                 </span>
-                                <span className="text-zinc-700 text-[9px]">
-                                    {commit.commit.author.name}
-                                </span>
+                                {agent.is_healthy && (
+                                    <span className="text-emerald-700 text-[9px]">HEALTHY</span>
+                                )}
                             </div>
                         </div>
                     ))
@@ -96,7 +94,7 @@ const LiveFeed = () => {
             <div className="border-t border-zinc-800 px-4 py-1.5 bg-zinc-900/50">
                 <div className="flex items-center justify-between text-[9px] font-mono">
                     <span className="text-zinc-600">ACTIVITY_STATUS</span>
-                    <span className="text-emerald-500">{commits.length > 0 ? 'ACTIVE' : 'IDLE'}</span>
+                    <span className="text-emerald-500">{agents.length > 0 ? 'ACTIVE' : 'IDLE'}</span>
                 </div>
             </div>
         </div>

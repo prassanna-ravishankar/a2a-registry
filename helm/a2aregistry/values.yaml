@@ -99,6 +99,10 @@ worker:
       cpu: 200m
       memory: 256Mi
 
+  # Liveness probe: restart worker if heartbeat file is older than 2 cycles
+  healthCheckIntervalSeconds: 300
+  livenessThresholdCycles: 2
+
   # Horizontal Pod Autoscaler
   autoscaling:
     enabled: false  # Worker doesn't need autoscaling
