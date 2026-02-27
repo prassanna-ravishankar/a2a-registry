@@ -1,11 +1,11 @@
 # A2A Registry - ClusterKit Deployment Guide
 
-This guide covers deploying A2A Registry to ClusterKit (GKE Autopilot) at `beta.a2aregistry.org`.
+This guide covers deploying A2A Registry to ClusterKit (GKE Autopilot) at `a2aregistry.org`.
 
 ## Architecture
 
 - **Namespace**: `a2aregistry`
-- **Domain**: `beta.a2aregistry.org`
+- **Domain**: `a2aregistry.org`
 - **Database**: `a2a_registry_beta` in shared Cloud SQL instance `clusterkit-db`
 - **Gateway**: Shared ClusterKit Gateway (34.149.49.202) in `torale` namespace
 - **HTTPRoute**: Cross-namespace routing from `torale` → `a2aregistry`
@@ -35,7 +35,7 @@ terraform apply
 ```
 
 This creates:
-- SSL certificate for `beta.a2aregistry.org`
+- SSL certificate for `a2aregistry.org`
 - ReferenceGrant allowing HTTPRoute → Service across namespaces
 - Database `a2a_registry_beta` in Cloud SQL
 - Workload Identity binding for `a2aregistry-sa`
@@ -90,12 +90,12 @@ kubectl describe gateway clusterkit-gateway -n torale
 gcloud compute ssl-certificates describe a2aregistry-beta-cert
 
 # Verify DNS
-dig +short beta.a2aregistry.org @1.1.1.1
+dig +short a2aregistry.org @1.1.1.1
 # Should return: 34.149.49.202
 
 # Test endpoints
-curl https://beta.a2aregistry.org/health  # Frontend health
-curl https://beta.a2aregistry.org/api/health  # API health
+curl https://a2aregistry.org/health  # Frontend health
+curl https://a2aregistry.org/api/health  # API health
 ```
 
 ## CI/CD
@@ -115,7 +115,7 @@ Workflow: `.github/workflows/deploy-backend.yml`
 docker build -t gcr.io/baldmaninc/a2a-registry-api:dev backend/
 docker build -t gcr.io/baldmaninc/a2a-registry-worker:dev backend/
 docker build -t gcr.io/baldmaninc/a2a-registry-frontend:dev \
-  --build-arg VITE_API_URL=https://beta.a2aregistry.org/api \
+  --build-arg VITE_API_URL=https://a2aregistry.org/api \
   website/
 
 # Push images
