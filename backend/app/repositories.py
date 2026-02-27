@@ -52,34 +52,24 @@ class AgentRepository:
         query = """
             SELECT
                 a.*,
-                -- Compute health metrics from last 24 hours
-                (
-                    SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                      AND hc.checked_at > NOW() - INTERVAL '24 hours'
-                      AND hc.success = true
-                ) as uptime_percentage,
-                (
-                    SELECT AVG(response_time_ms)::int
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                      AND hc.checked_at > NOW() - INTERVAL '24 hours'
-                      AND hc.success = true
-                ) as avg_response_time_ms,
-                (
-                    SELECT MAX(checked_at)
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                ) as last_health_check,
-                (
-                    SELECT success
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                    ORDER BY checked_at DESC
-                    LIMIT 1
-                ) as is_healthy
+                hm.uptime_percentage,
+                hm.avg_response_time_ms,
+                hm.last_health_check,
+                hm.is_healthy
             FROM agents a
+            LEFT JOIN LATERAL (
+                SELECT
+                    COALESCE(
+                        COUNT(*) FILTER (WHERE success = true)::float / NULLIF(COUNT(*), 0) * 100,
+                        0
+                    ) as uptime_percentage,
+                    COALESCE(AVG(response_time_ms) FILTER (WHERE success = true)::int, 0) as avg_response_time_ms,
+                    MAX(checked_at) as last_health_check,
+                    (array_agg(success ORDER BY checked_at DESC))[1] as is_healthy
+                FROM health_checks hc
+                WHERE hc.agent_id = a.id
+                  AND hc.checked_at > NOW() - INTERVAL '24 hours'
+            ) hm ON true
             WHERE a.id = $1 AND a.hidden = false
         """
 
@@ -114,14 +104,15 @@ class AgentRepository:
         param_idx = 1
 
         if skill:
-            where_clauses.append(f"skills::text LIKE ${param_idx}")
-            params.append(f'%"id": "{skill}"%')
+            where_clauses.append(f"skills::jsonb @> ${param_idx}::jsonb")
+            params.append(json.dumps([{"id": skill}]))
             param_idx += 1
 
         if capability:
             _VALID_CAPABILITIES = {"streaming", "pushNotifications", "stateTransitionHistory"}
             if capability not in _VALID_CAPABILITIES:
                 return [], 0
+            # capability is safe to interpolate - validated against _VALID_CAPABILITIES whitelist above
             where_clauses.append(f"capabilities::jsonb ->> '{capability}' = 'true'")
 
         if author:
@@ -146,33 +137,24 @@ class AgentRepository:
         query = f"""
             SELECT
                 a.*,
-                (
-                    SELECT COUNT(*)::float / NULLIF(COUNT(*), 0) * 100
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                      AND hc.checked_at > NOW() - INTERVAL '24 hours'
-                      AND hc.success = true
-                ) as uptime_percentage,
-                (
-                    SELECT AVG(response_time_ms)::int
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                      AND hc.checked_at > NOW() - INTERVAL '24 hours'
-                      AND hc.success = true
-                ) as avg_response_time_ms,
-                (
-                    SELECT MAX(checked_at)
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                ) as last_health_check,
-                (
-                    SELECT success
-                    FROM health_checks hc
-                    WHERE hc.agent_id = a.id
-                    ORDER BY checked_at DESC
-                    LIMIT 1
-                ) as is_healthy
+                hm.uptime_percentage,
+                hm.avg_response_time_ms,
+                hm.last_health_check,
+                hm.is_healthy
             FROM agents a
+            LEFT JOIN LATERAL (
+                SELECT
+                    COALESCE(
+                        COUNT(*) FILTER (WHERE success = true)::float / NULLIF(COUNT(*), 0) * 100,
+                        0
+                    ) as uptime_percentage,
+                    COALESCE(AVG(response_time_ms) FILTER (WHERE success = true)::int, 0) as avg_response_time_ms,
+                    MAX(checked_at) as last_health_check,
+                    (array_agg(success ORDER BY checked_at DESC))[1] as is_healthy
+                FROM health_checks hc
+                WHERE hc.agent_id = a.id
+                  AND hc.checked_at > NOW() - INTERVAL '24 hours'
+            ) hm ON true
             WHERE {where_clause}
             ORDER BY a.created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
