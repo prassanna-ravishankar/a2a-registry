@@ -1,9 +1,12 @@
-# Production values for a2aregistry (beta deployment)
+# Production values for a2aregistry
 # Overrides values.yaml for production environment
 
-# Use specific image tags (not 'latest') for production
-image:
-  tag: "{{ .Values.imageTag }}"  # Will be set by CI/CD
+# image.tag is set via --set image.tag=$IMAGE_TAG in CI/CD
+
+# Production domains
+domains:
+  - a2aregistry.org
+  - www.a2aregistry.org
 
 # Production scaling
 api:
@@ -30,3 +33,4 @@ posthog:
 # Production configuration
 config:
   apiReload: "false"
+  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org"]'

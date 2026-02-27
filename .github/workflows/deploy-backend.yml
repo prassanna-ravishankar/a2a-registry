@@ -75,7 +75,7 @@ jobs:
           push: true
           provenance: false
           build-args: |
-            VITE_API_URL=https://beta.a2aregistry.org/api
+            VITE_API_URL=https://a2aregistry.org/api
             VITE_POSTHOG_HOST=https://us.posthog.com
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
@@ -95,8 +95,8 @@ jobs:
       id-token: write
 
     environment:
-      name: beta
-      url: https://beta.a2aregistry.org
+      name: production
+      url: https://a2aregistry.org
 
     steps:
       - uses: actions/checkout@v4

@@ -1,16 +1,14 @@
 {{- if .Values.httproute.enabled -}}
 ---
-# HTTPRoute for beta.a2aregistry.org (serves both frontend and API)
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: a2aregistry-beta
-  namespace: {{ .Values.httproute.namespace }}  # Must be in torale namespace (same as Gateway)
+  name: a2aregistry
+  namespace: {{ .Values.httproute.namespace }}
   labels:
     app: a2aregistry
     component: routing
   annotations:
-    # REQUIRED: Disable Cloudflare proxy for GCP SSL to work
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   parentRefs:
@@ -19,7 +17,9 @@ spec:
     name: {{ .Values.httproute.gatewayName }}
     namespace: {{ .Values.httproute.namespace }}
   hostnames:
-  - {{ .Values.domain | quote }}
+  {{- range .Values.domains }}
+  - {{ . | quote }}
+  {{- end }}
   rules:
   # API routes (prefix /api)
   - matches:
