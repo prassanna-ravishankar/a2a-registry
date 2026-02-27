@@ -102,6 +102,7 @@ class AgentRepository:
         skill: Optional[str] = None,
         capability: Optional[str] = None,
         author: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -126,6 +127,13 @@ class AgentRepository:
         if author:
             where_clauses.append(f"author ILIKE ${param_idx}")
             params.append(f"%{author}%")
+            param_idx += 1
+
+        if search:
+            where_clauses.append(
+                f"(name ILIKE ${param_idx} OR description ILIKE ${param_idx} OR author ILIKE ${param_idx})"
+            )
+            params.append(f"%{search}%")
             param_idx += 1
 
         where_clause = " AND ".join(where_clauses)

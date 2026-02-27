@@ -16,6 +16,8 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 # Build arguments for environment variables
+# VITE_POSTHOG_KEY is a public client-side analytics key (not a secret)
+# hadolint ignore=DL3044
 ARG VITE_API_URL
 ARG VITE_POSTHOG_KEY
 ARG VITE_POSTHOG_HOST

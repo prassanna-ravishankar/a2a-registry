@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "a2a-registry-client"
-version = "0.1.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },

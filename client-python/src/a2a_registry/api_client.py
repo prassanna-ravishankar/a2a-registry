@@ -253,6 +253,34 @@ class APIRegistry:
         self._set_cache(cache_key, stats)
         return stats
 
+    def search(self, query: str, limit: int = 50) -> List[Agent]:
+        """
+        Search agents by text across name, description, and author.
+
+        Args:
+            query: Search query string
+            limit: Maximum results to return
+
+        Returns:
+            List of matching agents
+        """
+        cache_key = f"search_{query}_{limit}"
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+
+        response = requests.get(
+            f"{self.api_url}/agents",
+            params={"search": query, "limit": limit},
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        agents = [Agent(**agent) for agent in data["agents"]]
+        self._set_cache(cache_key, agents)
+        return agents
+
     def register_by_uri(self, well_known_uri: str, author: Optional[str] = None) -> Agent:
         """
         Register an agent by its wellKnownURI (simple flow).
