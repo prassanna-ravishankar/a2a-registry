@@ -247,19 +247,15 @@ class AgentRepository:
             version=row["version"],
             provider=json.loads(row["provider"]) if row["provider"] else None,
             documentationUrl=row["documentation_url"],
-            iconUrl=row["icon_url"],
-            supportsAuthenticatedExtendedCard=row["supports_authenticated_extended_card"],
-            security=json.loads(row["security_requirements"]) if row["security_requirements"] else [],
-            securitySchemes=json.loads(row["security_schemes"]) if row["security_schemes"] else {},
+            iconUrl=row.get("icon_url"),
+            supportsAuthenticatedExtendedCard=row.get("supports_authenticated_extended_card"),
+            security=json.loads(row["security_requirements"]) if row.get("security_requirements") else [],
+            securitySchemes=json.loads(row["security_schemes"]) if row.get("security_schemes") else {},
             capabilities=json.loads(row["capabilities"]),
             defaultInputModes=json.loads(row["default_input_modes"]),
             defaultOutputModes=json.loads(row["default_output_modes"]),
             skills=json.loads(row["skills"]),
             conformance=row["conformance"],
-            iconUrl=row.get("icon_url"),
-            supportsAuthenticatedExtendedCard=row.get("supports_authenticated_extended_card"),
-            security=json.loads(row["security_requirements"]) if row.get("security_requirements") else [],
-            securitySchemes=json.loads(row["security_schemes"]) if row.get("security_schemes") else {},
         )
 
     def _row_to_agent_public(self, row) -> AgentPublic:
