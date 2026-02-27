@@ -1,0 +1,192 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "swarm.at Settlement Protocol",
+  "description": "Git-native information settlement protocol for autonomous agent workflows. Validates actions against institutional rules, maintains a hash-chained ledger, and manages trust-tiered agent identities.",
+  "url": "https://api.swarm.at",
+  "version": "0.5.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": [
+      "bearer"
+    ],
+    "credentials": "API key via Authorization: Bearer <key>"
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "guard_action",
+      "name": "Guard Action",
+      "description": "Validate a destructive action before execution. Returns a settlement receipt or rejects with reason.",
+      "tags": [
+        "settlement",
+        "validation",
+        "safety"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "settle_action",
+      "name": "Settle Action",
+      "description": "Submit any action for settlement against institutional rules. Returns a settlement token.",
+      "tags": [
+        "settlement",
+        "compliance"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "check_settlement",
+      "name": "Check Settlement",
+      "description": "Look up whether a previous action was approved, by task ID or hash.",
+      "tags": [
+        "ledger",
+        "query"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "ledger_status",
+      "name": "Ledger Status",
+      "description": "Check ledger health: latest hash, entry count, chain integrity.",
+      "tags": [
+        "ledger",
+        "monitoring"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "list_blueprints",
+      "name": "List Blueprints",
+      "description": "Browse 31 pre-built workflows across 6 categories. Filter by tag.",
+      "tags": [
+        "blueprints",
+        "workflows",
+        "catalog"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "get_blueprint",
+      "name": "Get Blueprint",
+      "description": "Inspect a blueprint's steps and roles before forking.",
+      "tags": [
+        "blueprints",
+        "workflows"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "fork_blueprint",
+      "name": "Fork Blueprint",
+      "description": "Create an executable workflow from a blueprint template.",
+      "tags": [
+        "blueprints",
+        "workflows",
+        "execution"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "verify_receipt",
+      "name": "Verify Receipt",
+      "description": "Prove a past action was approved. Returns receipt with timestamp and parent hash.",
+      "tags": [
+        "verification",
+        "audit",
+        "provenance"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    },
+    {
+      "id": "check_trust",
+      "name": "Check Trust",
+      "description": "Verify an agent meets a trust threshold before delegating work.",
+      "tags": [
+        "trust",
+        "agents",
+        "identity"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "swarm.at",
+    "url": "https://swarm.at"
+  },
+  "documentationUrl": "https://swarm.at/SPEC.html",
+  "serviceUrl": "https://api.swarm.at",
+  "author": "Mediaeater",
+  "wellKnownURI": "https://api.swarm.at/.well-known/agent.json",
+  "homepage": "https://swarm.at",
+  "repository": "https://github.com/Mediaeater/swarm-at",
+  "license": "MIT",
+  "registryTags": [
+    "settlement",
+    "governance",
+    "ledger",
+    "trust",
+    "compliance",
+    "agent-infrastructure",
+    "mcp"
+  ],
+  "pricing": {
+    "model": "free",
+    "details": "Free for all agents. No credit system."
+  },
+  "contact": {
+    "support": "https://github.com/Mediaeater/swarm-at/issues"
+  }
+}
