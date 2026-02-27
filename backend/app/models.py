@@ -25,6 +25,7 @@ class Capabilities(BaseModel):
     streaming: bool = False
     pushNotifications: bool = Field(False, alias="pushNotifications")
     stateTransitionHistory: bool = Field(False, alias="stateTransitionHistory")
+    extendedAgentCard: bool = Field(False, alias="extendedAgentCard")
 
     model_config = {"populate_by_name": True}
 

@@ -74,7 +74,7 @@ const A2ARegistry = () => {
       const params = new URLSearchParams(window.location.search);
       const agentId = params.get('agent');
       if (agentId && !selectedAgent) {
-        const found = agents.find(a => a.name.toLowerCase().replace(/\s+/g, '-') === agentId);
+        const found = agents.find(a => a.id === agentId);
         if (found) setSelectedAgent(found);
       }
     }
@@ -84,7 +84,7 @@ const A2ARegistry = () => {
     // 2. Update URL when selection changes
     const params = new URLSearchParams(window.location.search);
     if (selectedAgent) {
-      const agentId = selectedAgent.name.toLowerCase().replace(/\s+/g, '-');
+      const agentId = selectedAgent.id;
       if (params.get('agent') !== agentId) {
         params.set('agent', agentId);
         window.history.pushState({}, '', `?${params.toString()}`);
@@ -104,7 +104,7 @@ const A2ARegistry = () => {
       const params = new URLSearchParams(window.location.search);
       const agentId = params.get('agent');
       if (agentId) {
-        const found = agents.find(a => a.name.toLowerCase().replace(/\s+/g, '-') === agentId);
+        const found = agents.find(a => a.id === agentId);
         if (found) setSelectedAgent(found);
       } else {
         setSelectedAgent(null);

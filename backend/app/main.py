@@ -217,6 +217,7 @@ async def list_agents(
     skill: Optional[str] = None,
     capability: Optional[str] = None,
     author: Optional[str] = None,
+    search: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -224,6 +225,7 @@ async def list_agents(
     List agents with optional filtering and pagination.
 
     Query parameters:
+    - search: Full-text search across name, description, and author
     - skill: Filter by skill ID
     - capability: Filter by A2A capability (e.g., "streaming")
     - author: Filter by author name (case-insensitive partial match)
@@ -235,6 +237,7 @@ async def list_agents(
         skill=skill,
         capability=capability,
         author=author,
+        search=search,
         limit=limit,
         offset=offset,
     )
@@ -248,6 +251,7 @@ async def list_agents(
         skill=skill,
         capability=capability,
         author=author,
+        search=search,
         limit=limit,
         offset=offset,
     )

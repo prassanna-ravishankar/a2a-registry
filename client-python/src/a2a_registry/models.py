@@ -22,10 +22,11 @@ class Skill(BaseModel):
 
 class Capabilities(BaseModel):
     """A2A Protocol capabilities."""
-    
+
     streaming: Optional[bool] = Field(None, description="If the agent supports SSE streaming")
     pushNotifications: Optional[bool] = Field(None, description="If the agent can push notifications")
     stateTransitionHistory: Optional[bool] = Field(None, description="If the agent exposes state history")
+    extendedAgentCard: Optional[bool] = Field(None, description="If the agent supports authenticated extended card retrieval")
 
 
 class Provider(BaseModel):

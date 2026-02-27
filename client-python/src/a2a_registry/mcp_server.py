@@ -62,29 +62,22 @@ def _format_agent(agent) -> dict:
 
 
 @mcp.tool
-def search_agents(query: str) -> List[dict]:
+def search_agents(query: str, limit: int = 50) -> List[dict]:
     """
     Search for AI agents in the A2A Registry by text query.
 
-    Searches across agent names, descriptions, and skills. Use this when
+    Searches across agent names, descriptions, and authors. Use this when
     users want to find agents by keyword, topic, or general description.
 
     Args:
         query: Search query string (e.g., "translation", "image generation", "data analysis")
+        limit: Maximum results to return (default 50)
 
     Returns:
         List of matching agents with their details
     """
-    query_lower = query.lower()
-    all_agents = _registry.get_all()
-    results = []
-    for agent in all_agents:
-        if (query_lower in agent.name.lower()
-                or query_lower in agent.description.lower()
-                or any(query_lower in s.name.lower() or query_lower in s.description.lower()
-                       for s in (agent.skills or []))):
-            results.append(agent)
-    return [_format_agent(a) for a in results]
+    agents = _registry.search(query, limit=limit)
+    return [_format_agent(a) for a in agents]
 
 
 @mcp.tool
