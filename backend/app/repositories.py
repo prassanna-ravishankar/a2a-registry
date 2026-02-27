@@ -36,12 +36,12 @@ class AgentRepository:
             str(agent.wellKnownURI),
             str(agent.url),
             agent.version,
-            json.dumps(agent.provider.model_dump() if agent.provider else None),
+            json.dumps(agent.provider.model_dump(mode='json') if agent.provider else None),
             str(agent.documentationUrl) if agent.documentationUrl else None,
-            json.dumps(agent.capabilities.model_dump()),
+            json.dumps(agent.capabilities.model_dump(mode='json')),
             json.dumps(agent.defaultInputModes),
             json.dumps(agent.defaultOutputModes),
-            json.dumps([skill.model_dump() for skill in agent.skills]),
+            json.dumps([skill.model_dump(mode='json') for skill in agent.skills]),
             agent.conformance,
         )
 
