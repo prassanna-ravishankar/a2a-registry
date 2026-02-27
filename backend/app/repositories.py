@@ -461,6 +461,24 @@ class StatsRepository:
               AND success = true
         """)
 
+        # Trending skills: top 10 skill IDs by agent count across all live agents
+        trending_rows = await self.db.fetch("""
+            SELECT
+                skill_id,
+                COUNT(*) as agent_count
+            FROM (
+                SELECT jsonb_array_elements(skills) ->> 'id' as skill_id
+                FROM agents
+                WHERE hidden = false
+                  AND skills != '[]'::jsonb
+            ) s
+            WHERE skill_id IS NOT NULL
+            GROUP BY skill_id
+            ORDER BY agent_count DESC
+            LIMIT 10
+        """)
+        trending_skills = [{"id": row["skill_id"], "count": row["agent_count"]} for row in trending_rows]
+
         return RegistryStats(
             total_agents=total_agents,
             healthy_agents=healthy_agents,
@@ -468,7 +486,7 @@ class StatsRepository:
             new_agents_this_week=new_this_week,
             new_agents_this_month=new_this_month,
             total_skills=total_skills,
-            trending_skills=[],  # TODO: Implement trending calculation
+            trending_skills=trending_skills,
             avg_response_time_ms=avg_response_time,
             generated_at=datetime.now(),
         )
