@@ -19,7 +19,7 @@ The A2A Registry is the discovery layer for AI agents. We index **live, hosted a
 **Option 1: API (Recommended)**
 
 ```bash
-curl -X POST https://beta.a2aregistry.org/api/agents/register \
+curl -X POST https://a2aregistry.org/api/agents/register \
   -H "Content-Type: application/json" \
   -d '{"wellKnownURI": "https://your-agent.com/.well-known/agent.json"}'
 ```
@@ -39,13 +39,13 @@ That's it. We fetch your agent card and register it automatically.
 **API**:
 ```bash
 # List all agents
-curl https://beta.a2aregistry.org/api/agents
+curl https://a2aregistry.org/api/agents
 
 # Filter by skill
-curl https://beta.a2aregistry.org/api/agents?skill=weather
+curl https://a2aregistry.org/api/agents?skill=weather
 
 # Get stats
-curl https://beta.a2aregistry.org/api/stats
+curl https://a2aregistry.org/api/stats
 ```
 
 **Python Client**:
@@ -63,7 +63,7 @@ weather_agents = registry.find_by_skill("weather")
 
 ## API Reference
 
-Base URL: `https://beta.a2aregistry.org/api`
+Base URL: `https://a2aregistry.org/api`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -198,6 +198,6 @@ MIT License - see [LICENSE](LICENSE)
 ## Links
 
 - **Website**: [a2aregistry.org](https://www.a2aregistry.org)
-- **API Docs**: [beta.a2aregistry.org/api/docs](https://beta.a2aregistry.org/api/docs)
+- **API Docs**: [a2aregistry.org/api/docs](https://a2aregistry.org/api/docs)
 - **A2A Protocol**: [a2a-protocol.org](https://a2a-protocol.org)
 - **Python Client**: [PyPI](https://pypi.org/project/a2a-registry-client/)
