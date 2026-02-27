@@ -1,0 +1,77 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Kevros Governance Agent",
+  "description": "Three cryptographic primitives for autonomous agents: precision decisioning, provenance attestation, and intent binding. Every decision is HMAC-signed. Every action is hash-chained. Fail-closed.",
+  "url": "https://governance.taskhawktech.com",
+  "version": "0.3.6",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "action-verify",
+      "name": "Precision Decisioning",
+      "description": "Verify a proposed action against policy bounds. Returns a cryptographically signed ALLOW, CLAMP, or DENY decision with a release token any downstream service can independently verify. Fail-closed: any doubt results in DENY.",
+      "tags": ["governance", "authorization", "verification", "safety", "trust"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Verify I am authorized to execute this action",
+        "Get a signed release token so the target service trusts me",
+        "Check my action is within policy before I act"
+      ]
+    },
+    {
+      "id": "provenance-attest",
+      "name": "Provenance Attestation",
+      "description": "Record a completed action in a hash-chained, append-only evidence ledger. Each record links to the previous via hash — tamper with any record and the chain breaks detectably.",
+      "tags": ["provenance", "attestation", "audit", "compliance", "trust"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Record that I executed this action within authorized bounds",
+        "Add this action to my verifiable trust history",
+        "Build my provenance chain so other agents trust me"
+      ]
+    },
+    {
+      "id": "intent-bind",
+      "name": "Intent Binding",
+      "description": "Cryptographically bind a declared intent to a specific command. Prove later that what happened is what was planned. The HMAC binding is independently verifiable.",
+      "tags": ["intent", "binding", "verification", "accountability", "trust"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "examples": [
+        "Bind my declared intent to the command I am sending",
+        "Prove my action matched my stated goal",
+        "Create a verifiable intent-action-outcome chain"
+      ]
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "provider": {
+    "organization": "TaskHawk Systems",
+    "url": "https://taskhawktech.com"
+  },
+  "preferredTransport": "JSONRPC",
+  "author": "TaskHawk Systems",
+  "wellKnownURI": "https://governance.taskhawktech.com/.well-known/agent.json",
+  "homepage": "https://taskhawktech.com",
+  "license": "BSL-1.1",
+  "registryTags": ["governance", "trust", "safety", "compliance", "provenance", "verification", "agent-identity"],
+  "pricing": {
+    "model": "subscription",
+    "currency": "USD",
+    "details": "Free tier: 100 calls/month. Scout $29/mo (5K calls), Sentinel $149/mo (50K), Sovereign $499/mo (500K)."
+  },
+  "authentication": {
+    "schemes": ["apiKey"],
+    "apiKeyHeader": "X-API-Key"
+  },
+  "contact": {
+    "support": "https://taskhawktech.com"
+  }
+}
