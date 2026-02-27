@@ -7,7 +7,6 @@
 domains:
   - a2aregistry.org
   - www.a2aregistry.org
-  - mcp.a2aregistry.org
 
 # Personal project - single replicas, tight resources
 api:
@@ -44,4 +43,4 @@ posthog:
 # Production configuration
 config:
   apiReload: "false"
-  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org", "https://mcp.a2aregistry.org"]'
+  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org"]'

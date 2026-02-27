@@ -10,7 +10,6 @@ global:
 domains:
   - a2aregistry.org
   - www.a2aregistry.org
-  - mcp.a2aregistry.org
 
 # Image configuration
 image:
@@ -184,7 +183,7 @@ config:
   apiHost: "0.0.0.0"
   apiPort: "8000"
   apiReload: "false"
-  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org", "https://mcp.a2aregistry.org"]'
+  corsOrigins: '["https://a2aregistry.org", "https://www.a2aregistry.org"]'
   healthCheckIntervalSeconds: "1800"
   healthCheckTimeoutSeconds: "10"
 
