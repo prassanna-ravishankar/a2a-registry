@@ -77,6 +77,7 @@ jobs:
           build-args: |
             VITE_API_URL=https://a2aregistry.org/api
             VITE_POSTHOG_HOST=https://us.posthog.com
+            VITE_POSTHOG_KEY=${{ secrets.VITE_POSTHOG_KEY }}
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:latest

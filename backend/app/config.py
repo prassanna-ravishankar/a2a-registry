@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # PostHog
     posthog_api_key: str = ""
     posthog_host: str = "https://us.posthog.com"
-    posthog_enabled: bool = True
+    posthog_enabled: bool = False
 
     # Health Checks
     health_check_interval_seconds: int = 300  # 5 minutes

@@ -4,24 +4,22 @@ A2A Registry Python Client
 Official Python client library for the A2A Registry.
 """
 
-from .client import Registry
-from .models import Agent, Skill, Capabilities, Provider, RegistryMetadata, RegistryResponse
+from .api_client import APIRegistry
+from .models import Agent, Capabilities, Provider, RegistryMetadata, RegistryResponse, Skill
 
-__version__ = "0.3.0"
-__all__ = ["Registry", "Agent", "Skill", "Capabilities", "Provider", "RegistryMetadata", "RegistryResponse"]
+__version__ = "0.4.0"
+__all__ = ["APIRegistry", "Agent", "Skill", "Capabilities", "Provider", "RegistryMetadata", "RegistryResponse"]
 
-# AsyncRegistry is available only if aiohttp is installed
+# Async API client (requires aiohttp)
 try:
-    from .client import AsyncRegistry
-    __all__.append("AsyncRegistry")
+    from .api_client import AsyncAPIRegistry
+    __all__.append("AsyncAPIRegistry")
 except ImportError:
-    # aiohttp not available, AsyncRegistry will not be importable
     pass
 
-# New API-backed clients (recommended for production)
+# Legacy static-file clients (deprecated, use APIRegistry instead)
 try:
-    from .api_client import APIRegistry, AsyncAPIRegistry
-    __all__.extend(["APIRegistry", "AsyncAPIRegistry"])
+    from .client import Registry, AsyncRegistry
+    __all__.extend(["Registry", "AsyncRegistry"])
 except ImportError:
-    # API clients not available
     pass

@@ -118,6 +118,9 @@ class AgentRepository:
             param_idx += 1
 
         if capability:
+            _VALID_CAPABILITIES = {"streaming", "pushNotifications", "stateTransitionHistory"}
+            if capability not in _VALID_CAPABILITIES:
+                return [], 0
             where_clauses.append(f"capabilities::jsonb ->> '{capability}' = 'true'")
 
         if author:
@@ -172,6 +175,46 @@ class AgentRepository:
 
         agents = [self._row_to_agent_public(row) for row in rows]
         return agents, total
+
+    async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
+        """Update an existing agent's metadata from a re-fetched agent card"""
+        query = """
+            UPDATE agents SET
+                protocol_version = $1,
+                name = $2,
+                description = $3,
+                author = $4,
+                url = $5,
+                version = $6,
+                provider = $7,
+                documentation_url = $8,
+                capabilities = $9,
+                default_input_modes = $10,
+                default_output_modes = $11,
+                skills = $12,
+                updated_at = NOW()
+            WHERE id = $13 AND hidden = false
+            RETURNING *
+        """
+        row = await self.db.fetchrow(
+            query,
+            agent.protocolVersion,
+            agent.name,
+            agent.description,
+            agent.author,
+            str(agent.url),
+            agent.version,
+            json.dumps(agent.provider.model_dump() if agent.provider else None),
+            str(agent.documentationUrl) if agent.documentationUrl else None,
+            json.dumps(agent.capabilities.model_dump()),
+            json.dumps(agent.defaultInputModes),
+            json.dumps(agent.defaultOutputModes),
+            json.dumps([skill.model_dump() for skill in agent.skills]),
+            agent_id,
+        )
+        if not row:
+            return None
+        return self._row_to_agent(row)
 
     async def delete(self, agent_id: UUID) -> bool:
         """Delete an agent (soft delete by marking hidden)"""
