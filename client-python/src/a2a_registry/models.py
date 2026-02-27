@@ -2,7 +2,10 @@
 Data models for the A2A Registry client.
 """
 
-from typing import Optional, List, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
 from pydantic import BaseModel, Field, HttpUrl
 
 
@@ -73,6 +76,15 @@ class Agent(BaseModel):
     documentationUrl: Optional[HttpUrl] = Field(None, description="An optional URL to the agent's documentation (A2A)")
 
     iconUrl: Optional[HttpUrl] = Field(None, description="An optional URL to an icon for the agent")
+
+    # Live API fields (from PostgreSQL-backed backend)
+    id: Optional[UUID] = Field(None, description="Agent UUID (from live API)")
+    created_at: Optional[datetime] = Field(None, description="Registration timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    is_healthy: Optional[bool] = Field(None, description="Current health status")
+    uptime_percentage: Optional[float] = Field(None, description="24h uptime %")
+    avg_response_time_ms: Optional[int] = Field(None, description="Average response time (ms)")
+    last_health_check: Optional[datetime] = Field(None, description="Last health check timestamp")
 
     # Registry metadata (preferred, structured format)
     registryMetadata: Optional[RegistryMetadata] = Field(None, alias="_registryMetadata", description="Registry metadata")
