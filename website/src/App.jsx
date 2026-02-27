@@ -24,7 +24,7 @@ const A2ARegistry = () => {
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [conformanceFilter, setConformanceFilter] = useState('all'); // 'all', 'standard', 'non-standard'
+  const [conformanceFilter, setConformanceFilter] = useState('non-standard'); // 'all', 'standard', 'non-standard'
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -55,6 +55,7 @@ const A2ARegistry = () => {
     const data = await api.getAgents({
       search: debouncedSearch || undefined,
       skill: skillParam,
+      conformance: conformanceFilter !== 'all' ? conformanceFilter : undefined,
       limit: LIMIT,
       offset,
     });
@@ -72,7 +73,7 @@ const A2ARegistry = () => {
       setAgents(agentList);
     }
     setTotal(totalCount);
-  }, [debouncedSearch, selectedSkills]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter]);
 
   // Initial load and re-fetch when filters change (reset to page 0)
   useEffect(() => {
@@ -309,7 +310,7 @@ const A2ARegistry = () => {
         onClearFilters={() => {
           setSearchTerm('');
           setSelectedSkills([]);
-          setConformanceFilter('all');
+          setConformanceFilter('non-standard');
         }}
       />
     </Layout>
