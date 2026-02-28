@@ -1,0 +1,10 @@
+[post-create]
+backend = "cd backend && uv sync --extra dev"
+frontend = "cd website && npm install"
+
+[pre-commit]
+format = "cd backend && uv run ruff format --check ."
+lint = "cd backend && uv run ruff check ."
+
+[pre-merge]
+test = "cd backend && uv run --extra dev pytest tests/ -v"
