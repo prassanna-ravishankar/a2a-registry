@@ -170,7 +170,7 @@ cloudsql:
 # PostHog analytics configuration
 posthog:
   enabled: false  # Disabled for beta
-  host: "https://us.posthog.com"
+  host: "https://eu.posthog.com"
 
 # Gateway API HTTPRoute configuration
 httproute:
