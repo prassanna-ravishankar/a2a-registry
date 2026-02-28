@@ -84,10 +84,17 @@ export const api = {
   },
 
   // Flag/report an agent
-  async flagAgent(agentId, reason) {
+  async flagAgent(agentId, reason, details) {
     return fetchAPI(`/agents/${agentId}/flag`, {
       method: 'POST',
-      body: JSON.stringify({ agent_id: agentId, reason }),
+      body: JSON.stringify({ agent_id: agentId, reason, details: details || null }),
+    });
+  },
+
+  // List flags (admin)
+  async listFlags(adminKey, limit = 100, offset = 0) {
+    return fetchAPI(`/admin/flags?limit=${limit}&offset=${offset}`, {
+      headers: { 'X-Admin-Key': adminKey },
     });
   },
 };

@@ -6,7 +6,7 @@ from typing import Optional
 from uuid import UUID
 
 from .database import Database
-from .models import AgentCreate, AgentInDB, AgentPublic, HealthCheck, HealthStatus, RegistryStats, UptimeMetrics
+from .models import AgentCreate, AgentFlagInDB, AgentInDB, AgentPublic, HealthCheck, HealthStatus, RegistryStats, UptimeMetrics
 
 
 class AgentRepository:
@@ -523,12 +523,35 @@ class FlagRepository:
         self.db = db
 
     async def create_flag(
-        self, agent_id: UUID, reason: Optional[str], ip_address: Optional[str]
+        self, agent_id: UUID, reason: Optional[str], ip_address: Optional[str], details: Optional[str] = None
     ):
         """Record a community flag"""
         query = """
-            INSERT INTO agent_flags (agent_id, reason, ip_address)
-            VALUES ($1, $2, $3)
+            INSERT INTO agent_flags (agent_id, reason, details, ip_address)
+            VALUES ($1, $2, $3, $4)
             RETURNING *
         """
-        await self.db.fetchrow(query, agent_id, reason, ip_address)
+        await self.db.fetchrow(query, agent_id, reason, details, ip_address)
+
+    async def list_flags(self, limit: int = 100, offset: int = 0) -> list[AgentFlagInDB]:
+        """List all flags for admin review"""
+        query = """
+            SELECT f.*, a.name as agent_name
+            FROM agent_flags f
+            LEFT JOIN agents a ON a.id = f.agent_id
+            ORDER BY f.flagged_at DESC
+            LIMIT $1 OFFSET $2
+        """
+        rows = await self.db.fetch(query, limit, offset)
+        return [
+            AgentFlagInDB(
+                id=row["id"],
+                agent_id=row["agent_id"],
+                reason=row["reason"],
+                details=row.get("details"),
+                flagged_at=row["flagged_at"],
+                ip_address=str(row["ip_address"]) if row.get("ip_address") else None,
+                agent_name=row.get("agent_name"),
+            )
+            for row in rows
+        ]

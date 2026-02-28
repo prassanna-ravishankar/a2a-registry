@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from './components/Layout';
 import AgentGrid from './components/AgentGrid';
 import Submit from './pages/Submit';
+import Admin from './pages/Admin';
 import { api, fetchStaticRegistry } from './lib/api';
 import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
 
@@ -17,7 +18,10 @@ function useDebounce(value, delay) {
 const A2ARegistry = () => {
   // Initialize page from URL path
   const [currentPage, setCurrentPage] = useState(() => {
-    return window.location.pathname === '/submit' ? 'submit' : 'home';
+    const p = window.location.pathname;
+    if (p === '/submit') return 'submit';
+    if (p === '/admin') return 'admin';
+    return 'home';
   });
   const [agents, setAgents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -258,6 +262,10 @@ const A2ARegistry = () => {
         e.preventDefault();
         setCurrentPage('submit');
         window.history.pushState({}, '', '/submit');
+      } else if (link && link.pathname === '/admin') {
+        e.preventDefault();
+        setCurrentPage('admin');
+        window.history.pushState({}, '', '/admin');
       } else if (link && link.pathname === '/' && link.origin === window.location.origin) {
         e.preventDefault();
         setCurrentPage('home');
@@ -266,7 +274,10 @@ const A2ARegistry = () => {
     };
 
     const handlePopState = () => {
-      setCurrentPage(window.location.pathname === '/submit' ? 'submit' : 'home');
+      const p = window.location.pathname;
+      if (p === '/submit') setCurrentPage('submit');
+      else if (p === '/admin') setCurrentPage('admin');
+      else setCurrentPage('home');
     };
 
     document.addEventListener('click', handleNavigate);
@@ -277,9 +288,8 @@ const A2ARegistry = () => {
     };
   }, []);
 
-  if (currentPage === 'submit') {
-    return <Submit />;
-  }
+  if (currentPage === 'submit') return <Submit />;
+  if (currentPage === 'admin') return <Admin />;
 
   const showLoadMore = !useStaticFallback && displayedAgents.length < total;
 

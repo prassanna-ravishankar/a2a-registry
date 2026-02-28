@@ -1,10 +1,79 @@
-import React from 'react';
-import { X, Globe, Code, FileText, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Globe, FileText, Zap, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Terminal from './Terminal';
+import { api } from '@/lib/api';
+
+const REPORT_REASONS = ['spam', 'harmful', 'impersonation', 'other'];
+
+const ReportModal = ({ agent, onClose }) => {
+    const [reason, setReason] = useState('other');
+    const [details, setDetails] = useState('');
+    const [status, setStatus] = useState(null); // null | 'submitting' | 'done' | 'error'
+
+    const submit = async () => {
+        setStatus('submitting');
+        try {
+            await api.flagAgent(agent.id, reason, details);
+            setStatus('done');
+        } catch {
+            setStatus('error');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+            <div className="bg-zinc-950 border border-zinc-700 p-6 w-full max-w-sm font-mono" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Report Agent</span>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200"><X className="w-4 h-4" /></button>
+                </div>
+                {status === 'done' ? (
+                    <p className="text-xs text-emerald-400">Report submitted. Thank you.</p>
+                ) : (
+                    <>
+                        <p className="text-xs text-zinc-400 mb-4">Reporting: <span className="text-zinc-200">{agent.name}</span></p>
+                        <div className="mb-3">
+                            <label className="text-[10px] text-zinc-500 uppercase block mb-1">Reason</label>
+                            <select
+                                value={reason}
+                                onChange={e => setReason(e.target.value)}
+                                className="w-full bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs px-2 py-1.5"
+                            >
+                                {REPORT_REASONS.map(r => (
+                                    <option key={r} value={r}>{r}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="mb-4">
+                            <label className="text-[10px] text-zinc-500 uppercase block mb-1">Details (optional)</label>
+                            <textarea
+                                value={details}
+                                onChange={e => setDetails(e.target.value)}
+                                rows={3}
+                                className="w-full bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs px-2 py-1.5 resize-none"
+                                placeholder="Describe the issue..."
+                            />
+                        </div>
+                        {status === 'error' && <p className="text-xs text-red-400 mb-2">Submission failed. Try again.</p>}
+                        <Button
+                            onClick={submit}
+                            disabled={status === 'submitting'}
+                            className="w-full bg-red-900 hover:bg-red-800 text-red-100 text-xs font-mono uppercase tracking-wider rounded-none"
+                        >
+                            {status === 'submitting' ? 'Submitting...' : 'Submit Report'}
+                        </Button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const InspectionDeck = ({ agent, onClose }) => {
+    const [showReport, setShowReport] = useState(false);
+
     if (!agent) {
         return (
             <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col items-center justify-center text-zinc-700">
@@ -18,6 +87,8 @@ const InspectionDeck = ({ agent, onClose }) => {
     }
 
     return (
+        <>
+        {showReport && <ReportModal agent={agent} onClose={() => setShowReport(false)} />}
         <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col">
             {/* Header */}
             <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
@@ -126,28 +197,39 @@ asyncio.run(main())`}
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 grid grid-cols-2 gap-3">
-                <Button className="bg-zinc-100 hover:bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-none" asChild>
-                    <a href={agent.url} target="_blank" rel="noopener noreferrer">
-                        <Globe className="w-3 h-3 mr-2" />
-                        Launch Interface
-                    </a>
-                </Button>
-                {agent.documentationUrl ? (
-                    <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent" asChild>
-                        <a href={agent.documentationUrl} target="_blank" rel="noopener noreferrer">
-                            <FileText className="w-3 h-3 mr-2" />
-                            Documentation
+            <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                    <Button className="bg-zinc-100 hover:bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-none" asChild>
+                        <a href={agent.url} target="_blank" rel="noopener noreferrer">
+                            <Globe className="w-3 h-3 mr-2" />
+                            Launch Interface
                         </a>
                     </Button>
-                ) : (
-                    <Button variant="outline" disabled className="border-zinc-800 text-zinc-600 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent cursor-not-allowed">
-                        <FileText className="w-3 h-3 mr-2" />
-                        Documentation
-                    </Button>
-                )}
+                    {agent.documentationUrl ? (
+                        <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent" asChild>
+                            <a href={agent.documentationUrl} target="_blank" rel="noopener noreferrer">
+                                <FileText className="w-3 h-3 mr-2" />
+                                Documentation
+                            </a>
+                        </Button>
+                    ) : (
+                        <Button variant="outline" disabled className="border-zinc-800 text-zinc-600 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent cursor-not-allowed">
+                            <FileText className="w-3 h-3 mr-2" />
+                            Documentation
+                        </Button>
+                    )}
+                </div>
+                <Button
+                    variant="ghost"
+                    onClick={() => setShowReport(true)}
+                    className="w-full text-zinc-600 hover:text-red-400 hover:bg-transparent font-mono text-[10px] uppercase tracking-widest rounded-none"
+                >
+                    <Flag className="w-3 h-3 mr-1" />
+                    Report this agent
+                </Button>
             </div>
         </aside>
+        </>
     );
 };
 

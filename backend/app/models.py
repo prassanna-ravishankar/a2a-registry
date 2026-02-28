@@ -1,6 +1,7 @@
 """Pydantic models for API request/response validation"""
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
@@ -151,10 +152,18 @@ class RegistryStats(BaseModel):
     generated_at: datetime
 
 
+class FlagReason(str, Enum):
+    spam = "spam"
+    harmful = "harmful"
+    impersonation = "impersonation"
+    other = "other"
+
+
 class AgentFlag(BaseModel):
     """Community flag/report"""
     agent_id: UUID
-    reason: Optional[str] = None
+    reason: FlagReason = FlagReason.other
+    details: Optional[str] = None
 
 
 class AgentFlagInDB(AgentFlag):
@@ -162,6 +171,7 @@ class AgentFlagInDB(AgentFlag):
     id: int
     flagged_at: datetime
     ip_address: Optional[str] = None
+    agent_name: Optional[str] = None
 
 
 class PaginatedAgents(BaseModel):

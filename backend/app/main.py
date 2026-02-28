@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
@@ -441,18 +441,34 @@ async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     """Community flag/report an agent"""
     track_api_query("POST /agents/{id}/flag", agent_id=str(agent_id))
 
-    # Get client IP
     client_ip = request.client.host if request.client else None
 
-    # Record flag
     flag_repo = FlagRepository(db)
-    await flag_repo.create_flag(agent_id, flag.reason, client_ip)
+    await flag_repo.create_flag(agent_id, flag.reason.value, client_ip, flag.details)
 
-    # Increment flag count
     agent_repo = AgentRepository(db)
     await agent_repo.increment_flag_count(agent_id)
 
     return {"message": "Flag recorded"}
+
+
+# ============================================================================
+# Admin Endpoints
+# ============================================================================
+
+
+def _require_admin(x_admin_key: Optional[str]):
+    if not settings.admin_api_key or x_admin_key != settings.admin_api_key:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@router.get("/admin/flags")
+async def list_flags(x_admin_key: Optional[str] = Header(default=None), limit: int = 100, offset: int = 0):
+    """List all agent flags (admin only)"""
+    _require_admin(x_admin_key)
+    flag_repo = FlagRepository(db)
+    flags = await flag_repo.list_flags(limit=limit, offset=offset)
+    return {"flags": [f.model_dump(mode="json") for f in flags]}
 
 
 # ============================================================================
