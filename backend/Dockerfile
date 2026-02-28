@@ -13,7 +13,7 @@ RUN uv pip install --system -r pyproject.toml
 
 # Copy application code
 COPY app ./app
-COPY worker.py run.py ./
+COPY worker.py run.py admin_app.py run_admin.py ./
 
 # Expose port
 EXPOSE 8000

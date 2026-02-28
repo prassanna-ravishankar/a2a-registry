@@ -145,6 +145,10 @@ frontend:
     maxReplicas: 3
     targetCPUUtilizationPercentage: 70
 
+# Admin dashboard (internal only — access via kubectl port-forward)
+admin:
+  enabled: true
+
 # Database configuration (Cloud SQL)
 database:
   # Cloud SQL instance connection name

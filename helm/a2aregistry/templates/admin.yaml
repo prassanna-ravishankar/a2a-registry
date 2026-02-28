@@ -1,0 +1,94 @@
+{{- if .Values.admin.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2aregistry-admin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: a2aregistry
+      component: admin
+  template:
+    metadata:
+      labels:
+        app: a2aregistry
+        component: admin
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+
+      containers:
+      - name: admin
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.api.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "run_admin.py"]
+        ports:
+        - name: http
+          containerPort: 8001
+          protocol: TCP
+        env:
+        - name: DB_HOST
+          value: "{{ .Values.database.host }}"
+        - name: DB_PORT
+          value: "{{ .Values.database.port }}"
+        - name: DB_NAME
+          value: "{{ .Values.database.name }}"
+        - name: DB_USER
+          value: "{{ .Values.database.user }}"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: DB_PASSWORD
+        - name: ADMIN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: ADMIN_API_KEY
+        envFrom:
+        - configMapRef:
+            name: a2aregistry-config
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+      {{- if .Values.cloudsql.enabled }}
+      - name: cloud-sql-proxy
+        image: {{ .Values.cloudsql.image }}
+        args:
+        - "--structured-logs"
+        - "--port={{ .Values.database.port }}"
+        - "{{ .Values.database.connectionName }}"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          {{- toYaml .Values.cloudsql.resources | nindent 10 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2aregistry-admin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: admin
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: a2aregistry
+    component: admin
+{{- end }}
