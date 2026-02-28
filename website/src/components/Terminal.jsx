@@ -1,79 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchAgentCard, getAgentEndpoint, sendMessage, pollTask, extractMessageText, extractTaskText } from '../utils/a2aClient';
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const Terminal = ({ agent }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [agentConfig, setAgentConfig] = useState(null); // {url, transport}
+    const [ready, setReady] = useState(false);
     const [error, setError] = useState(null);
-    const [contextId, setContextId] = useState(null); // Maintain context for chat session
+    const [contextId, setContextId] = useState(null);
     const bottomRef = useRef(null);
 
-    // Initial system logs (each log should have: { type, content, timestamp })
     const [systemLogs, setSystemLogs] = useState([]);
 
-    // Fetch agent card and endpoint when agent changes
     useEffect(() => {
-        const initializeAgent = async () => {
-            const now = new Date();
-            setSystemLogs([
-                { type: 'system', content: `INITIALIZING CONNECTION TO ${agent.name.toUpperCase()}...`, timestamp: now },
-                { type: 'system', content: `PROTOCOL: A2A v${agent.protocolVersion || agent.version || '0.3'}`, timestamp: now }
-            ]);
-            setMessages([]);
-            setError(null);
-            setAgentConfig(null);
-            // Generate new contextId for this chat session
-            setContextId(crypto.randomUUID());
-
-            try {
-                let config;
-
-                // Try to fetch agent card from wellKnownURI
-                try {
-                    const agentCard = await fetchAgentCard(agent.wellKnownURI);
-                    config = getAgentEndpoint(agentCard);
-                    setSystemLogs(prev => [
-                        ...prev,
-                        { type: 'info', content: 'AGENT CARD FETCHED SUCCESSFULLY.', timestamp: new Date() }
-                    ]);
-                } catch (cardError) {
-                    // Fallback to registry data if agent card fetch fails
-                    console.warn('Agent card fetch failed, using registry data:', cardError);
-                    config = {
-                        url: agent.url,
-                        transport: agent.preferredTransport || 'JSONRPC'
-                    };
-                    setSystemLogs(prev => [
-                        ...prev,
-                        { type: 'info', content: 'USING REGISTRY DATA (AGENT CARD UNAVAILABLE).', timestamp: new Date() }
-                    ]);
-                }
-
-                setAgentConfig(config);
-
-                const connectedTime = new Date();
-                setSystemLogs(prev => [
-                    ...prev,
-                    { type: 'success', content: 'CONNECTION ESTABLISHED.', timestamp: connectedTime },
-                    { type: 'info', content: `ENDPOINT: ${config.url}`, timestamp: connectedTime },
-                    { type: 'info', content: `TRANSPORT: ${config.transport}`, timestamp: connectedTime },
-                    { type: 'info', content: 'TYPE YOUR MESSAGE OR ASK A QUESTION.', timestamp: connectedTime }
-                ]);
-            } catch (err) {
-                console.error('Failed to initialize agent:', err);
-                const errorTime = new Date();
-                setSystemLogs(prev => [
-                    ...prev,
-                    { type: 'error', content: `CONNECTION FAILED: ${err.message}`, timestamp: errorTime },
-                    { type: 'info', content: 'This agent may not support browser-based communication (CORS).', timestamp: errorTime }
-                ]);
-                setError(err.message);
-            }
-        };
-
-        initializeAgent();
+        const now = new Date();
+        setMessages([]);
+        setError(null);
+        setReady(false);
+        const newContextId = crypto.randomUUID();
+        setContextId(newContextId);
+        setSystemLogs([
+            { type: 'system', content: `INITIALIZING CONNECTION TO ${agent.name.toUpperCase()}...`, timestamp: now },
+            { type: 'system', content: `PROTOCOL: A2A v${agent.protocolVersion || agent.version || '0.3'}`, timestamp: now },
+            { type: 'success', content: 'PROXY READY. TYPE YOUR MESSAGE OR ASK A QUESTION.', timestamp: now },
+        ]);
+        setReady(true);
     }, [agent]);
 
     // Auto-scroll
@@ -83,66 +35,32 @@ const Terminal = ({ agent }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!input.trim() || !agentConfig || isLoading) return;
+        if (!input.trim() || !ready || isLoading) return;
 
         const userMessage = input;
         setInput('');
         setIsLoading(true);
-
-        // Add user message
-        const newUserMsg = { type: 'request', content: userMessage, timestamp: new Date() };
-        setMessages(prev => [...prev, newUserMsg]);
+        setMessages(prev => [...prev, { type: 'request', content: userMessage, timestamp: new Date() }]);
 
         try {
-            // Send message to agent
-            const response = await sendMessage(agentConfig.url, userMessage, {
-                streaming: false,
-                acceptedOutputModes: agent.defaultOutputModes || ['text/plain', 'application/json'],
-                transport: agentConfig.transport,
-                contextId: contextId // Pass the session contextId
+            const res = await fetch(`${API_BASE}/agents/${agent.id}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMessage, context_id: contextId }),
             });
 
-            // Parse response
-            let responseText = '';
-
-            if (response.message) {
-                // Direct message response
-                responseText = extractMessageText(response.message);
-            } else if (response.id) {
-                // Task response - need to poll until completed
-                const taskId = response.id;
-                const taskState = response.status?.state;
-
-                // If task is not already completed, poll it
-                if (taskState !== 'completed' && taskState !== 'failed') {
-                    setMessages(prev => [...prev, { type: 'info', content: `Task ${taskState || 'submitted'}, waiting for completion...`, timestamp: new Date() }]);
-
-                    const completedTask = await pollTask(
-                        agentConfig.url,
-                        taskId,
-                        agentConfig.transport,
-                        () => {}
-                    );
-
-                    responseText = extractTaskText(completedTask);
-                } else {
-                    // Task already completed
-                    responseText = extractTaskText(response);
-                }
-            } else {
-                responseText = 'No response from agent';
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: res.statusText }));
+                throw new Error(err.detail || `HTTP ${res.status}`);
             }
 
-            setMessages(prev => [...prev, { type: 'response', content: responseText, timestamp: new Date() }]);
+            const data = await res.json();
+            setMessages(prev => [...prev, { type: 'response', content: data.response, timestamp: new Date() }]);
         } catch (err) {
-            console.error('Failed to send message:', err);
+            console.error('Chat proxy error:', err);
             setMessages(prev => [
                 ...prev,
-                {
-                    type: 'error',
-                    content: `ERROR: ${err.message}. This agent may not support browser-based requests (CORS).`,
-                    timestamp: new Date()
-                }
+                { type: 'error', content: `ERROR: ${err.message}`, timestamp: new Date() },
             ]);
         } finally {
             setIsLoading(false);
@@ -184,7 +102,7 @@ const Terminal = ({ agent }) => {
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900/50">
                 <span className="text-zinc-400">TERMINAL_OUTPUT</span>
                 <div className="flex gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${error ? 'bg-red-500' : agentConfig ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    <div className={`w-2 h-2 rounded-full ${error ? 'bg-red-500' : ready ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     <div className="w-2 h-2 rounded-full bg-zinc-700" />
                     <div className="w-2 h-2 rounded-full bg-zinc-700" />
                 </div>
@@ -217,9 +135,9 @@ const Terminal = ({ agent }) => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     className="flex-1 bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-700 font-mono"
-                    placeholder={error ? "CONNECTION UNAVAILABLE" : agentConfig ? "ENTER MESSAGE..." : "CONNECTING..."}
+                    placeholder={error ? "CONNECTION UNAVAILABLE" : ready ? "ENTER MESSAGE..." : "CONNECTING..."}
                     autoFocus
-                    disabled={!agentConfig || isLoading}
+                    disabled={!ready || isLoading}
                 />
                 <div className={`w-2 h-4 ${isLoading ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`} />
             </form>
