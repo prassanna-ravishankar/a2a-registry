@@ -486,6 +486,11 @@ def _extract_text(result) -> str:
                         parts.append(p.root.text)
             if parts:
                 return "".join(parts)
+        # Fallback: status message
+        if result.status.message:
+            texts = [p.root.text for p in result.status.message.parts if isinstance(p.root, TextPart)]
+            if texts:
+                return "".join(texts)
         # Fallback: last agent message in history
         if result.history:
             for msg in reversed(result.history):
