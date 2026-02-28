@@ -467,8 +467,11 @@ class ChatRequest(BaseModel):
     context_id: Optional[str] = None
 
 
-def _extract_text(result: Message | Task) -> str:
-    """Extract text from a Task or Message returned by the a2a client."""
+def _extract_text(result) -> str:
+    """Extract text from a ClientEvent (tuple[Task, update]) or Message."""
+    # ClientEvent is tuple[Task, TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None]
+    if isinstance(result, tuple):
+        result = result[0]
     if isinstance(result, Message):
         return "".join(
             p.root.text for p in result.parts if isinstance(p.root, TextPart)
