@@ -116,3 +116,34 @@ async def get_registry_stats() -> dict:
     repo = StatsRepository(db)
     stats = await repo.get_registry_stats()
     return stats.model_dump()
+
+
+@mcp.tool
+async def list_skills(limit: int = 50) -> list[dict]:
+    """
+    List all unique skills available across registered agents, ordered by agent count.
+
+    Returns skill IDs and how many agents offer each skill — useful for discovering
+    what capabilities are available in the registry before filtering agents by skill.
+
+    Args:
+        limit: Max number of skills to return (default 50)
+    """
+    rows = await db.fetch(
+        """
+        SELECT
+            skill_id,
+            COUNT(*) as agent_count
+        FROM (
+            SELECT jsonb_array_elements(skills) ->> 'id' as skill_id
+            FROM agents
+            WHERE hidden = false AND skills != '[]'::jsonb
+        ) s
+        WHERE skill_id IS NOT NULL
+        GROUP BY skill_id
+        ORDER BY agent_count DESC
+        LIMIT $1
+        """,
+        min(limit, 200),
+    )
+    return [{"skill": row["skill_id"], "agent_count": row["agent_count"]} for row in rows]

@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from .config import settings
 from .database import db
@@ -466,6 +466,110 @@ app.include_router(router)
 app.include_router(router, prefix="/api")
 
 # MCP is mounted dynamically inside lifespan() to get a fresh instance each time
+
+
+# ============================================================================
+# AI Discoverability Endpoints
+# ============================================================================
+
+
+@app.get("/.well-known/ai-plugin.json", include_in_schema=False)
+async def ai_plugin():
+    """OpenAI plugin manifest for AI system auto-discovery"""
+    return {
+        "schema_version": "v1",
+        "name_for_human": "A2A Registry",
+        "name_for_model": "a2a_registry",
+        "description_for_human": "Community-driven directory of AI agents implementing the A2A Protocol.",
+        "description_for_model": (
+            "Search and discover AI agents that implement the A2A (Agent-to-Agent) Protocol. "
+            "You can list agents, filter by skill or capability, search by keyword, and retrieve "
+            "detailed agent cards including endpoints, supported modes, and conformance status. "
+            "Agents self-register via a REST API and are health-checked every 30 minutes."
+        ),
+        "auth": {"type": "none"},
+        "api": {
+            "type": "openapi",
+            "url": "https://a2aregistry.org/api/openapi.json",
+        },
+        "logo_url": "https://a2aregistry.org/logo.png",
+        "contact_email": "hello@a2aregistry.org",
+        "legal_info_url": "https://a2aregistry.org",
+    }
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse, include_in_schema=False)
+async def llms_txt():
+    """Plain-text description of the registry for LLMs that crawl for context"""
+    return """\
+# A2A Registry
+
+A2A Registry (https://a2aregistry.org) is a live, public directory of AI agents
+that implement the A2A (Agent-to-Agent) Protocol — an open standard for
+interoperable AI agent communication.
+
+## What is the A2A Protocol?
+
+The A2A Protocol defines a standard way for AI agents to advertise their
+capabilities, accept tasks, and communicate with each other. Each agent publishes
+an "agent card" at a well-known URI (e.g. https://example.com/.well-known/agent.json)
+describing its name, description, skills, supported input/output modes, and
+A2A capabilities (streaming, push notifications, state transition history).
+
+## Registry API
+
+Base URL: https://a2aregistry.org/api
+
+### Key Endpoints
+
+- GET  /agents              List/search agents (params: search, skill, capability, author, conformance, limit, offset)
+- GET  /agents/{id}         Get a single agent by UUID (includes health metrics)
+- POST /agents/register     Register an agent by providing its wellKnownURI
+- GET  /agents/{id}/health  Current health status (last 24 hours)
+- GET  /agents/{id}/uptime  Historical uptime metrics
+- GET  /stats               Registry-wide statistics (total agents, trending skills, health %)
+
+### Filtering
+
+- ?search=<keyword>         Full-text search across name, description, author
+- ?skill=<skill-id>         Filter agents that have a specific skill tag
+- ?capability=streaming     Filter by A2A capability (streaming | pushNotifications | stateTransitionHistory)
+- ?conformance=standard     Only strict A2A spec-compliant agents
+- ?conformance=non-standard Non-conformant or unvalidated agents
+
+### OpenAPI / Interactive Docs
+
+Full OpenAPI spec: https://a2aregistry.org/api/openapi.json
+Interactive docs:  https://a2aregistry.org/api/docs
+
+## MCP Server
+
+The registry also exposes an MCP (Model Context Protocol) server at:
+  https://a2aregistry.org/mcp/
+
+MCP tools available:
+- search_agents(query, limit)                          Search agents by keyword
+- list_agents(skill, capability, author, conformance)  List with filters
+- get_agent(agent_id)                                  Get agent by UUID
+- list_skills(limit)                                   List all skills by popularity
+- get_registry_stats()                                 Registry-wide statistics
+
+## Registering an Agent
+
+POST https://a2aregistry.org/api/agents/register
+Content-Type: application/json
+
+{"wellKnownURI": "https://your-agent.example.com/.well-known/agent.json"}
+
+The registry fetches the agent card automatically and validates A2A conformance.
+Health checks run every 30 minutes.
+
+## Conformance
+
+- conformance: true  = strict A2A spec compliant (validated by the worker)
+- conformance: false = non-conformant
+- conformance: null  = not yet validated
+"""
 
 
 # ============================================================================
