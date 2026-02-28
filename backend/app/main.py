@@ -8,8 +8,8 @@ from typing import Optional
 from uuid import UUID
 
 import httpx
-from a2a.client import A2ACardResolver, ClientFactory, ClientConfig
-from a2a.types import Message, MessageSendParams, Part, Role, Task, TextPart
+from a2a.client import ClientFactory, ClientConfig
+from a2a.types import AgentCapabilities, AgentCard, Message, Part, Role, Task, TextPart
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -467,7 +467,7 @@ class ChatRequest(BaseModel):
     context_id: Optional[str] = None
 
 
-def _extract_text(result) -> str:
+def _extract_text(result: Message | Task) -> str:
     """Extract text from a Task or Message returned by the a2a client."""
     if isinstance(result, Message):
         return "".join(
@@ -502,9 +502,24 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    well_known_uri = str(agent.wellKnownURI)
-    context_id = body.context_id or str(uuid.uuid4())
+    # Build AgentCard from DB data to avoid re-fetching from the network
+    caps = agent.capabilities
+    agent_card = AgentCard(
+        name=agent.name,
+        description=agent.description,
+        url=str(agent.url),
+        version=agent.version,
+        capabilities=AgentCapabilities(
+            streaming=caps.streaming,
+            push_notifications=caps.pushNotifications,
+            state_transition_history=caps.stateTransitionHistory,
+        ),
+        default_input_modes=agent.defaultInputModes,
+        default_output_modes=agent.defaultOutputModes,
+        skills=[],
+    )
 
+    context_id = body.context_id or str(uuid.uuid4())
     message = Message(
         message_id=str(uuid.uuid4()),
         context_id=context_id,
@@ -515,7 +530,7 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             client = await ClientFactory.connect(
-                well_known_uri,
+                agent_card,
                 client_config=ClientConfig(
                     httpx_client=http_client,
                     streaming=False,
@@ -524,6 +539,7 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
             response_text = ""
             async for event in client.send_message(message):
                 response_text = _extract_text(event)
+                break  # non-streaming: one event expected
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Agent request timed out")
     except httpx.RequestError as e:
