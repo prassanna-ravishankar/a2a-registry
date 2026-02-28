@@ -467,6 +467,19 @@ class ChatRequest(BaseModel):
     context_id: Optional[str] = None
 
 
+def _is_private_url(url: str) -> bool:
+    """Return True if the URL resolves to a private/internal address (SSRF guard)."""
+    import ipaddress
+    from urllib.parse import urlparse
+    try:
+        host = urlparse(url).hostname or ""
+        addr = ipaddress.ip_address(host)
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        # hostname — block well-known internal names
+        return host in ("localhost", "metadata.google.internal") or host.endswith(".internal")
+
+
 def _extract_text(result) -> str:
     """Extract text from a ClientEvent (tuple[Task, update]) or Message."""
     # ClientEvent is tuple[Task, TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None]
@@ -479,25 +492,30 @@ def _extract_text(result) -> str:
     if isinstance(result, Task):
         # Check artifacts first
         if result.artifacts:
-            parts = []
-            for artifact in result.artifacts:
-                for p in artifact.parts:
-                    if isinstance(p.root, TextPart):
-                        parts.append(p.root.text)
-            if parts:
-                return "".join(parts)
+            text = "".join(
+                p.root.text
+                for artifact in result.artifacts
+                for p in artifact.parts
+                if isinstance(p.root, TextPart)
+            )
+            if text:
+                return text
         # Fallback: status message
         if result.status.message:
-            texts = [p.root.text for p in result.status.message.parts if isinstance(p.root, TextPart)]
-            if texts:
-                return "".join(texts)
+            text = "".join(
+                p.root.text for p in result.status.message.parts if isinstance(p.root, TextPart)
+            )
+            if text:
+                return text
         # Fallback: last agent message in history
         if result.history:
             for msg in reversed(result.history):
                 if msg.role == Role.agent:
-                    texts = [p.root.text for p in msg.parts if isinstance(p.root, TextPart)]
-                    if texts:
-                        return "".join(texts)
+                    text = "".join(
+                        p.root.text for p in msg.parts if isinstance(p.root, TextPart)
+                    )
+                    if text:
+                        return text
         return f"Task {result.status.state.value}"
     return "No response"
 
@@ -509,6 +527,9 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     agent = await agent_repo.get_by_id(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+
+    if _is_private_url(str(agent.url)):
+        raise HTTPException(status_code=400, detail="Agent URL is not publicly reachable")
 
     # Build AgentCard from DB data to avoid re-fetching from the network
     caps = agent.capabilities
@@ -552,8 +573,9 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
         raise HTTPException(status_code=504, detail="Agent request timed out")
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Agent error: {e}")
+    except Exception:
+        logger.exception("chat_proxy_error", agent_id=str(agent_id))
+        raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
     return {"response": response_text, "context_id": context_id}
 
