@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 const Header = ({ searchTerm, setSearchTerm, agentCount, onOpenMobileMenu }) => {
     return (
-        <header className="h-12 border-b border-zinc-800 bg-zinc-950 flex items-center px-4 justify-between shrink-0 z-50">
+        <header className="h-12 border-b border-zinc-800 bg-zinc-950 flex items-center px-4 justify-between shrink-0 sticky top-0 z-50">
             {/* Left: Brand & Status */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" className="md:hidden -ml-2 text-zinc-400" onClick={onOpenMobileMenu}>
