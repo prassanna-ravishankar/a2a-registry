@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import InspectionDeck from './InspectionDeck';
 import StatsBar from './StatsBar';
 import { Button } from '@/components/ui/button';
+import FeedbackWidget from './FeedbackWidget';
 
 const Layout = ({
     children,
@@ -39,6 +40,7 @@ const Layout = ({
     }, []);
 
     return (
+        <>
         <div className="flex flex-col h-screen bg-black text-zinc-200 overflow-hidden font-mono selection:bg-emerald-500/30 selection:text-emerald-200">
             <Header
                 searchTerm={searchTerm}
@@ -97,6 +99,8 @@ const Layout = ({
                 )}
             </div>
         </div>
+        <FeedbackWidget />
+        </>
     );
 };
 
