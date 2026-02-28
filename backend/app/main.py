@@ -1,14 +1,19 @@
 """FastAPI application - main entry point"""
 
 import time
+import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
 
+import httpx
+from a2a.client import ClientFactory, ClientConfig
+from a2a.types import AgentCapabilities, AgentCard, Message, Part, Role, Task, TextPart
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel
 
 from .config import settings
 from .database import db
@@ -450,6 +455,102 @@ async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     await agent_repo.increment_flag_count(agent_id)
 
     return {"message": "Flag recorded"}
+
+
+# ============================================================================
+# Chat Proxy Endpoint
+# ============================================================================
+
+
+class ChatRequest(BaseModel):
+    message: str
+    context_id: Optional[str] = None
+
+
+def _extract_text(result) -> str:
+    """Extract text from a ClientEvent (tuple[Task, update]) or Message."""
+    # ClientEvent is tuple[Task, TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None]
+    if isinstance(result, tuple):
+        result = result[0]
+    if isinstance(result, Message):
+        return "".join(
+            p.root.text for p in result.parts if isinstance(p.root, TextPart)
+        )
+    if isinstance(result, Task):
+        # Check artifacts first
+        if result.artifacts:
+            parts = []
+            for artifact in result.artifacts:
+                for p in artifact.parts:
+                    if isinstance(p.root, TextPart):
+                        parts.append(p.root.text)
+            if parts:
+                return "".join(parts)
+        # Fallback: last agent message in history
+        if result.history:
+            for msg in reversed(result.history):
+                if msg.role == Role.agent:
+                    texts = [p.root.text for p in msg.parts if isinstance(p.root, TextPart)]
+                    if texts:
+                        return "".join(texts)
+        return f"Task {result.status.state.value}"
+    return "No response"
+
+
+@router.post("/agents/{agent_id}/chat")
+async def chat_with_agent(agent_id: UUID, body: ChatRequest):
+    """Proxy a chat message to an agent via the a2a-sdk."""
+    agent_repo = AgentRepository(db)
+    agent = await agent_repo.get_by_id(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    # Build AgentCard from DB data to avoid re-fetching from the network
+    caps = agent.capabilities
+    agent_card = AgentCard(
+        name=agent.name,
+        description=agent.description,
+        url=str(agent.url),
+        version=agent.version,
+        capabilities=AgentCapabilities(
+            streaming=caps.streaming,
+            push_notifications=caps.pushNotifications,
+            state_transition_history=caps.stateTransitionHistory,
+        ),
+        default_input_modes=agent.defaultInputModes,
+        default_output_modes=agent.defaultOutputModes,
+        skills=[],
+    )
+
+    context_id = body.context_id or str(uuid.uuid4())
+    message = Message(
+        message_id=str(uuid.uuid4()),
+        context_id=context_id,
+        role=Role.user,
+        parts=[Part(root=TextPart(text=body.message))],
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            client = await ClientFactory.connect(
+                agent_card,
+                client_config=ClientConfig(
+                    httpx_client=http_client,
+                    streaming=False,
+                ),
+            )
+            response_text = ""
+            async for event in client.send_message(message):
+                response_text = _extract_text(event)
+                break  # non-streaming: one event expected
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Agent request timed out")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent error: {e}")
+
+    return {"response": response_text, "context_id": context_id}
 
 
 # ============================================================================
