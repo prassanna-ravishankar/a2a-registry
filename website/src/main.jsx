@@ -8,7 +8,6 @@ try {
   const posthogModule = await import('posthog-js');
   const posthog = posthogModule.default;
 
-  // Analytics requires VITE_POSTHOG_KEY + VITE_POSTHOG_HOST env vars — not yet configured
   if (import.meta.env.VITE_POSTHOG_KEY) {
     posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com',

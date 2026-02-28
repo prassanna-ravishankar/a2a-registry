@@ -45,6 +45,29 @@ spec:
       namespace: {{ .Release.Namespace }}
       port: {{ .Values.api.service.port }}
       weight: 1
+  # Agent discovery endpoints
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /.well-known
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: a2aregistry-api
+      namespace: {{ .Release.Namespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
+  - matches:
+    - path:
+        type: Exact
+        value: /llms.txt
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: a2aregistry-api
+      namespace: {{ .Release.Namespace }}
+      port: {{ .Values.api.service.port }}
+      weight: 1
   # Frontend routes (everything else)
   - matches:
     - path:
