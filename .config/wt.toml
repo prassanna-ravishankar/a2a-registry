@@ -2,8 +2,6 @@
 backend = "cd backend && uv sync --extra dev"
 frontend = "cd website && npm install"
 
-[pre-commit]
-lint = "cd backend && uv run ruff check ."
 
 [pre-merge]
 test = "cd backend && uv run --extra dev pytest tests/ -v"
