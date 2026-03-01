@@ -5,6 +5,7 @@ import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Optional
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -472,7 +473,6 @@ class ChatRequest(BaseModel):
 def _is_private_url(url: str) -> bool:
     """Return True if the URL resolves to a private/internal address (SSRF guard)."""
     import ipaddress
-    from urllib.parse import urlparse
     try:
         host = urlparse(url).hostname or ""
         addr = ipaddress.ip_address(host)
@@ -543,10 +543,12 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-            # Pass the well-known URI so the SDK fetches the full agent card,
-            # including preferredTransport, ensuring correct endpoint routing.
+            # Pass the agent base URL so the SDK resolves the full agent card
+            # (including preferredTransport) via /.well-known/agent-card.json.
+            parsed = urlparse(str(agent.wellKnownURI))
+            agent_base_url = f"{parsed.scheme}://{parsed.netloc}"
             client = await ClientFactory.connect(
-                str(agent.wellKnownURI),
+                agent_base_url,
                 client_config=ClientConfig(
                     httpx_client=http_client,
                     streaming=False,
