@@ -10,7 +10,7 @@ from uuid import UUID
 import httpx
 import structlog
 from a2a.client import ClientFactory, ClientConfig
-from a2a.types import AgentCapabilities, AgentCard, Message, Part, Role, Task, TextPart
+from a2a.types import Message, Part, Role, Task, TextPart
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -533,23 +533,6 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     if _is_private_url(str(agent.url)):
         raise HTTPException(status_code=400, detail="Agent URL is not publicly reachable")
 
-    # Build AgentCard from DB data to avoid re-fetching from the network
-    caps = agent.capabilities
-    agent_card = AgentCard(
-        name=agent.name,
-        description=agent.description,
-        url=str(agent.url),
-        version=agent.version,
-        capabilities=AgentCapabilities(
-            streaming=caps.streaming,
-            push_notifications=caps.pushNotifications,
-            state_transition_history=caps.stateTransitionHistory,
-        ),
-        default_input_modes=agent.defaultInputModes,
-        default_output_modes=agent.defaultOutputModes,
-        skills=[],
-    )
-
     context_id = body.context_id or str(uuid.uuid4())
     message = Message(
         message_id=str(uuid.uuid4()),
@@ -560,8 +543,10 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
+            # Pass the well-known URI so the SDK fetches the full agent card,
+            # including preferredTransport, ensuring correct endpoint routing.
             client = await ClientFactory.connect(
-                agent_card,
+                str(agent.wellKnownURI),
                 client_config=ClientConfig(
                     httpx_client=http_client,
                     streaming=False,
