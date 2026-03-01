@@ -148,9 +148,7 @@ jobs:
             --namespace a2aregistry \
             --create-namespace \
             --values ./helm/a2aregistry/values-prod.yaml \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --wait \
-            --timeout 5m
+            --set image.tag=${{ env.IMAGE_TAG }}
 
       - name: Verify
         run: kubectl get pods -n a2aregistry
