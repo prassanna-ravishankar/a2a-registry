@@ -8,6 +8,7 @@ from typing import Optional
 from uuid import UUID
 
 import httpx
+import structlog
 from a2a.client import ClientFactory, ClientConfig
 from a2a.types import AgentCapabilities, AgentCard, Message, Part, Role, Task, TextPart
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
@@ -92,6 +93,7 @@ app.add_middleware(
 )
 
 # Create router for all API endpoints
+logger = structlog.get_logger()
 router = APIRouter()
 
 
@@ -574,6 +576,7 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
     except Exception:
+        logger.exception("chat_proxy_error", agent_id=str(agent_id))
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
     return {"response": response_text, "context_id": context_id}
