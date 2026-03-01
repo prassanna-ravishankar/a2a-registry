@@ -11,7 +11,7 @@ from uuid import UUID
 import httpx
 import structlog
 from a2a.client import ClientFactory, ClientConfig
-from a2a.types import Message, Part, Role, Task, TextPart
+from a2a.types import Message, Part, Role, Task, TextPart, TransportProtocol
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -552,6 +552,10 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
                 client_config=ClientConfig(
                     httpx_client=http_client,
                     streaming=False,
+                    supported_transports=[
+                        TransportProtocol.jsonrpc,
+                        TransportProtocol.http_json,
+                    ],
                 ),
             )
             response_text = ""

@@ -40,7 +40,7 @@ export default {
         organization: AUTHOR_NAME,
         url: GITHUB_URL
       },
-      preferredTransport: "REST",
+      preferredTransport: "HTTP+JSON",
       documentationUrl: GITHUB_URL,
       author: AUTHOR_NAME,
       homepage: AGENT_URL,
