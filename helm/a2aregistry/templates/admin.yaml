@@ -20,6 +20,13 @@ spec:
         component: admin
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      tolerations:
+      - key: cloud.google.com/gke-spot
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
 
       containers:
       - name: admin
