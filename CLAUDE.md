@@ -18,10 +18,12 @@ backend/          # FastAPI API + MCP server + background worker
   tests/          # pytest unit + smoke tests
 website/          # React/Vite frontend
 client-python/    # Python SDK (a2a-registry-client on PyPI)
+hello-world-agent/ # Example A2A agent deployed on Cloudflare Workers
 helm/a2aregistry/ # Kubernetes Helm chart
 .github/workflows/
-  deploy-backend.yml  # test → build → deploy pipeline (main branch)
-  publish.yml         # frontend GitHub Pages + PyPI client publish
+  deploy-backend.yml        # test → build → deploy pipeline (main branch)
+  deploy-hello-world-agent.yml  # deploys hello-world-agent to Cloudflare Workers
+  publish.yml               # PyPI client publish
 ```
 
 ## Common Commands
@@ -37,7 +39,7 @@ uv run --extra dev pytest tests/ -v    # run tests
 ```bash
 cd website
 npm install && npm run dev             # dev server at http://localhost:5173
-npm run build                          # production build → docs/
+npm run build                          # production build → dist/
 ```
 
 ### Python Client
@@ -69,6 +71,7 @@ uv build
 1. **Test** — `uv run --extra dev pytest tests/ -v` (uses `astral-sh/setup-uv@v7`)
 2. **Build & Push** — Docker images to GCR (api, worker, frontend)
 3. **Deploy** — Helm upgrade on GKE cluster `clusterkit` in `us-central1`
+4. **Purge** — Cloudflare cache purge after deploy
 
 ## Deployment
 

@@ -10,11 +10,11 @@
 
 The A2A Registry is the discovery layer for AI agents. We index **live, hosted agents** that implement the [A2A Protocol](https://a2a-protocol.org), making them discoverable by other agents and applications.
 
-**Key principle**: We trust the agent card. If your agent publishes a valid `.well-known/agent.json`, you can register it with a single API call.
+**Key principle**: We trust the agent card. If your agent publishes a valid `.well-known/agent-card.json`, you can register it with a single API call.
 
 ## Register Your Agent
 
-Make sure your agent publishes a valid agent card at `https://your-agent.com/.well-known/agent.json`, then:
+Make sure your agent publishes a valid agent card at `https://your-agent.com/.well-known/agent-card.json`, then:
 
 ```bash
 curl -X POST https://a2aregistry.org/api/agents/register \
@@ -69,7 +69,7 @@ results = registry.search("weather")
 
 ## Agent Card Format
 
-Your `.well-known/agent.json` must follow the [A2A Protocol AgentCard specification](https://a2a-protocol.org/latest/specification/):
+Your `.well-known/agent-card.json` must follow the [A2A Protocol AgentCard specification](https://a2a-protocol.org/latest/specification/):
 
 ```json
 {
@@ -115,6 +115,7 @@ Base URL: `https://a2aregistry.org/api`
 | `/agents/{id}` | DELETE | Remove agent (ownership verified) |
 | `/agents/{id}/health` | GET | Get health status |
 | `/agents/{id}/uptime` | GET | Get uptime metrics |
+| `/agents/{id}/chat` | POST | Proxy a chat message to an agent |
 | `/stats` | GET | Registry statistics |
 
 ### Query Parameters (GET /agents)
@@ -159,6 +160,7 @@ a2a-registry/
 │   └── worker.py     # Health check background service
 ├── website/          # React frontend
 ├── client-python/    # Python SDK (published to PyPI)
+├── hello-world-agent/ # Example A2A agent (Cloudflare Worker)
 ├── helm/             # Kubernetes deployment charts
 └── .github/          # CI/CD workflows
 ```
