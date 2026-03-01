@@ -1,0 +1,19 @@
+{{- if .Values.helloWorld.enabled -}}
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: a2aregistry-hello-world
+  namespace: {{ .Release.Namespace }}
+spec:
+  default:
+    checkIntervalSec: 15
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    requestPath: /health
+    type: HTTP
+  targetRef:
+    group: ""
+    kind: Service
+    name: a2aregistry-hello-world
+{{- end }}
