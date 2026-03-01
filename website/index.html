@@ -46,14 +46,14 @@
     }
 
     /* Three-column layout skeleton */
-    #root > div {
+    #root > div:first-child {
       display: flex;
       flex-direction: column;
       height: 100vh;
     }
 
     /* Header skeleton - 48px height */
-    #root > div > div:first-child {
+    #root > div:first-child > div:first-child {
       height: 48px;
       min-height: 48px;
       border-bottom: 1px solid #27272a;
@@ -61,14 +61,14 @@
     }
 
     /* Main content area with 3 columns */
-    #root > div > div:nth-child(2) {
+    #root > div:first-child > div:nth-child(2) {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
 
     /* Left sidebar skeleton - 256px on desktop, hidden on mobile */
-    #root > div > div:nth-child(2) > div:first-child {
+    #root > div:first-child > div:nth-child(2) > div:first-child {
       width: 256px;
       min-width: 256px;
       border-right: 1px solid #27272a;
@@ -77,13 +77,13 @@
     }
 
     @media (min-width: 768px) {
-      #root > div > div:nth-child(2) > div:first-child {
+      #root > div:first-child > div:nth-child(2) > div:first-child {
         display: block;
       }
     }
 
     /* Center main content skeleton */
-    #root > div > div:nth-child(2) > main {
+    #root > div:first-child > div:nth-child(2) > main {
       flex: 1;
       min-width: 0;
       border-right: 1px solid #27272a;
@@ -91,7 +91,7 @@
     }
 
     /* Right inspection deck skeleton - 450px on desktop, full screen overlay on mobile */
-    #root > div > div:nth-child(2) > div:last-child {
+    #root > div:first-child > div:nth-child(2) > div:last-child {
       position: absolute;
       inset: 0;
       z-index: 30;
@@ -99,7 +99,7 @@
     }
 
     @media (min-width: 768px) {
-      #root > div > div:nth-child(2) > div:last-child {
+      #root > div:first-child > div:nth-child(2) > div:last-child {
         position: static;
         width: 450px;
         min-width: 450px;
