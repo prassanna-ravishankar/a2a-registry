@@ -574,7 +574,6 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
     except Exception:
-        logger.exception("chat_proxy_error", agent_id=str(agent_id))
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
     return {"response": response_text, "context_id": context_id}
