@@ -10,8 +10,10 @@ spec:
     checkIntervalSec: 15
     healthyThreshold: 1
     unhealthyThreshold: 2
-    requestPath: /health
-    type: HTTP
+    config:
+      type: HTTP
+      httpHealthCheck:
+        requestPath: /health
   targetRef:
     group: ""
     kind: Service
