@@ -40,6 +40,9 @@ frontend:
 posthog:
   enabled: true
 
+helloWorld:
+  enabled: true
+
 # Production configuration
 config:
   apiReload: "false"

@@ -1,0 +1,67 @@
+{{- if .Values.helloWorld.enabled -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2aregistry-hello-world
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry-hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: a2aregistry-hello-world
+  template:
+    metadata:
+      labels:
+        app: a2aregistry-hello-world
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      tolerations:
+        - key: cloud.google.com/gke-spot
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: hello-world
+          image: gcr.io/{{ .Values.global.projectId }}/a2a-registry-hello-world:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AGENT_URL
+              value: {{ .Values.helloWorld.agentUrl | quote }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2aregistry-hello-world
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: a2aregistry-hello-world
+  ports:
+    - port: 80
+      targetPort: 8080
+{{- end }}

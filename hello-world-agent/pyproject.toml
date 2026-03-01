@@ -1,0 +1,8 @@
+[project]
+name = "hello-world-agent"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "a2a-sdk[http-server]>=0.2.9",
+    "uvicorn>=0.34",
+]

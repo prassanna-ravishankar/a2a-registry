@@ -9,6 +9,7 @@ on:
       - 'backend/**'
       - 'website/**'
       - 'helm/**'
+      - 'hello-world-agent/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
@@ -79,6 +80,21 @@ jobs:
           docker tag gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-api:${{ env.IMAGE_TAG }} gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:latest
           docker push gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:${{ env.IMAGE_TAG }}
           docker push gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-worker:latest
+
+      - name: Build and push hello-world agent
+        uses: docker/build-push-action@v6
+        with:
+          context: hello-world-agent
+          file: hello-world-agent/Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-hello-world:${{ env.IMAGE_TAG }}
+            gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-hello-world:latest
+          cache-from: |
+            type=gha
+            type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-hello-world:latest
+          cache-to: type=gha,mode=max
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6

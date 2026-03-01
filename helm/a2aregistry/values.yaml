@@ -191,6 +191,12 @@ config:
   healthCheckIntervalSeconds: "1800"
   healthCheckTimeoutSeconds: "10"
 
+# Hello World agent
+helloWorld:
+  enabled: false
+  hostname: hello.a2aregistry.org
+  agentUrl: https://hello.a2aregistry.org
+
 # Secrets are managed externally (not created by Helm)
 # Create secrets using:
 #   kubectl create secret generic a2aregistry-secrets -n a2aregistry \
