@@ -21,7 +21,6 @@ spec:
     spec:
       restartPolicy: OnFailure
       serviceAccountName: {{ .Values.serviceAccount.name }}
-      shareProcessNamespace: true
       containers:
       - name: migrate
         image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.api.image.name }}:{{ .Values.image.tag }}"
@@ -67,8 +66,8 @@ spec:
 
           asyncio.run(run())
           EOF
-          # Signal the cloud-sql-proxy sidecar to exit so the Job pod can complete
-          kill $(pgrep -f cloud-sql-proxy) 2>/dev/null || true
+          # Signal the cloud-sql-proxy sidecar to exit gracefully so the Job pod can complete
+          curl -s -X POST http://localhost:9091/quitquitquit || true
         env:
         - name: DATABASE_HOST
           value: "{{ .Values.database.host }}"
@@ -96,6 +95,7 @@ spec:
         image: {{ .Values.cloudsql.image }}
         args:
         - "--structured-logs"
+        - "--quitquitquit"
         - "--port={{ .Values.database.port }}"
         - "{{ .Values.database.connectionName }}"
         securityContext:
