@@ -226,7 +226,13 @@ class AgentRepository:
                   AND hc.checked_at > NOW() - INTERVAL '24 hours'
             ) hm ON true
             WHERE {where_clause}
-            ORDER BY a.created_at DESC
+            ORDER BY
+                CASE
+                    WHEN hm.uptime_percentage < 50 THEN 2
+                    WHEN hm.uptime_percentage < 80 THEN 1
+                    ELSE 0
+                END ASC,
+                a.created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
 
