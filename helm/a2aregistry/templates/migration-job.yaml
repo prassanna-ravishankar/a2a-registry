@@ -1,0 +1,105 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: a2aregistry-migrate-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: a2aregistry
+    component: migration
+  annotations:
+    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: a2aregistry
+        component: migration
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      shareProcessNamespace: true
+      containers:
+      - name: migrate
+        image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Values.api.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - sh
+        - -c
+        - |
+          python3 << 'EOF'
+          import asyncio, asyncpg, os, glob
+
+          async def run():
+              conn = await asyncpg.connect(
+                  host=os.environ['DATABASE_HOST'],
+                  port=int(os.environ['DATABASE_PORT']),
+                  user=os.environ['DATABASE_USER'],
+                  password=os.environ['DB_PASSWORD'],
+                  database=os.environ['DATABASE_NAME'],
+              )
+              await conn.execute("""
+                  CREATE TABLE IF NOT EXISTS schema_migrations (
+                      filename TEXT PRIMARY KEY,
+                      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                  )
+              """)
+              migration_files = sorted(glob.glob('/app/migrations/versions/*.sql'))
+              for path in migration_files:
+                  filename = os.path.basename(path)
+                  already_applied = await conn.fetchval(
+                      'SELECT 1 FROM schema_migrations WHERE filename = $1', filename
+                  )
+                  if already_applied:
+                      print(f'  skip  {filename}')
+                      continue
+                  sql = open(path).read()
+                  await conn.execute(sql)
+                  await conn.execute(
+                      'INSERT INTO schema_migrations (filename) VALUES ($1)', filename
+                  )
+                  print(f'  apply {filename}')
+              await conn.close()
+              print('Migrations complete.')
+
+          asyncio.run(run())
+          EOF
+          # Signal the cloud-sql-proxy sidecar to exit so the Job pod can complete
+          kill $(pgrep -f cloud-sql-proxy) 2>/dev/null || true
+        env:
+        - name: DATABASE_HOST
+          value: "{{ .Values.database.host }}"
+        - name: DATABASE_PORT
+          value: "{{ .Values.database.port }}"
+        - name: DATABASE_NAME
+          value: "{{ .Values.database.name }}"
+        - name: DATABASE_USER
+          value: "{{ .Values.database.user }}"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: DB_PASSWORD
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+
+      {{- if .Values.cloudsql.enabled }}
+      - name: cloud-sql-proxy
+        image: {{ .Values.cloudsql.image }}
+        args:
+        - "--structured-logs"
+        - "--port={{ .Values.database.port }}"
+        - "{{ .Values.database.connectionName }}"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          {{- toYaml .Values.cloudsql.resources | nindent 10 }}
+      {{- end }}
