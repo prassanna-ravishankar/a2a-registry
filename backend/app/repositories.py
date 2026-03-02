@@ -52,6 +52,35 @@ class AgentRepository:
 
         return self._row_to_agent(row)
 
+    @staticmethod
+    def compute_status_notes(
+        uptime_percentage: Optional[float],
+        last_5_worker_successes: Optional[list],
+        last_10_chat_errors: Optional[list],
+        conformance: Optional[bool],
+        flag_count: int,
+    ) -> list[str]:
+        """Compute status notes from health data."""
+        notes = []
+        if uptime_percentage is not None:
+            pct = round(uptime_percentage)
+            if uptime_percentage < 50:
+                notes.append(f"Low uptime: {pct}% in the last 24h")
+            elif uptime_percentage < 80:
+                notes.append(f"Degraded uptime: {pct}% in the last 24h")
+        if last_5_worker_successes and not any(last_5_worker_successes):
+            notes.append("Consistently unreachable during health checks")
+        if last_10_chat_errors:
+            for error_msg in last_10_chat_errors:
+                if error_msg:
+                    notes.append(f"Returning errors when contacted by users ({error_msg})")
+                    break
+        if conformance is False:
+            notes.append("Non-conformant with A2A spec")
+        if flag_count >= 3:
+            notes.append(f"Flagged by {flag_count} users")
+        return notes
+
     async def get_by_id(self, agent_id: UUID) -> Optional[AgentPublic]:
         """Get agent by ID with health metrics"""
         query = """
@@ -60,7 +89,9 @@ class AgentRepository:
                 hm.uptime_percentage,
                 hm.avg_response_time_ms,
                 hm.last_health_check,
-                hm.is_healthy
+                hm.is_healthy,
+                w5.worker_successes,
+                ce.chat_errors
             FROM agents a
             LEFT JOIN LATERAL (
                 SELECT
@@ -75,6 +106,22 @@ class AgentRepository:
                 WHERE hc.agent_id = a.id
                   AND hc.checked_at > NOW() - INTERVAL '24 hours'
             ) hm ON true
+            LEFT JOIN LATERAL (
+                SELECT array_agg(success ORDER BY checked_at DESC) as worker_successes
+                FROM (
+                    SELECT success, checked_at FROM health_checks
+                    WHERE agent_id = a.id AND source = 'worker'
+                    ORDER BY checked_at DESC LIMIT 5
+                ) w
+            ) w5 ON true
+            LEFT JOIN LATERAL (
+                SELECT array_agg(error_message ORDER BY checked_at DESC) as chat_errors
+                FROM (
+                    SELECT error_message, checked_at FROM health_checks
+                    WHERE agent_id = a.id AND source = 'chat' AND success = false
+                    ORDER BY checked_at DESC LIMIT 10
+                ) ce
+            ) ce ON true
             WHERE a.id = $1 AND a.hidden = false
         """
 
@@ -278,12 +325,20 @@ class AgentRepository:
     def _row_to_agent_public(self, row) -> AgentPublic:
         """Convert database row to AgentPublic model (includes health metrics)"""
         agent = self._row_to_agent(row)
+        status_notes = self.compute_status_notes(
+            uptime_percentage=row.get("uptime_percentage"),
+            last_5_worker_successes=list(row.get("worker_successes") or []),
+            last_10_chat_errors=list(row.get("chat_errors") or []),
+            conformance=agent.conformance,
+            flag_count=agent.flag_count,
+        )
         return AgentPublic(
             **agent.model_dump(),
             uptime_percentage=row.get("uptime_percentage"),
             avg_response_time_ms=row.get("avg_response_time_ms"),
             last_health_check=row.get("last_health_check"),
             is_healthy=row.get("is_healthy"),
+            status_notes=status_notes,
         )
 
 
@@ -300,16 +355,17 @@ class HealthCheckRepository:
         response_time_ms: Optional[int],
         success: bool,
         error_message: Optional[str] = None,
+        source: str = 'worker',
     ) -> HealthCheck:
         """Record a health check"""
         query = """
-            INSERT INTO health_checks (agent_id, status_code, response_time_ms, success, error_message)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO health_checks (agent_id, status_code, response_time_ms, success, error_message, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
         """
 
         row = await self.db.fetchrow(
-            query, agent_id, status_code, response_time_ms, success, error_message
+            query, agent_id, status_code, response_time_ms, success, error_message, source
         )
 
         return HealthCheck(

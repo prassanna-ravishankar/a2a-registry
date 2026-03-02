@@ -102,6 +102,7 @@ class AgentPublic(AgentInDB):
     avg_response_time_ms: Optional[int] = None
     last_health_check: Optional[datetime] = None
     is_healthy: Optional[bool] = None
+    status_notes: list[str] = Field(default_factory=list)
 
 
 class HealthCheck(BaseModel):

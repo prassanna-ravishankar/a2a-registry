@@ -4,13 +4,14 @@ import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from typing import Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
 import structlog
-from a2a.client import ClientFactory, ClientConfig
+from a2a.client import ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, Task, TextPart, TransportProtocol
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -153,7 +154,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Agent already registered. Use PUT /agents/{{id}} to update.",
+            detail="Agent already registered. Use PUT /agents/{id} to update.",
         )
 
     # Fetch the agent card from the wellKnownURI
@@ -541,6 +542,8 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
         parts=[Part(root=TextPart(text=body.message))],
     )
 
+    health_repo = HealthCheckRepository(db)
+    start = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             # Pass the agent base URL so the SDK resolves the full agent card
@@ -562,12 +565,25 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest):
             async for event in client.send_message(message):
                 response_text = _extract_text(event)
                 break  # non-streaming: one event expected
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Agent request timed out")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
-    except Exception:
+    except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.RequestError, Exception) as exc:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        if isinstance(exc, httpx.TimeoutException):
+            await health_repo.create(agent_id, 504, elapsed_ms, False, "Agent request timed out", source='chat')
+            raise HTTPException(status_code=504, detail="Agent request timed out")
+        if isinstance(exc, httpx.HTTPStatusError):
+            code = exc.response.status_code
+            try:
+                phrase = HTTPStatus(code).phrase
+            except ValueError:
+                phrase = "Unknown"
+            error_msg = f"Agent returned {code} {phrase}"
+            await health_repo.create(agent_id, code, elapsed_ms, False, error_msg, source='chat')
+            raise HTTPException(status_code=code, detail=error_msg)
+        if isinstance(exc, httpx.RequestError):
+            await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
+            raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
         logger.exception("chat_proxy_error", agent_id=str(agent_id))
+        await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent returned an unexpected error", source='chat')
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
     return {"response": response_text, "context_id": context_id}

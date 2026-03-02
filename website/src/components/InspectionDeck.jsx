@@ -115,6 +115,29 @@ const InspectionDeck = ({ agent, onClose }) => {
                         </p>
                     </div>
 
+                    {/* Status Notes */}
+                    {agent.status_notes?.length > 0 && (
+                        <div className="space-y-1">
+                            {agent.status_notes.map((note, i) => {
+                                const lower = note.toLowerCase();
+                                const isRed = lower.includes('unreachable') || lower.includes('low uptime');
+                                return (
+                                    <div
+                                        key={i}
+                                        className={`flex items-center gap-2 px-3 py-1.5 border font-mono text-[10px] ${
+                                            isRed
+                                                ? 'border-red-800/50 bg-red-950/30 text-red-400'
+                                                : 'border-amber-800/50 bg-amber-950/30 text-amber-400'
+                                        }`}
+                                    >
+                                        <span className="shrink-0">!!</span>
+                                        <span>{note}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     {/* Connection Interface */}
                     <div className="border border-zinc-800 bg-black h-64">
                         <Terminal agent={agent} />
