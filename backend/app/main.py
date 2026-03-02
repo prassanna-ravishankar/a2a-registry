@@ -21,10 +21,6 @@ from pydantic import BaseModel
 from .config import settings
 from .database import db
 from .mcp_server import mcp
-
-
-def _make_mcp_app():
-    return mcp.http_app(path="/", stateless_http=True)
 from .models import (
     AgentCreate,
     AgentFlag,
@@ -38,6 +34,10 @@ from .models import (
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 from .validators import validate_well_known_uri
+
+
+def _make_mcp_app():
+    return mcp.http_app(path="/", stateless_http=True)
 
 # Simple in-memory rate limiter: {ip: [timestamps]}
 _submission_timestamps: dict[str, list[float]] = defaultdict(list)

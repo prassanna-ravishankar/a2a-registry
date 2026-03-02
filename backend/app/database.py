@@ -1,7 +1,6 @@
 """Database connection and utilities"""
 
 import asyncpg
-from contextlib import asynccontextmanager
 
 from .config import settings
 

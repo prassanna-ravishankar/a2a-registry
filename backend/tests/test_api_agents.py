@@ -1,19 +1,18 @@
 """Tests for API endpoints in app/main.py"""
 
+import json
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
-import pytest
+import app.main as main_module
+from app.models import AgentInDB, AgentPublic, Capabilities, RegistryStats
 
-from .conftest import MOCK_AGENT_CARD, MOCK_AGENT_ROW
+from .conftest import MOCK_AGENT_ROW
 
 
 def _make_mock_agent_public():
     """Build a mock AgentPublic object from MOCK_AGENT_ROW."""
-    import json
-    from app.models import AgentPublic, Capabilities
-
     caps = json.loads(MOCK_AGENT_ROW["capabilities"])
     return AgentPublic(
         id=UUID(MOCK_AGENT_ROW["id"]),
@@ -44,8 +43,6 @@ def _make_mock_agent_public():
 
 def _make_mock_stats():
     """Build a mock RegistryStats object."""
-    from app.models import RegistryStats
-
     return RegistryStats(
         total_agents=5,
         healthy_agents=4,
@@ -68,8 +65,8 @@ def test_health_check(client):
 def test_list_agents(client):
     mock_agent = _make_mock_agent_public()
 
-    with patch("app.main.AgentRepository") as MockRepo:
-        instance = MockRepo.return_value
+    with patch("app.main.AgentRepository") as mock_repo:
+        instance = mock_repo.return_value
         instance.list_agents = AsyncMock(return_value=([mock_agent], 1))
 
         response = client.get("/agents")
@@ -85,8 +82,8 @@ def test_list_agents(client):
 def test_get_agent_not_found(client):
     nonexistent = "00000000-0000-0000-0000-000000000000"
 
-    with patch("app.main.AgentRepository") as MockRepo:
-        instance = MockRepo.return_value
+    with patch("app.main.AgentRepository") as mock_repo:
+        instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=None)
 
         response = client.get(f"/agents/{nonexistent}")
@@ -97,8 +94,8 @@ def test_get_agent_not_found(client):
 def test_get_stats(client):
     mock_stats = _make_mock_stats()
 
-    with patch("app.main.StatsRepository") as MockRepo:
-        instance = MockRepo.return_value
+    with patch("app.main.StatsRepository") as mock_repo:
+        instance = mock_repo.return_value
         instance.get_registry_stats = AsyncMock(return_value=mock_stats)
 
         response = client.get("/stats")
@@ -111,9 +108,6 @@ def test_get_stats(client):
 
 def test_register_agent_duplicate(client):
     """POST /agents/register with an already-registered wellKnownURI returns 409."""
-    from app.models import AgentInDB, Capabilities
-    import json
-
     caps = json.loads(MOCK_AGENT_ROW["capabilities"])
     existing_agent = AgentInDB(
         id=UUID(MOCK_AGENT_ROW["id"]),
@@ -137,8 +131,8 @@ def test_register_agent_duplicate(client):
         conformance=None,
     )
 
-    with patch("app.main.AgentRepository") as MockRepo:
-        instance = MockRepo.return_value
+    with patch("app.main.AgentRepository") as mock_repo:
+        instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=existing_agent)
 
         response = client.post(
@@ -151,8 +145,6 @@ def test_register_agent_duplicate(client):
 
 def test_register_agent_rate_limit(client):
     """Exhaust rate limit and confirm 429 is returned."""
-    import app.main as main_module
-
     # Clear any existing timestamps
     main_module._submission_timestamps.clear()
 
@@ -160,10 +152,10 @@ def test_register_agent_rate_limit(client):
     original_limit = main_module.settings.rate_limit_submissions_per_hour
     main_module.settings.rate_limit_submissions_per_hour = 2
 
-    with patch("app.main.AgentRepository") as MockRepo, \
+    with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.fetch_agent_card") as mock_fetch, \
          patch("app.main.validate_well_known_uri", return_value=[]):
-        instance = MockRepo.return_value
+        instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         mock_fetch.return_value = (None, "connection refused")
 
@@ -186,11 +178,11 @@ def test_flag_agent_not_found(client):
     """POST /agents/{nonexistent_uuid}/flag with a well-formed UUID that doesn't exist."""
     nonexistent = "00000000-0000-0000-0000-000000000001"
 
-    with patch("app.main.FlagRepository") as MockFlagRepo, \
-         patch("app.main.AgentRepository") as MockAgentRepo:
-        flag_instance = MockFlagRepo.return_value
+    with patch("app.main.FlagRepository") as mock_flag_repo, \
+         patch("app.main.AgentRepository") as mock_agent_repo:
+        flag_instance = mock_flag_repo.return_value
         flag_instance.create_flag = AsyncMock(return_value=None)
-        agent_instance = MockAgentRepo.return_value
+        agent_instance = mock_agent_repo.return_value
         agent_instance.increment_flag_count = AsyncMock(return_value=None)
 
         response = client.post(

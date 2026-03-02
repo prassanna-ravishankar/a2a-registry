@@ -15,8 +15,8 @@ class Skill(BaseModel):
     description: str
     tags: list[str] = Field(default_factory=list)
     examples: list[str] = Field(default_factory=list)
-    inputModes: list[str] = Field(default_factory=list, alias="inputModes")
-    outputModes: list[str] = Field(default_factory=list, alias="outputModes")
+    inputModes: list[str] = Field(default_factory=list, alias="inputModes")  # noqa: N815
+    outputModes: list[str] = Field(default_factory=list, alias="outputModes")  # noqa: N815
 
     model_config = {"populate_by_name": True}
 
@@ -24,8 +24,8 @@ class Skill(BaseModel):
 class Capabilities(BaseModel):
     """A2A Protocol Capabilities"""
     streaming: bool = False
-    pushNotifications: bool = Field(False, alias="pushNotifications")
-    stateTransitionHistory: bool = Field(False, alias="stateTransitionHistory")
+    pushNotifications: bool = Field(False, alias="pushNotifications")  # noqa: N815
+    stateTransitionHistory: bool = Field(False, alias="stateTransitionHistory")  # noqa: N815
     extensions: Optional[list[dict]] = None
 
     model_config = {"populate_by_name": True}
@@ -39,24 +39,24 @@ class Provider(BaseModel):
 
 class AgentBase(BaseModel):
     """Base agent model with A2A Protocol fields"""
-    protocolVersion: str = Field(alias="protocolVersion")
+    protocolVersion: str = Field(alias="protocolVersion")  # noqa: N815
     name: str
     description: str
     author: str
-    wellKnownURI: HttpUrl = Field(alias="wellKnownURI")
+    wellKnownURI: HttpUrl = Field(alias="wellKnownURI")  # noqa: N815
     url: HttpUrl
     version: str
 
     provider: Optional[Provider] = None
-    documentationUrl: Optional[HttpUrl] = Field(None, alias="documentationUrl")
-    iconUrl: Optional[HttpUrl] = Field(None, alias="iconUrl")
-    supportsAuthenticatedExtendedCard: Optional[bool] = Field(None, alias="supportsAuthenticatedExtendedCard")
+    documentationUrl: Optional[HttpUrl] = Field(None, alias="documentationUrl")  # noqa: N815
+    iconUrl: Optional[HttpUrl] = Field(None, alias="iconUrl")  # noqa: N815
+    supportsAuthenticatedExtendedCard: Optional[bool] = Field(None, alias="supportsAuthenticatedExtendedCard")  # noqa: N815
     security: Optional[list[dict]] = None
-    securitySchemes: Optional[dict] = Field(None, alias="securitySchemes")
+    securitySchemes: Optional[dict] = Field(None, alias="securitySchemes")  # noqa: N815
 
     capabilities: Capabilities
-    defaultInputModes: list[str] = Field(alias="defaultInputModes")
-    defaultOutputModes: list[str] = Field(alias="defaultOutputModes")
+    defaultInputModes: list[str] = Field(alias="defaultInputModes")  # noqa: N815
+    defaultOutputModes: list[str] = Field(alias="defaultOutputModes")  # noqa: N815
     skills: list[Skill]
 
     # Conformance flag (NULL/True = standard, False = non-standard)
@@ -79,7 +79,7 @@ class AgentCreate(AgentBase):
 
 class AgentRegister(BaseModel):
     """Simplified registration - just provide the wellKnownURI"""
-    wellKnownURI: HttpUrl = Field(alias="wellKnownURI")
+    wellKnownURI: HttpUrl = Field(alias="wellKnownURI")  # noqa: N815
 
     # Optional overrides (if not in agent card)
     author: Optional[str] = None

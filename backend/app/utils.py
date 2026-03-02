@@ -1,11 +1,12 @@
 """Utility functions for agent validation and tracking"""
 
-import aiohttp
 from typing import Any, Optional, Tuple
+
+import aiohttp
 
 from .config import settings
 from .models import AgentCreate
-from .validators import _SDK_AVAILABLE, _normalise_fields, validate_agent_card, validate_well_known_uri
+from .validators import _SDK_AVAILABLE, _normalise_fields, validate_agent_card
 
 if _SDK_AVAILABLE:
     from a2a.types import AgentCard as _AgentCard
@@ -69,7 +70,7 @@ async def verify_well_known_uri(agent_data: AgentCreate) -> Tuple[bool, str]:
                 if mismatches:
                     return (
                         False,
-                        f"Field mismatches found:\n  " + "\n  ".join(mismatches),
+                        "Field mismatches found:\n  " + "\n  ".join(mismatches),
                     )
 
                 return True, "Ownership verified successfully"

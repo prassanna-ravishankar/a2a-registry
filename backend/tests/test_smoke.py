@@ -1,7 +1,6 @@
 """Smoke tests for boot-time failures not caught by unit tests."""
 
 import importlib
-import logging
 
 
 def test_configure_logging_json():

@@ -7,7 +7,6 @@ from pathlib import Path
 from uuid import UUID
 
 import aiohttp
-import structlog
 
 from app.config import settings
 from app.database import db
@@ -191,7 +190,7 @@ async def health_check_worker():
     """Main worker loop - runs health checks at configured interval"""
     logger.info("worker_starting")
     logger.info("worker_config", check_interval=settings.health_check_interval_seconds, timeout=settings.health_check_timeout_seconds)
-    
+
     # Connect to database
     await db.connect()
     logger.info("database_connected")

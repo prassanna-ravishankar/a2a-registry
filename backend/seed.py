@@ -118,7 +118,7 @@ async def seed_database():
         standard = await conn.fetchval("SELECT COUNT(*) FROM agents WHERE conformance IS NULL OR conformance = true")
         non_standard = await conn.fetchval("SELECT COUNT(*) FROM agents WHERE conformance = false")
 
-        print(f"\nDatabase summary:")
+        print("\nDatabase summary:")
         print(f"  Total agents: {total}")
         print(f"  Standard: {standard}")
         print(f"  Non-standard: {non_standard}")

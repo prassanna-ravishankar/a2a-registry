@@ -6,7 +6,16 @@ from typing import Optional
 from uuid import UUID
 
 from .database import Database
-from .models import AgentCreate, AgentFlagInDB, AgentInDB, AgentPublic, HealthCheck, HealthStatus, RegistryStats, UptimeMetrics
+from .models import (
+    AgentCreate,
+    AgentFlagInDB,
+    AgentInDB,
+    AgentPublic,
+    HealthCheck,
+    HealthStatus,
+    RegistryStats,
+    UptimeMetrics,
+)
 
 
 class AgentRepository:
@@ -165,8 +174,8 @@ class AgentRepository:
             param_idx += 1
 
         if capability:
-            _VALID_CAPABILITIES = {"streaming", "pushNotifications", "stateTransitionHistory"}
-            if capability not in _VALID_CAPABILITIES:
+            valid_capabilities = {"streaming", "pushNotifications", "stateTransitionHistory"}
+            if capability not in valid_capabilities:
                 return [], 0
             # capability is safe to interpolate - validated against _VALID_CAPABILITIES whitelist above
             where_clauses.append(f"capabilities::jsonb ->> '{capability}' = 'true'")

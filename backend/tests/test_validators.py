@@ -2,7 +2,6 @@
 
 from app.validators import validate_agent_card, validate_well_known_uri
 
-
 # ---------------------------------------------------------------------------
 # validate_well_known_uri
 # ---------------------------------------------------------------------------

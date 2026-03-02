@@ -1,7 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
 
+import pytest
+from fastapi.testclient import TestClient
 
 MOCK_AGENT_ROW = {
     "id": "550e8400-e29b-41d4-a716-446655440000",
