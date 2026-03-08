@@ -82,10 +82,13 @@ class Agent(BaseModel):
     id: Optional[UUID] = Field(None, description="Agent UUID (from live API)")
     created_at: Optional[datetime] = Field(None, description="Registration timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    hidden: Optional[bool] = Field(None, description="Whether the agent is hidden (soft-deleted)")
+    flag_count: Optional[int] = Field(None, description="Number of community flags/reports")
     is_healthy: Optional[bool] = Field(None, description="Current health status")
     uptime_percentage: Optional[float] = Field(None, description="24h uptime %")
     avg_response_time_ms: Optional[int] = Field(None, description="Average response time (ms)")
     last_health_check: Optional[datetime] = Field(None, description="Last health check timestamp")
+    status_notes: Optional[List[str]] = Field(None, description="Automated status notes from health checks")
 
     # Registry metadata (preferred, structured format)
     registryMetadata: Optional[RegistryMetadata] = Field(None, alias="_registryMetadata", description="Registry metadata")
@@ -136,8 +139,8 @@ class Agent(BaseModel):
             >>>     # Now use the A2A SDK client
         """
         try:
-            from a2a.client import ClientFactory, ClientConfig, A2ACardResolver
-            import httpx
+            from a2a.client import ClientConfig, ClientFactory
+            from a2a.types import TransportProtocol
         except ImportError as e:
             raise ImportError(
                 "a2a-sdk is required for this feature. "
@@ -150,38 +153,30 @@ class Agent(BaseModel):
                 "Cannot create A2A client."
             )
 
-        # Create config if not provided
+        from urllib.parse import urlparse
+
+        parsed = urlparse(str(self.wellKnownURI))
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        relative_path = parsed.path if parsed.path else "/.well-known/agent.json"
+
         if config is None:
-            config = ClientConfig()
+            config = ClientConfig(
+                supported_transports=[
+                    TransportProtocol.jsonrpc,
+                    TransportProtocol.http_json,
+                ],
+            )
 
-        # Create factory
-        factory = ClientFactory(config, consumers)
-
-        # Fetch agent card from well-known URI
         try:
-            # Extract base URL from wellKnownURI
-            from urllib.parse import urlparse
-            parsed = urlparse(str(self.wellKnownURI))
-            base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-            # Create httpx client if not provided in config
-            if config.httpx_client:
-                httpx_client = config.httpx_client
-            else:
-                httpx_client = httpx.AsyncClient()
-
-            resolver = A2ACardResolver(httpx_client, base_url)
-            # Try to get the relative path from wellKnownURI
-            # e.g., from https://example.com/.well-known/agent.json extract "/.well-known/agent.json"
-            relative_path = parsed.path if parsed.path else "/.well-known/agent.json"
-            card = await resolver.get_agent_card(relative_card_path=relative_path)
+            return await ClientFactory.connect(
+                base_url,
+                client_config=config,
+                relative_card_path=relative_path,
+            )
         except Exception as e:
             raise RuntimeError(
-                f"Failed to fetch agent card from {self.wellKnownURI}: {e}"
+                f"Failed to connect to agent at {self.wellKnownURI}: {e}"
             ) from e
-
-        # Create and return client
-        return factory.create(card, consumers, interceptors)
 
     def connect(self, config=None, consumers=None, interceptors=None):
         """

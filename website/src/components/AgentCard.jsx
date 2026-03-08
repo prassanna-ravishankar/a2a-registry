@@ -1,6 +1,4 @@
 import React from 'react';
-import { ExternalLink, BookOpen, Radio } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import HealthBadge from './HealthBadge';
@@ -106,17 +104,6 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                 <Button
                     size="sm"
                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-black font-mono font-bold text-xs uppercase tracking-wider h-8 rounded-none"
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <a href={agent.url} target="_blank" rel="noopener noreferrer">
-                        Connect
-                    </a>
-                </Button>
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider h-8 rounded-none bg-transparent"
                     onClick={(e) => {
                         e.stopPropagation();
                         onClick(agent);

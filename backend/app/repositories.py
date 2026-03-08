@@ -67,6 +67,7 @@ class AgentRepository:
         last_5_worker_successes: Optional[list],
         last_10_chat_errors: Optional[list],
         conformance: Optional[bool],
+        conformance_errors: Optional[list[str]],
         flag_count: int,
     ) -> list[str]:
         """Compute status notes from health data."""
@@ -85,7 +86,11 @@ class AgentRepository:
                     notes.append(f"Returning errors when contacted by users ({error_msg})")
                     break
         if conformance is False:
-            notes.append("Non-conformant with A2A spec")
+            if conformance_errors:
+                for err in conformance_errors[:3]:
+                    notes.append(f"A2A conformance: {err}")
+            else:
+                notes.append("Non-conformant with A2A spec")
         if flag_count >= 3:
             notes.append(f"Flagged by {flag_count} users")
         return notes
@@ -155,6 +160,7 @@ class AgentRepository:
         author: Optional[str] = None,
         search: Optional[str] = None,
         conformance: Optional[str] = None,
+        healthy: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -197,10 +203,26 @@ class AgentRepository:
         elif conformance == "non-standard":
             where_clauses.append("conformance IS NOT TRUE")
 
+        # healthy filter uses a subquery on recent health checks
+        healthy_join = ""
+        if healthy is not None:
+            healthy_join = """
+            INNER JOIN LATERAL (
+                SELECT (array_agg(success ORDER BY checked_at DESC))[1] as latest_success
+                FROM health_checks hc_filt
+                WHERE hc_filt.agent_id = a.id
+                  AND hc_filt.checked_at > NOW() - INTERVAL '24 hours'
+            ) hf ON true
+            """
+            if healthy:
+                where_clauses.append("hf.latest_success = true")
+            else:
+                where_clauses.append("(hf.latest_success = false OR hf.latest_success IS NULL)")
+
         where_clause = " AND ".join(where_clauses)
 
         # Count total
-        count_query = f"SELECT COUNT(*) FROM agents a WHERE {where_clause}"
+        count_query = f"SELECT COUNT(*) FROM agents a {healthy_join} WHERE {where_clause}"
         total = await self.db.fetchval(count_query, *params)
 
         # Fetch paginated results with health metrics
@@ -225,6 +247,7 @@ class AgentRepository:
                 WHERE hc.agent_id = a.id
                   AND hc.checked_at > NOW() - INTERVAL '24 hours'
             ) hm ON true
+            {healthy_join}
             WHERE {where_clause}
             ORDER BY
                 CASE
@@ -242,13 +265,23 @@ class AgentRepository:
         agents = [self._row_to_agent_public(row) for row in rows]
         return agents, total
 
-    async def update_conformance(self, agent_id: UUID, conformance: Optional[bool]) -> None:
-        """Update the conformance status of an agent"""
-        await self.db.execute(
-            "UPDATE agents SET conformance = $1, updated_at = NOW() WHERE id = $2",
-            conformance,
-            agent_id,
-        )
+    async def update_conformance(
+        self, agent_id: UUID, conformance: Optional[bool], errors: Optional[list[str]] = None
+    ) -> None:
+        """Update the conformance status of an agent, optionally storing validation errors."""
+        if errors:
+            await self.db.execute(
+                "UPDATE agents SET conformance = $1, conformance_errors = $2, updated_at = NOW() WHERE id = $3",
+                conformance,
+                json.dumps(errors[:10]),
+                agent_id,
+            )
+        else:
+            await self.db.execute(
+                "UPDATE agents SET conformance = $1, conformance_errors = NULL, updated_at = NOW() WHERE id = $2",
+                conformance,
+                agent_id,
+            )
 
     async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card"""
@@ -335,6 +368,7 @@ class AgentRepository:
             defaultOutputModes=json.loads(row["default_output_modes"]),
             skills=json.loads(row["skills"]),
             conformance=row["conformance"],
+            conformance_errors=json.loads(row["conformance_errors"]) if row.get("conformance_errors") else None,
         )
 
     def _row_to_agent_public(self, row) -> AgentPublic:
@@ -345,6 +379,7 @@ class AgentRepository:
             last_5_worker_successes=list(row.get("worker_successes") or []),
             last_10_chat_errors=list(row.get("chat_errors") or []),
             conformance=agent.conformance,
+            conformance_errors=agent.conformance_errors,
             flag_count=agent.flag_count,
         )
         return AgentPublic(
