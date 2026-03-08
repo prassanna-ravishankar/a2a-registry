@@ -36,75 +36,23 @@
       -moz-osx-font-smoothing: grayscale;
       background-color: #000;
       color: #e4e4e7;
-      overflow: hidden;
     }
 
     #root {
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
     }
 
-    /* Three-column layout skeleton */
     #root > div:first-child {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      min-height: 100vh;
     }
 
-    /* Header skeleton - 48px height */
     #root > div:first-child > div:first-child {
-      height: 48px;
-      min-height: 48px;
       border-bottom: 1px solid #27272a;
       background-color: #000;
     }
 
-    /* Main content area with 3 columns */
     #root > div:first-child > div:nth-child(2) {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* Left sidebar skeleton - 256px on desktop, hidden on mobile */
-    #root > div:first-child > div:nth-child(2) > div:first-child {
-      width: 256px;
-      min-width: 256px;
-      border-right: 1px solid #27272a;
-      background-color: #000;
-      display: none;
-    }
-
-    @media (min-width: 768px) {
-      #root > div:first-child > div:nth-child(2) > div:first-child {
-        display: block;
-      }
-    }
-
-    /* Center main content skeleton */
-    #root > div:first-child > div:nth-child(2) > main {
-      flex: 1;
-      min-width: 0;
-      border-right: 1px solid #27272a;
-      background-color: #000;
-    }
-
-    /* Right inspection deck skeleton - 450px on desktop, full screen overlay on mobile */
-    #root > div:first-child > div:nth-child(2) > div:last-child {
-      position: absolute;
-      inset: 0;
-      z-index: 30;
-      background-color: #09090b;
-    }
-
-    @media (min-width: 768px) {
-      #root > div:first-child > div:nth-child(2) > div:last-child {
-        position: static;
-        width: 450px;
-        min-width: 450px;
-        z-index: auto;
-      }
+      min-height: calc(100vh - 48px);
     }
 
     /* Loading skeleton */

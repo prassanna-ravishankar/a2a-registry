@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
-const Terminal = ({ agent }) => {
+const Terminal = ({ agent, autoFocusInput = true }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -136,7 +136,7 @@ const Terminal = ({ agent }) => {
                     onChange={(e) => setInput(e.target.value)}
                     className="flex-1 bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-700 font-mono"
                     placeholder={error ? "CONNECTION UNAVAILABLE" : ready ? "ENTER MESSAGE..." : "CONNECTING..."}
-                    autoFocus
+                    autoFocus={autoFocusInput}
                     disabled={!ready || isLoading}
                 />
                 <div className={`w-2 h-4 ${isLoading ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`} />

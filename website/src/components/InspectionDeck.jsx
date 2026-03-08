@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Markdown from 'react-markdown';
-import { X, Globe, FileText, Zap, Flag, Copy, Check, Info } from 'lucide-react';
+import { X, Globe, FileText, Zap, Flag, Copy, Check, ArrowUpRight, ChevronLeft, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { safeExternalUrl } from '@/lib/utils';
 import Terminal from './Terminal';
+import HealthBadge from './HealthBadge';
 import { api } from '@/lib/api';
 
 const REPORT_REASONS = ['spam', 'harmful', 'impersonation', 'other'];
@@ -11,7 +14,7 @@ const REPORT_REASONS = ['spam', 'harmful', 'impersonation', 'other'];
 const ReportModal = ({ agent, onClose }) => {
     const [reason, setReason] = useState('other');
     const [details, setDetails] = useState('');
-    const [status, setStatus] = useState(null); // null | 'submitting' | 'done' | 'error'
+    const [status, setStatus] = useState(null);
 
     const submit = async () => {
         setStatus('submitting');
@@ -24,44 +27,44 @@ const ReportModal = ({ agent, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-            <div className="bg-zinc-950 border border-zinc-700 p-6 w-full max-w-sm font-mono" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Report Agent</span>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
+            <div className="w-full max-w-sm border border-zinc-700 bg-zinc-950 p-6 font-mono" onClick={(e) => e.stopPropagation()}>
+                <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-widest text-red-400">Report Agent</span>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>
                 </div>
                 {status === 'done' ? (
                     <p className="text-xs text-emerald-400">Report submitted. Thank you.</p>
                 ) : (
                     <>
-                        <p className="text-xs text-zinc-400 mb-4">Reporting: <span className="text-zinc-200">{agent.name}</span></p>
+                        <p className="mb-4 text-xs text-zinc-400">Reporting: <span className="text-zinc-200">{agent.name}</span></p>
                         <div className="mb-3">
-                            <label className="text-[10px] text-zinc-500 uppercase block mb-1">Reason</label>
+                            <label className="mb-1 block text-[10px] uppercase text-zinc-500">Reason</label>
                             <select
                                 value={reason}
-                                onChange={e => setReason(e.target.value)}
-                                className="w-full bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs px-2 py-1.5"
+                                onChange={(e) => setReason(e.target.value)}
+                                className="w-full border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-300"
                             >
-                                {REPORT_REASONS.map(r => (
+                                {REPORT_REASONS.map((r) => (
                                     <option key={r} value={r}>{r}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="mb-4">
-                            <label className="text-[10px] text-zinc-500 uppercase block mb-1">Details (optional)</label>
+                            <label className="mb-1 block text-[10px] uppercase text-zinc-500">Details (optional)</label>
                             <textarea
                                 value={details}
-                                onChange={e => setDetails(e.target.value)}
+                                onChange={(e) => setDetails(e.target.value)}
                                 rows={3}
-                                className="w-full bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs px-2 py-1.5 resize-none"
+                                className="w-full resize-none border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-300"
                                 placeholder="Describe the issue..."
                             />
                         </div>
-                        {status === 'error' && <p className="text-xs text-red-400 mb-2">Submission failed. Try again.</p>}
+                        {status === 'error' && <p className="mb-2 text-xs text-red-400">Submission failed. Try again.</p>}
                         <Button
                             onClick={submit}
                             disabled={status === 'submitting'}
-                            className="w-full bg-red-900 hover:bg-red-800 text-red-100 text-xs font-mono uppercase tracking-wider rounded-none"
+                            className="w-full rounded-none bg-red-900 font-mono text-xs uppercase tracking-wider text-red-100 hover:bg-red-800"
                         >
                             {status === 'submitting' ? 'Submitting...' : 'Submit Report'}
                         </Button>
@@ -79,149 +82,183 @@ const CopyableField = ({ label, value }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
     };
+
     return (
         <div className="space-y-1">
-            <div className="text-[10px] text-zinc-600 font-mono uppercase">{label}</div>
-            <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-2 py-1.5">
-                <span className="text-[10px] text-zinc-400 font-mono truncate flex-1">{value}</span>
-                <button onClick={copy} className="text-zinc-500 hover:text-zinc-200 shrink-0">
-                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">{label}</div>
+            <div className="flex items-center gap-2 border border-zinc-800 bg-zinc-900/50 px-2 py-2">
+                <span className="min-w-0 flex-1 truncate text-[11px] text-zinc-400">{value}</span>
+                <button onClick={copy} className="shrink-0 text-zinc-500 hover:text-zinc-200">
+                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                 </button>
             </div>
         </div>
     );
 };
 
-const InspectionDeck = ({ agent, onClose }) => {
-    const [showReport, setShowReport] = useState(false);
-
-    if (!agent) {
-        return (
-            <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col items-center justify-center text-zinc-700">
-                <div className="w-16 h-16 border-2 border-zinc-800 rounded-full flex items-center justify-center mb-4">
-                    <Zap className="w-6 h-6" />
-                </div>
-                <p className="font-mono text-xs uppercase tracking-widest">No Agent Selected</p>
-                <p className="font-mono text-[10px] mt-2">Select an agent from the grid to inspect</p>
-            </aside>
-        );
-    }
+const MaintainerNotes = ({ notes }) => {
+    if (!notes) return null;
 
     return (
-        <>
-        {showReport && <ReportModal agent={agent} onClose={() => setShowReport(false)} />}
-        <aside className="w-full h-full border-l border-zinc-800 bg-zinc-950 flex flex-col">
-            {/* Header */}
-            <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-mono font-bold text-emerald-500 tracking-wider">INSPECTION_DECK</span>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-200" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                </Button>
+        <section className="border border-blue-800/50 bg-blue-950/20 p-4">
+            <div className="flex items-center gap-2">
+                <Info className="h-3.5 w-3.5 text-blue-400" />
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-blue-400">Registry Maintainer Note</span>
             </div>
+            <div className="mt-3 font-mono text-xs leading-relaxed text-zinc-300 prose prose-invert prose-xs max-w-none [&_a]:text-blue-400 [&_a]:underline [&_code]:bg-zinc-800 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-zinc-300 [&_li]:my-0 [&_ol]:my-1 [&_p]:my-1 [&_ul]:my-1">
+                <Markdown>{notes}</Markdown>
+            </div>
+        </section>
+    );
+};
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <div className="p-6 space-y-8">
-                    {/* Agent Identity */}
-                    <div>
-                        <h2 className="text-xl font-mono font-bold text-zinc-100 mb-1">{agent.name}</h2>
-                        <div className="flex items-center gap-3 text-xs font-mono text-zinc-500 mb-4">
-                            <span className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400">v{agent.version}</span>
-                            <span>ID: {agent.name.toLowerCase().replace(/\s+/g, '-')}</span>
-                        </div>
-                        <p className="text-sm text-zinc-400 font-mono leading-relaxed border-l-2 border-zinc-800 pl-4">
-                            {agent.description}
-                        </p>
+const AgentHero = ({ agent, mobile }) => (
+    <div className={`border-b border-zinc-800 ${mobile ? 'px-4 pb-5 pt-4' : 'px-6 pb-6 pt-5'}`}>
+        <div className="flex flex-wrap items-center gap-2">
+            <Badge
+                variant="outline"
+                className={`rounded-none border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] ${
+                    agent.conformance === false
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                }`}
+            >
+                {agent.conformance === false ? 'Non-standard' : 'A2A conformant'}
+            </Badge>
+            {agent.capabilities?.streaming && (
+                <Badge variant="outline" className="rounded-none border-cyan-500/30 bg-cyan-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300">
+                    Streaming
+                </Badge>
+            )}
+        </div>
+        <h2 className={`mt-4 font-mono font-semibold text-zinc-100 ${mobile ? 'text-2xl leading-tight' : 'text-xl'}`}>
+            {agent.name}
+        </h2>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+            <span>v{agent.version}</span>
+            <span className="text-zinc-700">•</span>
+            <span>{agent.author || agent.provider?.organization || 'Unknown'}</span>
+            {agent.protocolVersion && (
+                <>
+                    <span className="text-zinc-700">•</span>
+                    <span>A2A v{agent.protocolVersion}</span>
+                </>
+            )}
+        </div>
+        <p className={`mt-4 max-w-2xl text-zinc-300 ${mobile ? 'text-sm leading-7' : 'text-sm leading-relaxed'}`}>
+            {agent.description}
+        </p>
+    </div>
+);
+
+const AgentSections = ({ agent, mobile, onOpenReport }) => {
+    const websiteUrl = useMemo(() => (
+        safeExternalUrl(agent.homepage) ||
+        safeExternalUrl(agent.provider?.url) ||
+        safeExternalUrl(agent.documentationUrl) ||
+        safeExternalUrl(agent.url)
+    ), [agent.documentationUrl, agent.homepage, agent.provider?.url, agent.url]);
+    const documentationUrl = useMemo(() => safeExternalUrl(agent.documentationUrl), [agent.documentationUrl]);
+    const sdkOrigin = useMemo(() => {
+        const safeUrl = safeExternalUrl(agent.wellKnownURI) || safeExternalUrl(agent.url);
+        if (!safeUrl) return agent.url;
+
+        try {
+            return new URL(safeUrl).origin;
+        } catch {
+            return agent.url;
+        }
+    }, [agent.url, agent.wellKnownURI]);
+
+    return (
+        <div className={`${mobile ? 'space-y-5 px-4 py-5' : 'space-y-8 p-6'}`}>
+            <section className={`grid gap-3 ${mobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                <div className="border border-zinc-800 bg-zinc-950/60 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Trust & Health</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {agent.uptime_percentage !== null && agent.uptime_percentage !== undefined ? (
+                            <HealthBadge
+                                uptime={agent.uptime_percentage}
+                                avgResponseTime={agent.avg_response_time_ms}
+                                lastCheck={agent.last_health_check}
+                                size="sm"
+                            />
+                        ) : (
+                            <span className="text-sm text-zinc-500">No uptime data available.</span>
+                        )}
                     </div>
-
-                    {/* Status Notes */}
                     {agent.status_notes?.length > 0 && (
-                        <div className="space-y-1">
+                        <div className="mt-4 space-y-2">
                             {agent.status_notes.map((note, i) => {
                                 const lower = note.toLowerCase();
-                                const isRed = lower.includes('unreachable') || lower.includes('low uptime');
+                                const isCritical = lower.includes('unreachable') || lower.includes('low uptime');
                                 return (
                                     <div
                                         key={i}
-                                        className={`flex items-center gap-2 px-3 py-1.5 border font-mono text-[10px] ${
-                                            isRed
-                                                ? 'border-red-800/50 bg-red-950/30 text-red-400'
-                                                : 'border-amber-800/50 bg-amber-950/30 text-amber-400'
+                                        className={`border px-3 py-2 text-[11px] ${
+                                            isCritical
+                                                ? 'border-red-800/50 bg-red-950/30 text-red-300'
+                                                : 'border-amber-800/50 bg-amber-950/30 text-amber-300'
                                         }`}
                                     >
-                                        <span className="shrink-0">!!</span>
-                                        <span>{note}</span>
+                                        {note}
                                     </div>
                                 );
                             })}
                         </div>
                     )}
+                </div>
 
-                    {/* Maintainer Notes */}
-                    {agent.maintainer_notes && (
-                        <div className="border border-blue-800/50 bg-blue-950/20 p-4 space-y-2">
-                            <div className="flex items-center gap-2">
-                                <Info className="w-3.5 h-3.5 text-blue-400" />
-                                <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest">Registry Maintainer Note</span>
-                            </div>
-                            <div className="text-xs text-zinc-300 font-mono leading-relaxed prose prose-invert prose-xs max-w-none
-                                [&_a]:text-blue-400 [&_a]:underline [&_code]:bg-zinc-800 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-zinc-300
-                                [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-                                <Markdown>{agent.maintainer_notes}</Markdown>
-                            </div>
+                <div className="border border-zinc-800 bg-zinc-950/60 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Identity</p>
+                    <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <dt className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Provider</dt>
+                            <dd className="mt-1 text-zinc-200">{agent.author || agent.provider?.organization || 'Unknown'}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">License</dt>
+                            <dd className="mt-1 text-zinc-200">{agent.license || 'MIT'}</dd>
+                        </div>
+                    </dl>
+                    {agent.wellKnownURI && (
+                        <div className="mt-4">
+                            <CopyableField label="Agent Card URI" value={agent.wellKnownURI} />
                         </div>
                     )}
+                </div>
+            </section>
 
-                    {/* Connection Interface */}
-                    <div className="border border-zinc-800 bg-black h-64">
-                        <Terminal agent={agent} />
-                    </div>
+            <MaintainerNotes notes={agent.maintainer_notes} />
 
-                    {/* Technical Specs */}
-                    <div className="space-y-4">
-                        <h3 className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Technical Specifications</h3>
+            <section className="border border-zinc-800 bg-black">
+                <div className="border-b border-zinc-800 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Try the agent</p>
+                    <h3 className="mt-1 text-lg font-semibold text-zinc-100">Live terminal</h3>
+                </div>
+                <div className={`${mobile ? 'h-[340px]' : 'h-64'}`}>
+                    <Terminal agent={agent} autoFocusInput={!mobile} />
+                </div>
+            </section>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <div className="text-[10px] text-zinc-600 font-mono uppercase">Provider</div>
-                                <div className="text-sm text-zinc-300 font-mono">{agent.author || agent.provider?.organization || 'Unknown'}</div>
-                            </div>
-                            <div className="space-y-1">
-                                <div className="text-[10px] text-zinc-600 font-mono uppercase">License</div>
-                                <div className="text-sm text-zinc-300 font-mono">{agent.license || 'MIT'}</div>
-                            </div>
-                            <div className="space-y-1">
-                                <div className="text-[10px] text-zinc-600 font-mono uppercase">Protocol</div>
-                                <div className="text-sm text-zinc-300 font-mono">A2A v{agent.protocolVersion || '?'}</div>
-                            </div>
-                            <div className="space-y-1">
-                                <div className="text-[10px] text-zinc-600 font-mono uppercase">Capabilities</div>
-                                <div className="flex gap-2">
-                                    {agent.capabilities?.streaming && <span className="text-xs text-emerald-500 font-mono">[STREAMING]</span>}
-                                    {agent.capabilities?.pushNotifications && <span className="text-xs text-blue-500 font-mono">[PUSH]</span>}
-                                </div>
-                            </div>
-                        </div>
-                        {agent.wellKnownURI && (
-                            <CopyableField label="Agent Card URI" value={agent.wellKnownURI} />
-                        )}
-                    </div>
-
-                    {/* Integration Snippets */}
-                    <div className="space-y-4">
-                        <h3 className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Integration</h3>
-                        <Tabs defaultValue="registry" className="w-full">
-                            <TabsList className="w-full bg-zinc-900/50 border border-zinc-800 p-0 h-8">
-                                <TabsTrigger value="registry" className="flex-1 text-[10px] font-mono h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">REGISTRY</TabsTrigger>
-                                <TabsTrigger value="sdk" className="flex-1 text-[10px] font-mono h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">SDK</TabsTrigger>
-                                <TabsTrigger value="curl" className="flex-1 text-[10px] font-mono h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">CURL</TabsTrigger>
-                            </TabsList>
-                            <div className="mt-2">
-                                <TabsContent value="registry">
-                                    <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
-                                        {`import asyncio
+            <section className="border border-zinc-800 bg-zinc-950/60 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Integration</p>
+                <h3 className="mt-1 text-lg font-semibold text-zinc-100">Connect from code</h3>
+                <Tabs defaultValue="registry" className="mt-4 w-full">
+                    <TabsList className="grid h-auto w-full grid-cols-3 rounded-none border border-zinc-800 bg-zinc-900/50 p-0">
+                        <TabsTrigger value="registry" className="h-11 rounded-none font-mono text-[10px] tracking-[0.18em] data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">
+                            Registry
+                        </TabsTrigger>
+                        <TabsTrigger value="sdk" className="h-11 rounded-none font-mono text-[10px] tracking-[0.18em] data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">
+                            SDK
+                        </TabsTrigger>
+                        <TabsTrigger value="curl" className="h-11 rounded-none font-mono text-[10px] tracking-[0.18em] data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-400">
+                            CURL
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="registry">
+                        <pre className="overflow-x-auto border border-zinc-800 bg-black p-3 font-mono text-[10px] text-zinc-400">
+{`import asyncio
 from a2a_registry import AsyncRegistry
 
 async def main():
@@ -231,25 +268,25 @@ async def main():
         print(f"Connected to {agent.name}")
 
 asyncio.run(main())`}
-                                    </pre>
-                                </TabsContent>
-                                <TabsContent value="sdk">
-                                    <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
-                                        {`import asyncio
-from a2a.client import ClientFactory, ClientConfig
+                        </pre>
+                    </TabsContent>
+                    <TabsContent value="sdk">
+                        <pre className="overflow-x-auto border border-zinc-800 bg-black p-3 font-mono text-[10px] text-zinc-400">
+{`import asyncio
+from a2a.client import ClientFactory
 
 async def main():
     client = await ClientFactory.connect(
-        "${(() => { try { const u = new URL(agent.wellKnownURI || agent.url); return u.origin; } catch { return agent.url; } })()}",
+        "${sdkOrigin}",
     )
-    print(f"Connected via A2A SDK")
+    print("Connected via A2A SDK")
 
 asyncio.run(main())`}
-                                    </pre>
-                                </TabsContent>
-                                <TabsContent value="curl">
-                                    <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
-                                        {`curl -X POST ${agent.url} \\
+                        </pre>
+                    </TabsContent>
+                    <TabsContent value="curl">
+                        <pre className="overflow-x-auto border border-zinc-800 bg-black p-3 font-mono text-[10px] text-zinc-400">
+{`curl -X POST ${agent.url} \\
   -H "Content-Type: application/json" \\
   -d '{
     "jsonrpc": "2.0",
@@ -263,52 +300,112 @@ asyncio.run(main())`}
     },
     "id": 1
   }'`}
-                                    </pre>
-                                </TabsContent>
-                            </div>
-                        </Tabs>
-                    </div>
-                </div>
-            </div>
+                        </pre>
+                    </TabsContent>
+                </Tabs>
+            </section>
 
-            {/* Footer Actions */}
-            <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 space-y-2">
-                <div className="grid grid-cols-2 gap-3">
-                    {(() => {
-                        const websiteUrl = agent.homepage || agent.provider?.url || agent.documentationUrl || agent.url;
-                        return (
-                            <Button className="bg-zinc-100 hover:bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-none" asChild>
-                                <a href={websiteUrl} target="_blank" rel="noopener noreferrer">
-                                    <Globe className="w-3 h-3 mr-2" />
-                                    Launch Website
-                                </a>
-                            </Button>
-                        );
-                    })()}
-                    {agent.documentationUrl ? (
-                        <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent" asChild>
-                            <a href={agent.documentationUrl} target="_blank" rel="noopener noreferrer">
-                                <FileText className="w-3 h-3 mr-2" />
-                                Documentation
-                            </a>
-                        </Button>
-                    ) : (
-                        <Button variant="outline" disabled className="border-zinc-800 text-zinc-600 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent cursor-not-allowed">
-                            <FileText className="w-3 h-3 mr-2" />
-                            Documentation
-                        </Button>
-                    )}
+            <section className={`grid gap-3 ${mobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {websiteUrl ? (
+                    <Button className="h-12 rounded-none bg-zinc-100 font-mono text-xs font-bold uppercase tracking-[0.18em] text-black hover:bg-white" asChild>
+                        <a href={websiteUrl} target="_blank" rel="noopener noreferrer">
+                            <Globe className="h-4 w-4" />
+                            <span className="flex-1 text-center">Launch Website</span>
+                            <ArrowUpRight className="h-4 w-4" />
+                        </a>
+                    </Button>
+                ) : (
+                    <Button disabled className="h-12 rounded-none bg-zinc-800 font-mono text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+                        <Globe className="h-4 w-4" />
+                        <span className="flex-1 text-center">Launch Website unavailable</span>
+                        <span className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                )}
+                {documentationUrl ? (
+                    <Button variant="outline" className="h-12 rounded-none border-zinc-700 bg-transparent font-mono text-xs uppercase tracking-[0.18em] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" asChild>
+                        <a href={documentationUrl} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-4 w-4" />
+                            <span className="flex-1 text-center">Documentation</span>
+                            <span className="h-4 w-4" aria-hidden="true" />
+                        </a>
+                    </Button>
+                ) : (
+                    <Button variant="outline" disabled className="h-12 rounded-none border-zinc-800 bg-transparent font-mono text-xs uppercase tracking-[0.18em] text-zinc-600">
+                        <FileText className="h-4 w-4" />
+                        <span className="flex-1 text-center">Documentation unavailable</span>
+                        <span className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                )}
+            </section>
+
+            <Button
+                variant="outline"
+                onClick={onOpenReport}
+                className="h-11 w-full rounded-none border-red-500/20 bg-red-950/20 font-mono text-xs uppercase tracking-[0.18em] text-red-300 hover:border-red-500/40 hover:bg-red-950/30"
+            >
+                <Flag className="mr-2 h-4 w-4" />
+                Report this agent
+            </Button>
+        </div>
+    );
+};
+
+const InspectionDeck = ({ agent, onClose, mobile = false }) => {
+    const [showReport, setShowReport] = useState(false);
+
+    if (!agent) {
+        return (
+            <aside className="flex h-full w-full flex-col items-center justify-center border-l border-zinc-800 bg-zinc-950 text-zinc-700">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-zinc-800">
+                    <Zap className="h-6 w-6" />
                 </div>
-                <Button
-                    variant="ghost"
-                    onClick={() => setShowReport(true)}
-                    className="w-full text-zinc-600 hover:text-red-400 hover:bg-transparent font-mono text-[10px] uppercase tracking-widest rounded-none"
-                >
-                    <Flag className="w-3 h-3 mr-1" />
-                    Report this agent
-                </Button>
-            </div>
-        </aside>
+                <p className="font-mono text-xs uppercase tracking-widest">No Agent Selected</p>
+                <p className="mt-2 font-mono text-[10px]">Select an agent from the grid to inspect</p>
+            </aside>
+        );
+    }
+
+    if (mobile) {
+        return (
+            <>
+                {showReport && <ReportModal agent={agent} onClose={() => setShowReport(false)} />}
+                <section className="min-h-[calc(100vh-73px)] bg-black">
+                    <div className="border-b border-zinc-800 bg-zinc-950/60 px-4 py-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-zinc-400 hover:text-zinc-200"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Back to results
+                        </button>
+                    </div>
+                    <AgentHero agent={agent} mobile />
+                    <AgentSections agent={agent} mobile onOpenReport={() => setShowReport(true)} />
+                </section>
+            </>
+        );
+    }
+
+    return (
+        <>
+            {showReport && <ReportModal agent={agent} onClose={() => setShowReport(false)} />}
+            <aside className="flex h-full w-full flex-col border-l border-zinc-800 bg-zinc-950">
+                <div className="flex h-12 items-center justify-between border-b border-zinc-800 bg-zinc-900/30 px-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 animate-pulse bg-emerald-500" />
+                        <span className="text-xs font-mono font-bold tracking-wider text-emerald-500">INSPECTION_DECK</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-200" onClick={onClose}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <AgentHero agent={agent} />
+                    <AgentSections agent={agent} onOpenReport={() => setShowReport(true)} />
+                </div>
+            </aside>
         </>
     );
 };

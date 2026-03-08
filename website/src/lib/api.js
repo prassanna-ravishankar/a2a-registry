@@ -1,3 +1,5 @@
+import { sampleRegistry } from './sampleRegistry';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://www.a2aregistry.org/api';
 
 class ApiError extends Error {
@@ -102,8 +104,15 @@ export const api = {
 // Fallback: fetch from static registry.json (backward compatibility)
 export async function fetchStaticRegistry() {
   const response = await fetch('/registry.json');
-  if (!response.ok) {
-    throw new Error('Failed to fetch static registry');
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!response.ok || !contentType.includes('application/json')) {
+    return sampleRegistry;
   }
-  return response.json();
+
+  try {
+    return await response.json();
+  } catch {
+    return sampleRegistry;
+  }
 }
