@@ -558,6 +558,26 @@ def _require_admin(x_admin_key: Optional[str]):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+class MaintainerNotesUpdate(BaseModel):
+    notes: Optional[str] = None
+
+
+@router.patch("/agents/{agent_id}/notes", status_code=200)
+async def update_maintainer_notes(
+    agent_id: UUID,
+    body: MaintainerNotesUpdate,
+    x_admin_key: Optional[str] = Header(default=None),
+):
+    """Set or clear maintainer notes for an agent (admin only). Supports markdown."""
+    _require_admin(x_admin_key)
+
+    agent_repo = AgentRepository(db)
+    updated = await agent_repo.update_maintainer_notes(agent_id, body.notes)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"message": "Maintainer notes updated", "maintainer_notes": body.notes}
+
+
 @router.get("/admin/flags")
 async def list_flags(x_admin_key: Optional[str] = Header(default=None), limit: int = 100, offset: int = 0):
     """List all agent flags (admin only)"""

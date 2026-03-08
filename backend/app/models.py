@@ -95,6 +95,7 @@ class AgentInDB(AgentBase):
     updated_at: datetime
     hidden: bool = False
     flag_count: int = 0
+    maintainer_notes: Optional[str] = None
 
 
 class AgentPublic(AgentInDB):

@@ -327,6 +327,15 @@ class AgentRepository:
         result = await self.db.execute(query, agent_id)
         return result == "UPDATE 1"
 
+    async def update_maintainer_notes(self, agent_id: UUID, notes: str | None) -> bool:
+        """Set or clear maintainer notes for an agent."""
+        result = await self.db.execute(
+            "UPDATE agents SET maintainer_notes = $1, updated_at = NOW() WHERE id = $2",
+            notes,
+            agent_id,
+        )
+        return result == "UPDATE 1"
+
     async def increment_flag_count(self, agent_id: UUID):
         """Increment flag count for an agent"""
         query = "UPDATE agents SET flag_count = flag_count + 1 WHERE id = $1"
@@ -359,6 +368,7 @@ class AgentRepository:
             skills=json.loads(row["skills"]),
             conformance=row["conformance"],
             conformance_errors=json.loads(row["conformance_errors"]) if row.get("conformance_errors") else None,
+            maintainer_notes=row.get("maintainer_notes"),
         )
 
     def _row_to_agent_public(self, row) -> AgentPublic:
