@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Globe, FileText, Zap, Flag, Copy, Check } from 'lucide-react';
+import Markdown from 'react-markdown';
+import { X, Globe, FileText, Zap, Flag, Copy, Check, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Terminal from './Terminal';
@@ -155,6 +156,21 @@ const InspectionDeck = ({ agent, onClose }) => {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Maintainer Notes */}
+                    {agent.maintainer_notes && (
+                        <div className="border border-blue-800/50 bg-blue-950/20 p-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Info className="w-3.5 h-3.5 text-blue-400" />
+                                <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest">Registry Maintainer Note</span>
+                            </div>
+                            <div className="text-xs text-zinc-300 font-mono leading-relaxed prose prose-invert prose-xs max-w-none
+                                [&_a]:text-blue-400 [&_a]:underline [&_code]:bg-zinc-800 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-zinc-300
+                                [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                                <Markdown>{agent.maintainer_notes}</Markdown>
+                            </div>
                         </div>
                     )}
 
