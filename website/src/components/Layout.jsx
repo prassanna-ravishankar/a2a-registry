@@ -59,7 +59,7 @@ const Layout = ({
             />
 
             <div className="relative md:flex">
-                <div className="hidden md:flex md:w-64 md:shrink-0">
+                <div className="hidden md:flex md:w-64 md:shrink-0 md:sticky md:top-0 md:h-screen md:overflow-y-auto">
                     <Sidebar
                         allTags={allTags}
                         selectedSkills={selectedSkills}
