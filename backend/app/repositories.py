@@ -203,26 +203,23 @@ class AgentRepository:
         elif conformance == "non-standard":
             where_clauses.append("conformance IS NOT TRUE")
 
-        # healthy filter uses a subquery on recent health checks
-        healthy_join = ""
+        # healthy filter uses a correlated subquery on the most recent health check
         if healthy is not None:
-            healthy_join = """
-            INNER JOIN LATERAL (
-                SELECT (array_agg(success ORDER BY checked_at DESC))[1] as latest_success
-                FROM health_checks hc_filt
-                WHERE hc_filt.agent_id = a.id
-                  AND hc_filt.checked_at > NOW() - INTERVAL '24 hours'
-            ) hf ON true
+            healthy_subq = """
+            (SELECT success FROM health_checks hc_filt
+             WHERE hc_filt.agent_id = a.id
+               AND hc_filt.checked_at > NOW() - INTERVAL '24 hours'
+             ORDER BY hc_filt.checked_at DESC LIMIT 1)
             """
             if healthy:
-                where_clauses.append("hf.latest_success = true")
+                where_clauses.append(f"{healthy_subq} = true")
             else:
-                where_clauses.append("(hf.latest_success = false OR hf.latest_success IS NULL)")
+                where_clauses.append(f"({healthy_subq} = false OR {healthy_subq} IS NULL)")
 
         where_clause = " AND ".join(where_clauses)
 
         # Count total
-        count_query = f"SELECT COUNT(*) FROM agents a {healthy_join} WHERE {where_clause}"
+        count_query = f"SELECT COUNT(*) FROM agents a WHERE {where_clause}"
         total = await self.db.fetchval(count_query, *params)
 
         # Fetch paginated results with health metrics
@@ -247,7 +244,6 @@ class AgentRepository:
                 WHERE hc.agent_id = a.id
                   AND hc.checked_at > NOW() - INTERVAL '24 hours'
             ) hm ON true
-            {healthy_join}
             WHERE {where_clause}
             ORDER BY
                 CASE
