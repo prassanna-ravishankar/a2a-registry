@@ -364,12 +364,9 @@ async def update_agent(agent_id: UUID, request: Request):
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: UUID, request: Request):
-    """
-    Delete an agent (owner only).
-
-    Requires re-verification of wellKnownURI ownership.
-    """
+async def delete_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(default=None)):
+    """Delete an agent (admin only)."""
+    _require_admin(x_admin_key)
     track_api_query("DELETE /agents/{id}", agent_id=str(agent_id))
 
     agent_repo = AgentRepository(db)
@@ -378,17 +375,6 @@ async def delete_agent(agent_id: UUID, request: Request):
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    # Re-verify ownership before deletion
-    agent_create = AgentCreate(**agent.model_dump())
-    verified, message = await verify_well_known_uri(agent_create)
-
-    if not verified:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Ownership verification failed. Cannot delete. {message}",
-        )
-
-    # Soft delete
     await agent_repo.delete(agent_id)
     return JSONResponse(status_code=204, content={})
 
