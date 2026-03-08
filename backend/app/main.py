@@ -572,11 +572,9 @@ async def update_maintainer_notes(
     _require_admin(x_admin_key)
 
     agent_repo = AgentRepository(db)
-    agent = await agent_repo.get_by_id(agent_id)
-    if not agent:
+    updated = await agent_repo.update_maintainer_notes(agent_id, body.notes)
+    if not updated:
         raise HTTPException(status_code=404, detail="Agent not found")
-
-    await agent_repo.update_maintainer_notes(agent_id, body.notes)
     return {"message": "Maintainer notes updated", "maintainer_notes": body.notes}
 
 
