@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send } from 'lucide-react';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 const SESSION_KEY = 'feedback_submitted';
 
@@ -8,7 +9,7 @@ const FeedbackWidget = () => {
     const [message, setMessage] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [hidden, setHidden] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1');
-    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+    const isMobile = useMediaQuery('(max-width: 767px)');
     const textareaRef = useRef(null);
 
     useEffect(() => {
@@ -16,13 +17,6 @@ const FeedbackWidget = () => {
             textareaRef.current.focus();
         }
     }, [open]);
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(max-width: 767px)');
-        const handleChange = (event) => setIsMobile(event.matches);
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, []);
 
     if (hidden) return null;
 

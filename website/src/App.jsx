@@ -5,6 +5,7 @@ import Submit from './pages/Submit';
 import Admin from './pages/Admin';
 import { api, fetchStaticRegistry } from './lib/api';
 import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
+import useMediaQuery from './hooks/useMediaQuery';
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -13,21 +14,6 @@ function useDebounce(value, delay) {
     return () => clearTimeout(id);
   }, [value, delay]);
   return debounced;
-}
-
-function useMediaQuery(query) {
-  const getMatches = () => window.matchMedia(query).matches;
-  const [matches, setMatches] = useState(getMatches);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(query);
-    const listener = (event) => setMatches(event.matches);
-    setMatches(mediaQuery.matches);
-    mediaQuery.addEventListener('change', listener);
-    return () => mediaQuery.removeEventListener('change', listener);
-  }, [query]);
-
-  return matches;
 }
 
 const A2ARegistry = () => {
