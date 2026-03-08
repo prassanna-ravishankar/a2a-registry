@@ -2,7 +2,6 @@
 
 import time
 import uuid
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Optional
@@ -17,6 +16,9 @@ from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from .config import settings
 from .database import db
@@ -36,33 +38,11 @@ from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 from .validators import validate_well_known_uri
 
 
+limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
+
+
 def _make_mcp_app():
     return mcp.http_app(path="/", stateless_http=True)
-
-# Simple in-memory rate limiter: {ip: [timestamps]}
-_submission_timestamps: dict[str, list[float]] = defaultdict(list)
-_RATE_WINDOW = 3600  # 1 hour
-
-
-def _check_rate_limit(ip: str) -> bool:
-    """Return True if request is allowed, False if rate limit exceeded."""
-    if not settings.rate_limit_enabled:
-        return True
-    now = time.time()
-    cutoff = now - _RATE_WINDOW
-    timestamps = [t for t in _submission_timestamps[ip] if t > cutoff]
-    if not timestamps:
-        # No active timestamps in window - clean up entry and allow
-        if ip in _submission_timestamps:
-            del _submission_timestamps[ip]
-        _submission_timestamps[ip] = [now]
-        return True
-    if len(timestamps) >= settings.rate_limit_submissions_per_hour:
-        _submission_timestamps[ip] = timestamps
-        return False
-    timestamps.append(now)
-    _submission_timestamps[ip] = timestamps
-    return True
 
 
 @asynccontextmanager
@@ -84,6 +64,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware
 app.add_middleware(
@@ -125,6 +107,7 @@ async def health_check():
 
 
 @router.post("/agents/register", response_model=AgentPublic, status_code=201)
+@limiter.limit("10/hour")
 async def register_agent_simple(registration: AgentRegister, request: Request):
     """
     Register an agent by its wellKnownURI.
@@ -134,14 +117,6 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     """
     well_known_uri = str(registration.wellKnownURI)
     track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
-
-    # Rate limit
-    client_ip = request.client.host if request.client else "unknown"
-    if not _check_rate_limit(client_ip):
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
-        )
 
     # Validate wellKnownURI format
     uri_errors = validate_well_known_uri(well_known_uri)
@@ -193,6 +168,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
 
 
 @router.post("/agents", response_model=AgentPublic, status_code=201)
+@limiter.limit("10/hour")
 async def register_agent_full(agent: AgentCreate, request: Request):
     """
     Register a new agent with full payload.
@@ -201,15 +177,6 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     For a simpler flow, use POST /agents/register with just the wellKnownURI.
     """
     track_api_query("POST /agents", author=agent.author)
-
-    # Rate limit
-    client_ip = request.client.host if request.client else "unknown"
-    if not _check_rate_limit(client_ip):
-        logger.warning("rate_limit_exceeded", ip=client_ip)
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit exceeded: max {settings.rate_limit_submissions_per_hour} submissions per hour",
-        )
 
     # Check if already exists
     well_known_uri = str(agent.wellKnownURI)
@@ -436,6 +403,7 @@ async def get_registry_stats():
 
 
 @router.post("/agents/{agent_id}/flag", status_code=201)
+@limiter.limit("5/hour")
 async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     """Community flag/report an agent"""
     track_api_query("POST /agents/{id}/flag", agent_id=str(agent_id))
@@ -514,7 +482,8 @@ def _extract_text(result) -> str:
 
 
 @router.post("/agents/{agent_id}/chat")
-async def chat_with_agent(agent_id: UUID, body: ChatRequest):
+@limiter.limit("30/minute")
+async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
     """Proxy a chat message to an agent via the a2a-sdk."""
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(agent_id)

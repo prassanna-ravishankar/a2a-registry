@@ -58,6 +58,8 @@ def mock_db():
 def client(mock_db):
     # Patch the db object that main.py imported at module load time
     with patch("app.main.db", mock_db):
-        from app.main import app
+        from app.main import app, limiter
+        limiter.reset()
         with TestClient(app, raise_server_exceptions=False) as c:
             yield c
+        limiter.reset()

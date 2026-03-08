@@ -52,7 +52,6 @@ class Settings(BaseSettings):
     health_check_max_retries: int = 3
 
     # Rate Limiting
-    rate_limit_submissions_per_hour: int = 10
     rate_limit_enabled: bool = True
 
     # Admin

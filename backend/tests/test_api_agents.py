@@ -5,7 +5,6 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
-import app.main as main_module
 from app.models import AgentInDB, AgentPublic, Capabilities, RegistryStats
 
 from .conftest import MOCK_AGENT_ROW
@@ -145,31 +144,38 @@ def test_register_agent_duplicate(client):
 
 def test_register_agent_rate_limit(client):
     """Exhaust rate limit and confirm 429 is returned."""
-    # Clear any existing timestamps
-    main_module._submission_timestamps.clear()
+    from limits import parse
+    from slowapi.wrappers import Limit
 
-    # Temporarily lower the limit
-    original_limit = main_module.settings.rate_limit_submissions_per_hour
-    main_module.settings.rate_limit_submissions_per_hour = 2
+    from app.main import limiter
 
-    with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.fetch_agent_card") as mock_fetch, \
-         patch("app.main.validate_well_known_uri", return_value=[]):
-        instance = mock_repo.return_value
-        instance.get_by_well_known_uri = AsyncMock(return_value=None)
-        mock_fetch.return_value = (None, "connection refused")
+    # Swap route limit to 2/hour so we trigger 429 quickly
+    key = "app.main.register_agent_simple"
+    original_limits = limiter._route_limits[key]
+    orig = original_limits[0]
+    limiter._route_limits[key] = [Limit(
+        parse("2/hour"), orig.key_func, orig.scope, orig.per_method,
+        orig.methods, orig.error_message, orig.exempt_when, orig.cost,
+        orig.override_defaults,
+    )]
 
-        responses = []
-        for _ in range(3):
-            r = client.post(
-                "/agents/register",
-                json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
-            )
-            responses.append(r.status_code)
+    try:
+        with patch("app.main.AgentRepository") as mock_repo, \
+             patch("app.main.fetch_agent_card") as mock_fetch, \
+             patch("app.main.validate_well_known_uri", return_value=[]):
+            instance = mock_repo.return_value
+            instance.get_by_well_known_uri = AsyncMock(return_value=None)
+            mock_fetch.return_value = (None, "connection refused")
 
-    # Restore
-    main_module.settings.rate_limit_submissions_per_hour = original_limit
-    main_module._submission_timestamps.clear()
+            responses = []
+            for _ in range(3):
+                r = client.post(
+                    "/agents/register",
+                    json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+                )
+                responses.append(r.status_code)
+    finally:
+        limiter._route_limits[key] = original_limits
 
     assert 429 in responses, f"Expected 429 in responses, got {responses}"
 
