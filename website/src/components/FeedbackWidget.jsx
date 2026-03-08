@@ -8,6 +8,7 @@ const FeedbackWidget = () => {
     const [message, setMessage] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [hidden, setHidden] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1');
+    const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
     const textareaRef = useRef(null);
 
     useEffect(() => {
@@ -15,6 +16,13 @@ const FeedbackWidget = () => {
             textareaRef.current.focus();
         }
     }, [open]);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const handleChange = (event) => setIsMobile(event.matches);
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     if (hidden) return null;
 
@@ -32,9 +40,9 @@ const FeedbackWidget = () => {
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+        <div className={`fixed z-50 flex flex-col gap-2 ${isMobile ? 'bottom-3 right-3 left-3 items-end' : 'bottom-4 right-4 items-end'}`}>
             {open && (
-                <div className="bg-zinc-900 border border-zinc-700 shadow-2xl w-72 flex flex-col">
+                <div className={`flex flex-col border border-zinc-700 bg-zinc-900 shadow-2xl ${isMobile ? 'w-[min(100%,22rem)]' : 'w-72'}`}>
                     <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
                         <span className="text-[10px] font-mono text-emerald-500 tracking-wider">SEND_FEEDBACK</span>
                         <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors">
@@ -75,7 +83,7 @@ const FeedbackWidget = () => {
 
             <button
                 onClick={() => setOpen((o) => !o)}
-                className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all text-[10px] font-mono uppercase tracking-wider shadow-lg"
+                className={`flex items-center gap-2 border border-zinc-700 bg-zinc-900 text-[10px] font-mono uppercase tracking-wider text-zinc-400 shadow-lg transition-all hover:border-emerald-500/50 hover:text-emerald-400 ${isMobile ? 'px-3 py-2.5' : 'px-3 py-2'}`}
             >
                 <MessageSquare className="w-3.5 h-3.5" />
                 FEEDBACK

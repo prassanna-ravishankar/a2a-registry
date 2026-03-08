@@ -1,109 +1,102 @@
 import React from 'react';
+import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 import HealthBadge from './HealthBadge';
 
 const AgentCard = ({ agent, isSelected, onClick }) => {
+    const provider = agent.author || agent.provider?.organization || 'Unknown';
+    const topTags = agent.skills.flatMap((skill) => skill.tags || []).slice(0, 3);
+
     return (
         <div
             className={`
-        relative group flex flex-col h-full transition-all duration-200 cursor-pointer
-        border bg-zinc-950
+        group flex h-full cursor-pointer flex-col border bg-zinc-950/90 transition-all duration-200
         ${isSelected
                     ? 'border-emerald-500/50 bg-zinc-900/80 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
-                    : 'border-zinc-800 hover:border-zinc-700'
+                    : 'border-zinc-800 hover:border-zinc-700 hover:bg-zinc-950'
                 }
       `}
             onClick={() => onClick(agent)}
         >
-            {/* Corner Markers */}
-            <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l transition-colors ${isSelected ? 'border-emerald-500' : 'border-zinc-600'}`} />
-            <div className={`absolute top-0 right-0 w-2 h-2 border-t border-r transition-colors ${isSelected ? 'border-emerald-500' : 'border-zinc-600'}`} />
-            <div className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l transition-colors ${isSelected ? 'border-emerald-500' : 'border-zinc-600'}`} />
-            <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r transition-colors ${isSelected ? 'border-emerald-500' : 'border-zinc-600'}`} />
-
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-800/50">
-                <div className="flex justify-between items-start mb-2">
-                    <div className="min-w-0 flex-1 pr-4">
-                        <h3 className={`font-mono font-bold text-sm truncate group-hover:text-emerald-400 transition-colors ${isSelected ? 'text-emerald-400' : 'text-zinc-200'}`}>
-                            {agent.name}
-                        </h3>
-                        <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono mt-1">
-                            <span>v{agent.version}</span>
-                            <span>•</span>
-                            <span className="truncate">{agent.author || agent.provider?.organization || 'Unknown'}</span>
-                        </div>
-                    </div>
-
-                    {/* Status Indicators */}
-                    <div className="flex gap-1.5">
-                        {agent.conformance === false && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <div className="w-2 h-2 rounded-full bg-amber-500/50 border border-amber-500/30" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>Non-standard</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
+            <div className="flex items-start justify-between gap-3 border-b border-zinc-800/60 p-4 md:p-5">
+                <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <Badge
+                            variant="outline"
+                            className={`rounded-none border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] ${
+                                agent.conformance === false
+                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                            }`}
+                        >
+                            {agent.conformance === false ? (
+                                <>
+                                    <ShieldAlert className="mr-1 h-3 w-3" />
+                                    Non-standard
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck className="mr-1 h-3 w-3" />
+                                    Conformant
+                                </>
+                            )}
+                        </Badge>
                         {agent.capabilities?.streaming && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger>
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500/50 border border-emerald-500/30 animate-pulse" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>Streaming Enabled</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                            <Badge variant="outline" className="rounded-none border-cyan-500/30 bg-cyan-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300">
+                                <Radio className="mr-1 h-3 w-3" />
+                                Streaming
+                            </Badge>
                         )}
+                    </div>
+                    <h3 className={`font-mono text-base font-semibold leading-tight transition-colors group-hover:text-emerald-300 ${isSelected ? 'text-emerald-300' : 'text-zinc-100'}`}>
+                        {agent.name}
+                    </h3>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                        <span>v{agent.version}</span>
+                        <span className="text-zinc-700">•</span>
+                        <span className="truncate">{provider}</span>
                     </div>
                 </div>
+                <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-zinc-600 transition-colors group-hover:text-emerald-400" />
             </div>
 
-            {/* Content */}
-            <div className="flex-1 p-4 flex flex-col">
-                <p className="text-xs text-zinc-400 font-mono leading-relaxed line-clamp-3 mb-4 flex-1">
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-5">
+                <p className="text-sm leading-6 text-zinc-300 line-clamp-3 md:text-xs md:leading-relaxed">
                     {agent.description}
                 </p>
 
-                {/* Health Badge */}
-                {agent.uptime_percentage !== null && agent.uptime_percentage !== undefined && (
-                    <div className="mb-3">
+                <div className="flex flex-wrap gap-2">
+                    {agent.uptime_percentage !== null && agent.uptime_percentage !== undefined && (
                         <HealthBadge
                             uptime={agent.uptime_percentage}
                             avgResponseTime={agent.avg_response_time_ms}
                             lastCheck={agent.last_health_check}
                             size="sm"
                         />
-                    </div>
-                )}
+                    )}
+                    {agent.protocolVersion && (
+                        <Badge variant="outline" className="rounded-none border-zinc-700 bg-zinc-900 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+                            A2A v{agent.protocolVersion}
+                        </Badge>
+                    )}
+                </div>
 
-                {/* Skills */}
-                <div className="space-y-2">
-                    {agent.skills.slice(0, 2).map((skill, idx) => (
-                        <div key={idx} className="bg-zinc-900/50 border border-zinc-800/50 p-2">
-                            <div className="text-[10px] text-emerald-500/80 font-mono uppercase tracking-wider mb-1">
-                                {skill.name}
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                                {(skill.tags || []).slice(0, 3).map((tag, tIdx) => (
-                                    <span key={tIdx} className="text-[10px] text-zinc-500 bg-zinc-900 px-1 border border-zinc-800">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
+                <div className="flex flex-wrap gap-2">
+                    {topTags.map((tag) => (
+                        <span
+                            key={tag}
+                            className="border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-400"
+                        >
+                            {tag}
+                        </span>
                     ))}
                 </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-3 border-t border-zinc-800 bg-zinc-900/30 flex gap-2">
+            <div className="border-t border-zinc-800 bg-zinc-900/30 p-3">
                 <Button
-                    size="sm"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-black font-mono font-bold text-xs uppercase tracking-wider h-8 rounded-none"
+                    className="h-11 w-full rounded-none bg-emerald-600 font-mono text-xs font-bold uppercase tracking-[0.22em] text-black hover:bg-emerald-500"
                     onClick={(e) => {
                         e.stopPropagation();
                         onClick(agent);

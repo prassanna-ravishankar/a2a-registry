@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Layout from './components/Layout';
 import AgentGrid from './components/AgentGrid';
 import Submit from './pages/Submit';
@@ -15,7 +15,24 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
+function useMediaQuery(query) {
+  const getMatches = () => window.matchMedia(query).matches;
+  const [matches, setMatches] = useState(getMatches);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const listener = (event) => setMatches(event.matches);
+    setMatches(mediaQuery.matches);
+    mediaQuery.addEventListener('change', listener);
+    return () => mediaQuery.removeEventListener('change', listener);
+  }, [query]);
+
+  return matches;
+}
+
 const A2ARegistry = () => {
+  const getPageScrollTop = () => document.scrollingElement?.scrollTop || window.scrollY || 0;
+
   // Initialize page from URL path
   const [currentPage, setCurrentPage] = useState(() => {
     const p = window.location.pathname;
@@ -35,6 +52,9 @@ const A2ARegistry = () => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [stats, setStats] = useState(null);
   const [useStaticFallback, setUseStaticFallback] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const mobileScrollRef = useRef(0);
+  const previousSelectedAgentRef = useRef(null);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -250,9 +270,31 @@ const A2ARegistry = () => {
   }, []);
 
   const handleAgentSelect = useCallback((agent) => {
+    if (isMobile) {
+      mobileScrollRef.current = getPageScrollTop();
+    }
     setSelectedAgent(agent);
     trackAgentView(agent);
+  }, [isMobile]);
+
+  const handleCloseInspection = useCallback(() => {
+    setSelectedAgent(null);
   }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      if (!previousSelectedAgentRef.current && selectedAgent) {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        });
+      } else if (previousSelectedAgentRef.current && !selectedAgent) {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: mobileScrollRef.current, behavior: 'auto' });
+        });
+      }
+    }
+    previousSelectedAgentRef.current = selectedAgent;
+  }, [isMobile, selectedAgent]);
 
   // Handle page navigation
   useEffect(() => {
@@ -295,6 +337,7 @@ const A2ARegistry = () => {
 
   return (
     <Layout
+      isMobile={isMobile}
       searchTerm={searchTerm}
       setSearchTerm={setSearchTerm}
       agentCount={displayedAgents.length}
@@ -305,7 +348,7 @@ const A2ARegistry = () => {
       conformanceFilter={conformanceFilter}
       setConformanceFilter={setConformanceFilter}
       selectedAgent={selectedAgent}
-      onCloseInspection={() => setSelectedAgent(null)}
+      onCloseInspection={handleCloseInspection}
       stats={stats}
     >
       <AgentGrid
