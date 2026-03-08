@@ -29,8 +29,8 @@ spec:
         - sh
         - -c
         - |
-          python3 << 'EOF'
-          import asyncio, asyncpg, os, glob
+          python3 << 'PYEOF'
+          import asyncio, asyncpg, os, glob, urllib.request
 
           async def run():
               conn = await asyncpg.connect(
@@ -46,28 +46,59 @@ spec:
                       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                   )
               """)
-              migration_files = sorted(glob.glob('/app/migrations/versions/*.sql'))
-              for path in migration_files:
-                  filename = os.path.basename(path)
-                  already_applied = await conn.fetchval(
-                      'SELECT 1 FROM schema_migrations WHERE filename = $1', filename
-                  )
-                  if already_applied:
-                      print(f'  skip  {filename}')
-                      continue
-                  sql = open(path).read()
-                  await conn.execute(sql)
-                  await conn.execute(
-                      'INSERT INTO schema_migrations (filename) VALUES ($1)', filename
-                  )
-                  print(f'  apply {filename}')
+              # Seed schema_migrations for pre-existing tables so we don't re-run old migrations
+              agents_exists = await conn.fetchval(
+                  "SELECT 1 FROM information_schema.tables WHERE table_name = 'agents'"
+              )
+              if agents_exists:
+                  for pre in sorted(glob.glob('/app/migrations/versions/*.sql')):
+                      fn = os.path.basename(pre)
+                      already = await conn.fetchval(
+                          'SELECT 1 FROM schema_migrations WHERE filename = $1', fn
+                      )
+                      if not already:
+                          # Check if this migration's objects already exist by trying it
+                          sql = open(pre).read()
+                          try:
+                              await conn.execute(sql)
+                              print(f'  apply {fn}')
+                          except Exception as e:
+                              if 'already exists' in str(e) or 'duplicate' in str(e).lower():
+                                  print(f'  seed  {fn} (already applied)')
+                              else:
+                                  raise
+                          await conn.execute(
+                              'INSERT INTO schema_migrations (filename) VALUES ($1)', fn
+                          )
+                      else:
+                          print(f'  skip  {fn}')
+              else:
+                  migration_files = sorted(glob.glob('/app/migrations/versions/*.sql'))
+                  for path in migration_files:
+                      filename = os.path.basename(path)
+                      already_applied = await conn.fetchval(
+                          'SELECT 1 FROM schema_migrations WHERE filename = $1', filename
+                      )
+                      if already_applied:
+                          print(f'  skip  {filename}')
+                          continue
+                      sql = open(path).read()
+                      await conn.execute(sql)
+                      await conn.execute(
+                          'INSERT INTO schema_migrations (filename) VALUES ($1)', filename
+                      )
+                      print(f'  apply {filename}')
               await conn.close()
               print('Migrations complete.')
+              # Signal the cloud-sql-proxy sidecar to exit gracefully
+              try:
+                  req = urllib.request.Request('http://localhost:9091/quitquitquit', method='POST')
+                  urllib.request.urlopen(req, timeout=5)
+              except Exception:
+                  pass
 
           asyncio.run(run())
-          EOF
-          # Signal the cloud-sql-proxy sidecar to exit gracefully so the Job pod can complete
-          curl -s -X POST http://localhost:9091/quitquitquit || true
+          PYEOF
         env:
         - name: DATABASE_HOST
           value: "{{ .Values.database.host }}"
