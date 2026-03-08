@@ -214,7 +214,7 @@ class AgentRepository:
             if healthy:
                 where_clauses.append(f"{healthy_subq} = true")
             else:
-                where_clauses.append(f"({healthy_subq} = false OR {healthy_subq} IS NULL)")
+                where_clauses.append(f"{healthy_subq} IS NOT TRUE")
 
         where_clause = " AND ".join(where_clauses)
 
@@ -265,19 +265,13 @@ class AgentRepository:
         self, agent_id: UUID, conformance: Optional[bool], errors: Optional[list[str]] = None
     ) -> None:
         """Update the conformance status of an agent, optionally storing validation errors."""
-        if errors:
-            await self.db.execute(
-                "UPDATE agents SET conformance = $1, conformance_errors = $2, updated_at = NOW() WHERE id = $3",
-                conformance,
-                json.dumps(errors[:10]),
-                agent_id,
-            )
-        else:
-            await self.db.execute(
-                "UPDATE agents SET conformance = $1, conformance_errors = NULL, updated_at = NOW() WHERE id = $2",
-                conformance,
-                agent_id,
-            )
+        error_json = json.dumps(errors[:10]) if errors else None
+        await self.db.execute(
+            "UPDATE agents SET conformance = $1, conformance_errors = $2, updated_at = NOW() WHERE id = $3",
+            conformance,
+            error_json,
+            agent_id,
+        )
 
     async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card"""
