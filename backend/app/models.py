@@ -61,6 +61,7 @@ class AgentBase(BaseModel):
 
     # Conformance flag (NULL/True = standard, False = non-standard)
     conformance: Optional[bool] = None
+    conformance_errors: Optional[list[str]] = None
 
     # Optional registry extensions
     homepage: Optional[HttpUrl] = None

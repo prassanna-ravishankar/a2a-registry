@@ -244,6 +244,7 @@ async def list_agents(
     author: Optional[str] = None,
     search: Optional[str] = None,
     conformance: Optional[str] = None,
+    healthy: Optional[bool] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -256,6 +257,7 @@ async def list_agents(
     - capability: Filter by A2A capability (e.g., "streaming")
     - author: Filter by author name (case-insensitive partial match)
     - conformance: Filter by conformance ("standard" or "non-standard")
+    - healthy: Filter by health status (true = healthy, false = unhealthy)
     - limit: Max results to return (default: 50, max: 100)
     - offset: Pagination offset (default: 0)
     """
@@ -266,6 +268,7 @@ async def list_agents(
         author=author,
         search=search,
         conformance=conformance,
+        healthy=healthy,
         limit=limit,
         offset=offset,
     )
@@ -285,6 +288,7 @@ async def list_agents(
         author=author,
         search=search,
         conformance=conformance,
+        healthy=healthy,
         limit=limit,
         offset=offset,
     )

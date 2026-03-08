@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Globe, FileText, Zap, Flag } from 'lucide-react';
+import { X, Globe, FileText, Zap, Flag, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Terminal from './Terminal';
@@ -66,6 +66,26 @@ const ReportModal = ({ agent, onClose }) => {
                         </Button>
                     </>
                 )}
+            </div>
+        </div>
+    );
+};
+
+const CopyableField = ({ label, value }) => {
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (
+        <div className="space-y-1">
+            <div className="text-[10px] text-zinc-600 font-mono uppercase">{label}</div>
+            <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-2 py-1.5">
+                <span className="text-[10px] text-zinc-400 font-mono truncate flex-1">{value}</span>
+                <button onClick={copy} className="text-zinc-500 hover:text-zinc-200 shrink-0">
+                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
             </div>
         </div>
     );
@@ -157,6 +177,10 @@ const InspectionDeck = ({ agent, onClose }) => {
                                 <div className="text-sm text-zinc-300 font-mono">{agent.license || 'MIT'}</div>
                             </div>
                             <div className="space-y-1">
+                                <div className="text-[10px] text-zinc-600 font-mono uppercase">Protocol</div>
+                                <div className="text-sm text-zinc-300 font-mono">A2A v{agent.protocolVersion || '?'}</div>
+                            </div>
+                            <div className="space-y-1">
                                 <div className="text-[10px] text-zinc-600 font-mono uppercase">Capabilities</div>
                                 <div className="flex gap-2">
                                     {agent.capabilities?.streaming && <span className="text-xs text-emerald-500 font-mono">[STREAMING]</span>}
@@ -164,6 +188,9 @@ const InspectionDeck = ({ agent, onClose }) => {
                                 </div>
                             </div>
                         </div>
+                        {agent.wellKnownURI && (
+                            <CopyableField label="Agent Card URI" value={agent.wellKnownURI} />
+                        )}
                     </div>
 
                     {/* Integration Snippets */}
@@ -178,25 +205,28 @@ const InspectionDeck = ({ agent, onClose }) => {
                             <div className="mt-2">
                                 <TabsContent value="registry">
                                     <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
-                                        {`from a2a_registry import APIRegistry
+                                        {`import asyncio
+from a2a_registry import AsyncRegistry
 
-registry = APIRegistry()
-agent = registry.get_by_id("${agent.id}")
-print(f"Found: {agent.name}")
+async def main():
+    async with AsyncRegistry() as registry:
+        agent = await registry.get_by_id("${agent.id}")
+        client = await agent.async_connect()
+        print(f"Connected to {agent.name}")
 
-# Connect
-client = agent.connect()`}
+asyncio.run(main())`}
                                     </pre>
                                 </TabsContent>
                                 <TabsContent value="sdk">
                                     <pre className="bg-zinc-950 p-3 border border-zinc-800 font-mono text-[10px] text-zinc-400 overflow-x-auto custom-scrollbar">
                                         {`import asyncio
-from a2a import A2ACardResolver
+from a2a.client import ClientFactory, ClientConfig
 
 async def main():
-    resolver = A2ACardResolver(base_url="${agent.url}")
-    card = await resolver.resolve_card()
-    print(f"Connected to {card.name}")
+    client = await ClientFactory.connect(
+        "${(() => { try { const u = new URL(agent.wellKnownURI || agent.url); return u.origin; } catch { return agent.url; } })()}",
+    )
+    print(f"Connected via A2A SDK")
 
 asyncio.run(main())`}
                                     </pre>
@@ -207,8 +237,14 @@ asyncio.run(main())`}
   -H "Content-Type: application/json" \\
   -d '{
     "jsonrpc": "2.0",
-    "method": "hello",
-    "params": {},
+    "method": "message/send",
+    "params": {
+      "message": {
+        "messageId": "1",
+        "role": "user",
+        "parts": [{"kind": "text", "text": "Hello"}]
+      }
+    },
     "id": 1
   }'`}
                                     </pre>
@@ -222,12 +258,17 @@ asyncio.run(main())`}
             {/* Footer Actions */}
             <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 space-y-2">
                 <div className="grid grid-cols-2 gap-3">
-                    <Button className="bg-zinc-100 hover:bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-none" asChild>
-                        <a href={agent.url} target="_blank" rel="noopener noreferrer">
-                            <Globe className="w-3 h-3 mr-2" />
-                            Launch Interface
-                        </a>
-                    </Button>
+                    {(() => {
+                        const websiteUrl = agent.homepage || agent.provider?.url || agent.documentationUrl || agent.url;
+                        return (
+                            <Button className="bg-zinc-100 hover:bg-white text-black font-mono font-bold text-xs uppercase tracking-wider rounded-none" asChild>
+                                <a href={websiteUrl} target="_blank" rel="noopener noreferrer">
+                                    <Globe className="w-3 h-3 mr-2" />
+                                    Launch Website
+                                </a>
+                            </Button>
+                        );
+                    })()}
                     {agent.documentationUrl ? (
                         <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 font-mono text-xs uppercase tracking-wider rounded-none bg-transparent" asChild>
                             <a href={agent.documentationUrl} target="_blank" rel="noopener noreferrer">
