@@ -29,6 +29,14 @@ spec:
         - sh
         - -c
         - |
+          echo "Waiting for cloud-sql-proxy..."
+          for i in $(seq 1 30); do
+            if nc -z 127.0.0.1 {{ .Values.database.port }} 2>/dev/null; then
+              echo "Proxy ready."
+              break
+            fi
+            sleep 1
+          done
           python3 << 'PYEOF'
           import asyncio, asyncpg, os, glob, urllib.request
 
