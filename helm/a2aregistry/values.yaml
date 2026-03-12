@@ -59,6 +59,13 @@ api:
     initialDelaySeconds: 5
     periodSeconds: 5
 
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    failureThreshold: 30
+    periodSeconds: 5
+
   service:
     type: ClusterIP
     port: 80
@@ -93,7 +100,7 @@ worker:
   resources:
     requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 96Mi
     limits:
       cpu: 200m
       memory: 256Mi
@@ -194,6 +201,7 @@ config:
 # Hello World agent
 helloWorld:
   enabled: false
+  replicaCount: 0
   hostname: hello.a2aregistry.org
   agentUrl: https://hello.a2aregistry.org
 

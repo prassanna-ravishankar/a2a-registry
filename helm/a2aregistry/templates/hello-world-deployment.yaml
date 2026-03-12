@@ -8,7 +8,7 @@ metadata:
   labels:
     app: a2aregistry-hello-world
 spec:
-  replicas: 1
+  replicas: {{ .Values.helloWorld.replicaCount | default 0 }}
   selector:
     matchLabels:
       app: a2aregistry-hello-world
@@ -51,6 +51,12 @@ spec:
               path: /health
               port: 8080
             initialDelaySeconds: 10
+            periodSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            failureThreshold: 30
             periodSeconds: 5
 ---
 apiVersion: v1

@@ -62,10 +62,10 @@ spec:
         resources:
           requests:
             cpu: 50m
-            memory: 64Mi
+            memory: 96Mi
           limits:
             cpu: 200m
-            memory: 128Mi
+            memory: 192Mi
 
       {{- if .Values.cloudsql.enabled }}
       - name: cloud-sql-proxy
