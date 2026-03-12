@@ -1,6 +1,6 @@
 """Entry point for the admin app server."""
 
-import uvicorn
+from granian import Granian
 
 if __name__ == "__main__":
-    uvicorn.run("admin_app:app", host="0.0.0.0", port=8001)
+    Granian("admin_app:app", address="0.0.0.0", port=8001, interface="asgi").serve()
