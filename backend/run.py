@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Run the FastAPI application with uvicorn"""
+"""Run the FastAPI application with Granian"""
 
-import uvicorn
+from granian import Granian
 
 from app.config import settings
 
 if __name__ == "__main__":
-    uvicorn.run(
+    Granian(
         "app.main:app",
-        host=settings.api_host,
+        address=settings.api_host,
         port=settings.api_port,
+        interface="asgi",
         reload=settings.api_reload,
-    )
+    ).serve()
