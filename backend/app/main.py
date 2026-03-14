@@ -40,6 +40,27 @@ from .validators import validate_well_known_uri
 
 limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
 
+_DEFAULT_CAPABILITIES = {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}
+
+
+def _build_agent_create(agent_card: dict, well_known_uri: str, author_fallback: str = "Unknown") -> AgentCreate:
+    """Build an AgentCreate from a fetched agent card dict."""
+    return AgentCreate(
+        protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
+        name=agent_card["name"],
+        description=agent_card["description"],
+        author=agent_card.get("provider", {}).get("organization", author_fallback),
+        wellKnownURI=well_known_uri,
+        url=agent_card["url"],
+        version=agent_card["version"],
+        provider=agent_card.get("provider"),
+        documentationUrl=agent_card.get("documentationUrl"),
+        capabilities=agent_card.get("capabilities", _DEFAULT_CAPABILITIES),
+        defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
+        defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
+        skills=agent_card.get("skills", []),
+    )
+
 
 def _make_mcp_app():
     return mcp.http_app(path="/", stateless_http=True)
@@ -143,21 +164,8 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
 
     # Build AgentCreate from fetched agent card
     try:
-        agent_data = AgentCreate(
-            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
-            name=agent_card["name"],
-            description=agent_card["description"],
-            author=registration.author or agent_card.get("provider", {}).get("organization", "Unknown"),
-            wellKnownURI=well_known_uri,
-            url=agent_card["url"],
-            version=agent_card["version"],
-            provider=agent_card.get("provider"),
-            documentationUrl=agent_card.get("documentationUrl"),
-            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
-            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
-            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
-            skills=agent_card.get("skills", []),
-        )
+        author_fallback = registration.author or agent_card.get("provider", {}).get("organization", "Unknown")
+        agent_data = _build_agent_create(agent_card, well_known_uri, author_fallback=author_fallback)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
 
@@ -307,21 +315,8 @@ async def update_agent(agent_id: UUID, request: Request):
     assert agent_card is not None  # invariant: error is None iff agent_card is not None
 
     try:
-        agent_data = AgentCreate(
-            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
-            name=agent_card["name"],
-            description=agent_card["description"],
-            author=agent_card.get("provider", {}).get("organization", existing.author),
-            wellKnownURI=well_known_uri,
-            url=agent_card["url"],
-            version=agent_card["version"],
-            provider=agent_card.get("provider"),
-            documentationUrl=agent_card.get("documentationUrl"),
-            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
-            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
-            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
-            skills=agent_card.get("skills", []),
-        )
+        author_fallback = agent_card.get("provider", {}).get("organization", existing.author)
+        agent_data = _build_agent_create(agent_card, well_known_uri, author_fallback=author_fallback)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
 
