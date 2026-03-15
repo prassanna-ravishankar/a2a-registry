@@ -145,7 +145,7 @@ async def health_check_cycle():
         # Create shared session for all requests
         async with aiohttp.ClientSession() as session:
             # Check all agents concurrently (with some rate limiting)
-            tasks = []
+            batch = []
             for agent in agents:
                 task = check_agent_health(
                     agent_id=agent.id,
@@ -154,18 +154,24 @@ async def health_check_cycle():
                     health_repo=health_repo,
                     agent_repo=agent_repo,
                 )
-                tasks.append(task)
+                batch.append(task)
 
                 # Process in batches of 50 to avoid overwhelming
-                if len(tasks) >= 50:
-                    await asyncio.gather(*tasks, return_exceptions=True)
-                    tasks = []
+                if len(batch) >= 50:
+                    results = await asyncio.gather(*batch, return_exceptions=True)
+                    for result in results:
+                        if isinstance(result, Exception):
+                            logger.error("health_check_task_error", error=str(result))
+                    batch = []
                     # Small delay between batches
                     await asyncio.sleep(1)
 
             # Process remaining tasks
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
+            if batch:
+                results = await asyncio.gather(*batch, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        logger.error("health_check_task_error", error=str(result))
 
         # Prune health_checks older than 90 days
         try:

@@ -1,10 +1,11 @@
 """FastAPI application - main entry point"""
 
+import ipaddress
 import time
 import uuid
 from contextlib import asynccontextmanager
 from http import HTTPStatus
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -39,6 +40,37 @@ from .validators import validate_well_known_uri
 
 
 limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
+
+
+def _agent_create_from_card(
+    agent_card: dict[str, Any],
+    well_known_uri: str,
+    *,
+    author_override: Optional[str] = None,
+    author_fallback: str = "Unknown",
+) -> AgentCreate:
+    """Build an AgentCreate from a fetched agent card dict.
+
+    Raises HTTPException(400) if the card is missing required fields.
+    """
+    try:
+        return AgentCreate(
+            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
+            name=agent_card["name"],
+            description=agent_card["description"],
+            author=author_override or agent_card.get("provider", {}).get("organization", author_fallback),
+            wellKnownURI=well_known_uri,
+            url=agent_card["url"],
+            version=agent_card["version"],
+            provider=agent_card.get("provider"),
+            documentationUrl=agent_card.get("documentationUrl"),
+            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
+            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
+            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
+            skills=agent_card.get("skills", []),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
 
 
 def _make_mcp_app():
@@ -139,27 +171,12 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
-    assert agent_card is not None  # invariant: error is None iff agent_card is not None
+    if agent_card is None:
+        raise HTTPException(status_code=500, detail="Internal error: agent card fetch returned no data")
 
-    # Build AgentCreate from fetched agent card
-    try:
-        agent_data = AgentCreate(
-            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
-            name=agent_card["name"],
-            description=agent_card["description"],
-            author=registration.author or agent_card.get("provider", {}).get("organization", "Unknown"),
-            wellKnownURI=well_known_uri,
-            url=agent_card["url"],
-            version=agent_card["version"],
-            provider=agent_card.get("provider"),
-            documentationUrl=agent_card.get("documentationUrl"),
-            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
-            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
-            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
-            skills=agent_card.get("skills", []),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
+    agent_data = _agent_create_from_card(
+        agent_card, well_known_uri, author_override=registration.author,
+    )
 
     # Create agent
     try:
@@ -304,26 +321,12 @@ async def update_agent(agent_id: UUID, request: Request):
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
-    assert agent_card is not None  # invariant: error is None iff agent_card is not None
+    if agent_card is None:
+        raise HTTPException(status_code=500, detail="Internal error: agent card fetch returned no data")
 
-    try:
-        agent_data = AgentCreate(
-            protocolVersion=agent_card.get("protocolVersion", "0.3.0"),
-            name=agent_card["name"],
-            description=agent_card["description"],
-            author=agent_card.get("provider", {}).get("organization", existing.author),
-            wellKnownURI=well_known_uri,
-            url=agent_card["url"],
-            version=agent_card["version"],
-            provider=agent_card.get("provider"),
-            documentationUrl=agent_card.get("documentationUrl"),
-            capabilities=agent_card.get("capabilities", {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False}),
-            defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),
-            defaultOutputModes=agent_card.get("defaultOutputModes", ["text/plain"]),
-            skills=agent_card.get("skills", []),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid agent card format: {e}")
+    agent_data = _agent_create_from_card(
+        agent_card, well_known_uri, author_fallback=existing.author,
+    )
 
     try:
         await agent_repo.update(agent_id, agent_data)
@@ -434,7 +437,6 @@ class ChatRequest(BaseModel):
 
 def _is_private_url(url: str) -> bool:
     """Return True if the URL resolves to a private/internal address (SSRF guard)."""
-    import ipaddress
     try:
         host = urlparse(url).hostname or ""
         addr = ipaddress.ip_address(host)
@@ -527,23 +529,26 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
             async for event in client.send_message(message):
                 response_text = _extract_text(event)
                 break  # non-streaming: one event expected
-    except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.RequestError, Exception) as exc:
+    except httpx.TimeoutException:
         elapsed_ms = int((time.monotonic() - start) * 1000)
-        if isinstance(exc, httpx.TimeoutException):
-            await health_repo.create(agent_id, 504, elapsed_ms, False, "Agent request timed out", source='chat')
-            raise HTTPException(status_code=504, detail="Agent request timed out")
-        if isinstance(exc, httpx.HTTPStatusError):
-            code = exc.response.status_code
-            try:
-                phrase = HTTPStatus(code).phrase
-            except ValueError:
-                phrase = "Unknown"
-            error_msg = f"Agent returned {code} {phrase}"
-            await health_repo.create(agent_id, code, elapsed_ms, False, error_msg, source='chat')
-            raise HTTPException(status_code=code, detail=error_msg)
-        if isinstance(exc, httpx.RequestError):
-            await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
-            raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+        await health_repo.create(agent_id, 504, elapsed_ms, False, "Agent request timed out", source='chat')
+        raise HTTPException(status_code=504, detail="Agent request timed out")
+    except httpx.HTTPStatusError as exc:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        code = exc.response.status_code
+        try:
+            phrase = HTTPStatus(code).phrase
+        except ValueError:
+            phrase = "Unknown"
+        error_msg = f"Agent returned {code} {phrase}"
+        await health_repo.create(agent_id, code, elapsed_ms, False, error_msg, source='chat')
+        raise HTTPException(status_code=code, detail=error_msg)
+    except httpx.RequestError as exc:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+    except Exception:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
         logger.exception("chat_proxy_error", agent_id=str(agent_id))
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent returned an unexpected error", source='chat')
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")

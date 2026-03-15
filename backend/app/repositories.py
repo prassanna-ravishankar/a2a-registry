@@ -183,8 +183,9 @@ class AgentRepository:
             valid_capabilities = {"streaming", "pushNotifications", "stateTransitionHistory"}
             if capability not in valid_capabilities:
                 return [], 0
-            # capability is safe to interpolate - validated against _VALID_CAPABILITIES whitelist above
-            where_clauses.append(f"capabilities::jsonb ->> '{capability}' = 'true'")
+            where_clauses.append(f"capabilities::jsonb ->> ${param_idx} = 'true'")
+            params.append(capability)
+            param_idx += 1
 
         if author:
             where_clauses.append(f"author ILIKE ${param_idx}")
