@@ -209,7 +209,16 @@ class AgentRepository:
 
         if search:
             where_clauses.append(
-                f"(name ILIKE ${param_idx} OR description ILIKE ${param_idx} OR author ILIKE ${param_idx})"
+                f"""(name ILIKE ${param_idx} OR description ILIKE ${param_idx} OR author ILIKE ${param_idx}
+                 OR EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(skills::jsonb) s
+                    WHERE s->>'name' ILIKE ${param_idx}
+                       OR s->>'description' ILIKE ${param_idx}
+                       OR EXISTS (
+                          SELECT 1 FROM jsonb_array_elements_text(s->'tags') t
+                          WHERE t ILIKE ${param_idx}
+                       )
+                 ))"""
             )
             params.append(f"%{search}%")
             param_idx += 1
