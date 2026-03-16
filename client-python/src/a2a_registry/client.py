@@ -20,9 +20,13 @@ from ._base import BaseRegistryLogic
 
 
 class Registry(BaseRegistryLogic):
-    """Client for interacting with the A2A Registry."""
+    """Client for interacting with the A2A Registry.
 
-    DEFAULT_REGISTRY_URL = "https://www.a2aregistry.org/registry.json"
+    Fetches all agents from the live API and caches locally. For server-side
+    filtering use :class:`APIRegistry` instead.
+    """
+
+    DEFAULT_REGISTRY_URL = "https://a2aregistry.org/api/agents?limit=200"
     CACHE_DURATION = 300  # 5 minutes in seconds
 
     def __init__(self, registry_url: Optional[str] = None, cache_duration: Optional[int] = None):
@@ -44,6 +48,15 @@ class Registry(BaseRegistryLogic):
             response = requests.get(self.registry_url, timeout=10)
             response.raise_for_status()
             data = response.json()
+            # Support both the paginated API format and the legacy static format
+            if "agents" in data and "version" not in data:
+                agents = data["agents"]
+                data = {
+                    "version": "api",
+                    "generated": "",
+                    "count": data.get("total", len(agents)),
+                    "agents": agents,
+                }
             return RegistryResponse(**data)
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to fetch registry: {e}") from e
@@ -263,7 +276,7 @@ class Registry(BaseRegistryLogic):
 class AsyncRegistry(BaseRegistryLogic):
     """Async client for interacting with the A2A Registry."""
 
-    DEFAULT_REGISTRY_URL = "https://www.a2aregistry.org/registry.json"
+    DEFAULT_REGISTRY_URL = "https://a2aregistry.org/api/agents?limit=200"
     CACHE_DURATION = 300  # 5 minutes in seconds
 
     def __init__(self, registry_url: Optional[str] = None, cache_duration: Optional[int] = None,
@@ -309,6 +322,15 @@ class AsyncRegistry(BaseRegistryLogic):
             async with self._session.get(self.registry_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 response.raise_for_status()
                 data = await response.json()
+                # Support both the paginated API format and the legacy static format
+                if "agents" in data and "version" not in data:
+                    agents = data["agents"]
+                    data = {
+                        "version": "api",
+                        "generated": "",
+                        "count": data.get("total", len(agents)),
+                        "agents": agents,
+                    }
                 return RegistryResponse(**data)
         except aiohttp.ClientError as e:
             raise RuntimeError(f"Failed to fetch registry: {e}") from e

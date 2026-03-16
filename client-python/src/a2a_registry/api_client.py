@@ -23,7 +23,7 @@ from .models import Agent
 class APIRegistry:
     """API-backed registry client with server-side filtering"""
 
-    DEFAULT_API_URL = "https://www.a2aregistry.org/api"
+    DEFAULT_API_URL = "https://a2aregistry.org/api"
     CACHE_DURATION = 60  # 1 minute cache (shorter since backend is dynamic)
 
     def __init__(self, api_url: Optional[str] = None, cache_duration: Optional[int] = None):
@@ -31,7 +31,7 @@ class APIRegistry:
         Initialize the API Registry client.
 
         Args:
-            api_url: Optional custom API URL (default: https://www.a2aregistry.org/api)
+            api_url: Optional custom API URL (default: https://a2aregistry.org/api)
             cache_duration: Optional cache duration in seconds (default: 60)
         """
         self.api_url = api_url or self.DEFAULT_API_URL
@@ -333,7 +333,7 @@ class APIRegistry:
 class AsyncAPIRegistry:
     """Async API-backed registry client"""
 
-    DEFAULT_API_URL = "https://www.a2aregistry.org/api"
+    DEFAULT_API_URL = "https://a2aregistry.org/api"
     CACHE_DURATION = 60
 
     def __init__(
