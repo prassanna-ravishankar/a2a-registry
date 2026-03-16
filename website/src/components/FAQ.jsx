@@ -21,8 +21,8 @@ const FAQ = () => {
             </h3>
           </summary>
           <div className="px-6 pb-6 text-muted-foreground leading-relaxed border-t border-purple-100">
-            <p className="mt-4">A2A Registry is a community-driven, open-source directory of AI agents using the A2A Protocol. <strong className="text-foreground">Unlike other registries that index code repositories or implementations, we exclusively index live, hosted agents that are actively running and accessible.</strong> Using a "Git as a Database" model, we leverage GitHub for transparent data submission, validation, and hosting.</p>
-            <p className="mt-3">The registry is accessible both to humans via our website and to agents programmatically via a static API endpoint at <code className="bg-purple-100 px-2 py-1 rounded text-purple-700 font-mono text-sm">https://www.a2aregistry.org/registry.json</code></p>
+            <p className="mt-4">A2A Registry is a community-driven, open-source directory of AI agents using the A2A Protocol. <strong className="text-foreground">Unlike other registries that index code repositories or implementations, we exclusively index live, hosted agents that are actively running and accessible.</strong> Agents self-register via a REST API and are health-checked every 30 minutes.</p>
+            <p className="mt-3">The registry is accessible both to humans via our website and to agents programmatically via the API at <code className="bg-purple-100 px-2 py-1 rounded text-purple-700 font-mono text-sm">https://a2aregistry.org/api/agents</code> or via the MCP server at <code className="bg-purple-100 px-2 py-1 rounded text-purple-700 font-mono text-sm">https://a2aregistry.org/mcp/</code></p>
           </div>
         </details>
 
@@ -39,7 +39,7 @@ const FAQ = () => {
             <pre className="bg-purple-50 rounded-lg p-4 mt-2 mb-3 text-purple-700 text-sm overflow-x-auto font-mono">pip install a2a-registry-client</pre>
 
             <p className="mt-3 font-semibold text-foreground">Via API:</p>
-            <pre className="bg-purple-50 rounded-lg p-4 mt-2 mb-3 text-purple-700 text-sm overflow-x-auto font-mono">curl https://www.a2aregistry.org/registry.json</pre>
+            <pre className="bg-purple-50 rounded-lg p-4 mt-2 mb-3 text-purple-700 text-sm overflow-x-auto font-mono">curl https://a2aregistry.org/api/agents</pre>
 
             <p>The registry provides agent URLs, capabilities, and integration examples for each agent. Each agent card shows detailed code examples for different integration patterns.</p>
           </div>
@@ -78,14 +78,12 @@ const FAQ = () => {
             <div className="mt-3">
               <p className="font-semibold text-foreground">Submission Process:</p>
               <ol className="list-decimal list-inside mt-2 space-y-1 text-sm">
-                <li>Fork the <a href="https://github.com/prassanna-ravishankar/a2a-registry" className="text-purple-600 hover:text-purple-700 underline" target="_blank" rel="noopener noreferrer">A2A Registry repository</a></li>
-                <li>Create a JSON file in <code className="bg-purple-100 px-1 rounded text-purple-700 font-mono">/agents/</code> directory</li>
-                <li>Submit a Pull Request</li>
-                <li>Our CI will validate your submission</li>
+                <li>Deploy your A2A agent with a valid agent card endpoint</li>
+                <li>Use the <a href="/submit" className="text-purple-600 hover:text-purple-700 underline">Submit page</a> or call <code className="bg-purple-100 px-1 rounded text-purple-700 font-mono">POST /api/agents/register</code> with your wellKnownURI</li>
+                <li>The registry fetches and validates your agent card automatically</li>
+                <li>Health checks run every 30 minutes to monitor availability</li>
               </ol>
             </div>
-
-            <p className="mt-3">See the <a href="https://github.com/prassanna-ravishankar/a2a-registry/blob/main/CONTRIBUTING.md" className="text-purple-600 hover:text-purple-700 underline" target="_blank" rel="noopener noreferrer">Contributing Guide</a> for detailed instructions.</p>
           </div>
         </details>
 

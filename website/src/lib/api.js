@@ -1,6 +1,6 @@
 import { sampleRegistry } from './sampleRegistry';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://www.a2aregistry.org/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://a2aregistry.org/api';
 
 class ApiError extends Error {
   constructor(message, status, data) {
