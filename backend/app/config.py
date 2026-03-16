@@ -34,12 +34,13 @@ class Settings(BaseSettings):
         return f"postgresql://{self.db_user}@{self.db_host}:{self.db_port}/{self.db_name}"
     database_pool_min_size: int = 5
     database_pool_max_size: int = 20
+    database_statement_timeout_ms: int = 10000  # 10s max per query
 
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_reload: bool = False
-    cors_origins: list[str] = ["http://localhost:5173", "https://www.a2aregistry.org"]
+    cors_origins: list[str] = ["http://localhost:5173", "https://a2aregistry.org", "https://www.a2aregistry.org"]
 
     # PostHog
     posthog_api_key: str = ""

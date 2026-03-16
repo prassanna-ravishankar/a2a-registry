@@ -13,10 +13,18 @@ class Database:
 
     async def connect(self):
         """Create database connection pool"""
+
+        async def _init_connection(conn):
+            # Set statement timeout to prevent runaway queries from holding connections
+            timeout_ms = settings.database_statement_timeout_ms
+            if timeout_ms > 0:
+                await conn.execute(f"SET statement_timeout = {timeout_ms}")
+
         self.pool = await asyncpg.create_pool(
             settings.database_url,
             min_size=settings.database_pool_min_size,
             max_size=settings.database_pool_max_size,
+            init=_init_connection,
         )
 
     async def disconnect(self):
