@@ -69,6 +69,7 @@ async def list_agents(
     capability: Optional[str] = None,
     author: Optional[str] = None,
     conformance: Optional[str] = None,
+    healthy: Optional[bool] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> dict:
@@ -80,6 +81,7 @@ async def list_agents(
         capability: Filter by A2A capability ("streaming", "pushNotifications", "stateTransitionHistory")
         author: Filter by author name (partial match)
         conformance: "standard" (A2A spec compliant) or "non-standard"
+        healthy: Filter by health status (true = only healthy agents)
         limit: Max results (default 20)
         offset: Pagination offset
     """
@@ -91,6 +93,7 @@ async def list_agents(
         capability=capability,
         author=author,
         conformance=conformance,
+        healthy=healthy,
         limit=min(limit, 100),
         offset=offset,
     )
