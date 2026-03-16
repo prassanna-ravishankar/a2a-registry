@@ -158,14 +158,24 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     if uri_errors:
         raise HTTPException(status_code=400, detail="; ".join(uri_errors))
 
-    # Check if already exists
+    # Check if already exists (exact URI match)
     agent_repo = AgentRepository(db)
     existing = await agent_repo.get_by_well_known_uri(well_known_uri)
     if existing:
         raise HTTPException(
             status_code=409,
-            detail="Agent already registered. Use PUT /agents/{id} to update.",
+            detail=f"Agent already registered (id={existing.id}). Use PUT /agents/{existing.id} to update.",
         )
+
+    # Check for duplicate by hostname (catches agent.json vs agent-card.json on same host)
+    hostname = urlparse(well_known_uri).hostname or ""
+    if hostname:
+        host_duplicate = await agent_repo.get_by_host(hostname)
+        if host_duplicate:
+            raise HTTPException(
+                status_code=409,
+                detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
+            )
 
     # Fetch the agent card from the wellKnownURI
     agent_card, error = await fetch_agent_card(well_known_uri)
@@ -198,7 +208,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     """
     track_api_query("POST /agents", author=agent.author)
 
-    # Check if already exists
+    # Check if already exists (exact URI match)
     well_known_uri = str(agent.wellKnownURI)
     agent_repo = AgentRepository(db)
     existing = await agent_repo.get_by_well_known_uri(well_known_uri)
@@ -206,8 +216,18 @@ async def register_agent_full(agent: AgentCreate, request: Request):
         logger.info("agent_duplicate", well_known_uri=well_known_uri)
         raise HTTPException(
             status_code=409,
-            detail=f"Agent with wellKnownURI {agent.wellKnownURI} already exists",
+            detail=f"Agent already registered (id={existing.id}). Use PUT /agents/{existing.id} to update.",
         )
+
+    # Check for duplicate by hostname
+    hostname = urlparse(well_known_uri).hostname or ""
+    if hostname:
+        host_duplicate = await agent_repo.get_by_host(hostname)
+        if host_duplicate:
+            raise HTTPException(
+                status_code=409,
+                detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
+            )
 
     # Verify ownership via wellKnownURI
     verified, message = await verify_well_known_uri(agent)

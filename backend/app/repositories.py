@@ -153,6 +153,21 @@ class AgentRepository:
             return None
         return self._row_to_agent(row)
 
+    async def get_by_host(self, hostname: str) -> Optional[AgentInDB]:
+        """Get an existing agent whose wellKnownURI shares the same hostname."""
+        query = """
+            SELECT * FROM agents
+            WHERE well_known_uri ILIKE $1
+              AND hidden = false
+            LIMIT 1
+        """
+        # Match any URI containing this hostname (scheme://hostname/...)
+        pattern = f"%://{hostname}/%"
+        row = await self.db.fetchrow(query, pattern)
+        if not row:
+            return None
+        return self._row_to_agent(row)
+
     async def list_agents(
         self,
         skill: Optional[str] = None,
