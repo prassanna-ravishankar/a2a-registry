@@ -78,12 +78,32 @@ _SKILL_SNAKE_TO_CAMEL: dict[str, str] = {
 def _normalise_fields(card: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of *card* with snake_case keys promoted to camelCase.
 
-    Also normalises nested skill-level fields (input_modes → inputModes).
+    Also handles v1.0 → v0.3 compatibility:
+    - Extracts ``url`` from ``interfaces[0].url`` if not present at top level
+    - Extracts ``protocolVersion`` from ``interfaces[0].protocolVersion``
+    - Normalises nested skill-level fields (input_modes → inputModes)
     """
     result = dict(card)
     for snake, camel in _SNAKE_TO_CAMEL.items():
         if snake in result and camel not in result:
             result[camel] = result.pop(snake)
+
+    # v1.0 compat: extract url and protocolVersion from interfaces[]
+    if "url" not in result:
+        for key in ("interfaces", "supportedInterfaces"):
+            interfaces = result.get(key)
+            if isinstance(interfaces, list) and interfaces and isinstance(interfaces[0], dict):
+                if "url" in interfaces[0]:
+                    result["url"] = interfaces[0]["url"]
+                if "protocolVersion" not in result and "protocolVersion" in interfaces[0]:
+                    result["protocolVersion"] = interfaces[0]["protocolVersion"]
+                break
+
+    # v1.0 compat: description became optional, supply default for SDK validation
+    result.setdefault("description", "")
+
+    # v1.0 compat: version became optional
+    result.setdefault("version", "1.0.0")
 
     # Normalise nested skill fields
     if "skills" in result and isinstance(result["skills"], list):
@@ -141,11 +161,16 @@ def _validate_with_sdk(card_data: dict[str, Any], strict: bool) -> list[str]:
 
 def _check_non_empty_strings(card: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    for field in ("name", "description"):
-        if field in card:
-            val = card[field]
-            if not isinstance(val, str) or not val.strip():
-                errors.append(f"Field '{field}' must be a non-empty string.")
+    # name is always required and must be non-empty
+    if "name" in card:
+        val = card["name"]
+        if not isinstance(val, str) or not val.strip():
+            errors.append("Field 'name' must be a non-empty string.")
+    # description: required in v0.3 but optional in v1.0 — only validate if present and non-default
+    if "description" in card:
+        val = card["description"]
+        if not isinstance(val, str):
+            errors.append("Field 'description' must be a string.")
     return errors
 
 

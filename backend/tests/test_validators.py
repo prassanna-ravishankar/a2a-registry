@@ -64,10 +64,11 @@ def test_validate_agent_card_requires_name():
     assert any("name" in e.lower() for e in errors)
 
 
-def test_validate_agent_card_requires_description():
+def test_validate_agent_card_description_optional_in_v1():
+    """Description is required in v0.3 but optional in v1.0 — normaliser defaults to empty string."""
     card = {"name": "Test", "url": "https://example.com", "version": "1.0"}
     errors = validate_agent_card(card)
-    assert any("description" in e.lower() for e in errors)
+    assert len(errors) == 0
 
 
 def test_validate_agent_card_requires_url():
@@ -77,9 +78,12 @@ def test_validate_agent_card_requires_url():
 
 
 def test_validate_agent_card_requires_version():
+    """In v0.3 version was required; v1.0 made it optional (normaliser defaults to '1.0.0').
+    The SDK still requires it, but our normaliser fills it in."""
     card = {"name": "Test", "description": "x", "url": "https://example.com"}
     errors = validate_agent_card(card)
-    assert any("version" in e.lower() for e in errors)
+    # With the v1.0 compat normaliser defaulting version, this now passes
+    assert len(errors) == 0
 
 
 def test_validate_agent_card_accepts_minimal_valid():
@@ -258,3 +262,76 @@ def test_normalise_accepts_snake_case_agent_card():
     }
     errors = validate_agent_card(card)
     assert len(errors) == 0
+
+
+# ---------------------------------------------------------------------------
+# v1.0 Protocol Compatibility
+# ---------------------------------------------------------------------------
+
+def test_normalise_v1_interfaces_to_url():
+    """v1.0 cards use interfaces[] instead of top-level url — normaliser should extract it."""
+    card = {
+        "name": "V1 Agent",
+        "interfaces": [
+            {"url": "https://example.com/a2a", "protocolVersion": "1.0", "protocolBinding": "jsonrpc-over-http"}
+        ],
+    }
+    result = _normalise_fields(card)
+    assert result["url"] == "https://example.com/a2a"
+    assert result["protocolVersion"] == "1.0"
+
+
+def test_normalise_v1_does_not_overwrite_existing_url():
+    """If a card has both url and interfaces, keep the top-level url."""
+    card = {
+        "name": "Hybrid Agent",
+        "url": "https://example.com/legacy",
+        "interfaces": [
+            {"url": "https://example.com/v1", "protocolVersion": "1.0"}
+        ],
+    }
+    result = _normalise_fields(card)
+    assert result["url"] == "https://example.com/legacy"
+
+
+def test_validate_v1_agent_card():
+    """A v1.0-style agent card with interfaces[] should pass validation."""
+    card = {
+        "name": "V1 Agent",
+        "description": "A v1.0 agent",
+        "version": "1.0.0",
+        "interfaces": [
+            {"url": "https://example.com/a2a", "protocolVersion": "1.0"}
+        ],
+        "capabilities": {"streaming": False},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [
+            {"id": "s1", "name": "Skill", "description": "Does things", "tags": ["test"]}
+        ],
+    }
+    errors = validate_agent_card(card)
+    assert len(errors) == 0
+
+
+def test_validate_v1_minimal_card():
+    """A minimal v1.0 card (name + interfaces only) should pass non-strict validation."""
+    card = {
+        "name": "Minimal V1",
+        "interfaces": [
+            {"url": "https://example.com/a2a", "protocolVersion": "1.0"}
+        ],
+    }
+    errors = validate_agent_card(card, strict=False)
+    assert len(errors) == 0
+
+
+def test_normalise_v1_defaults_description_and_version():
+    """v1.0 made description and version optional — normaliser supplies defaults."""
+    card = {
+        "name": "No Description Agent",
+        "url": "https://example.com",
+    }
+    result = _normalise_fields(card)
+    assert result["description"] == ""
+    assert result["version"] == "1.0.0"
