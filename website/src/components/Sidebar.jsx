@@ -9,6 +9,8 @@ const Sidebar = ({
     toggleSkillFilter,
     conformanceFilter,
     setConformanceFilter,
+    healthyOnly,
+    setHealthyOnly,
     isMobile
 }) => {
     const filterOptions = [
@@ -76,6 +78,28 @@ const Sidebar = ({
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Health Status</div>
+                        <button
+                            onClick={() => setHealthyOnly(!healthyOnly)}
+                            className={`
+                                w-full border px-3 py-3 text-left transition-all
+                                ${healthyOnly
+                                    ? 'border-emerald-500/50 bg-emerald-500/10'
+                                    : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
+                                }
+                            `}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className={`text-xs font-mono ${healthyOnly ? 'text-zinc-100' : 'text-zinc-300'}`}>HEALTHY_ONLY</div>
+                                    <div className="mt-1 text-[11px] text-zinc-500">Hide agents that are down</div>
+                                </div>
+                                <div className={`mt-1 h-2 w-2 rounded-full ${healthyOnly ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
+                            </div>
+                        </button>
                     </div>
 
                     <div className="space-y-3">

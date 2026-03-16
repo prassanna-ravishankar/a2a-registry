@@ -32,6 +32,7 @@ const A2ARegistry = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
+  const [healthyOnly, setHealthyOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -66,6 +67,7 @@ const A2ARegistry = () => {
       search: debouncedSearch || undefined,
       skill: skillParam,
       conformance: conformanceFilter !== 'all' ? conformanceFilter : undefined,
+      healthy: healthyOnly || undefined,
       limit: LIMIT,
       offset,
     });
@@ -83,7 +85,7 @@ const A2ARegistry = () => {
       setAgents(agentList);
     }
     setTotal(totalCount);
-  }, [debouncedSearch, selectedSkills, conformanceFilter]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
 
   // Initial load and re-fetch when filters change (reset to page 0)
   useEffect(() => {
@@ -127,7 +129,7 @@ const A2ARegistry = () => {
 
     loadData();
     return () => { cancelled = true; };
-  }, [debouncedSearch, selectedSkills, conformanceFilter]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
 
   // Load more handler
   const handleLoadMore = useCallback(async () => {
@@ -336,6 +338,8 @@ const A2ARegistry = () => {
       toggleSkillFilter={toggleSkillFilter}
       conformanceFilter={conformanceFilter}
       setConformanceFilter={setConformanceFilter}
+      healthyOnly={healthyOnly}
+      setHealthyOnly={setHealthyOnly}
       selectedAgent={selectedAgent}
       onCloseInspection={handleCloseInspection}
       stats={stats}
@@ -353,6 +357,7 @@ const A2ARegistry = () => {
           setSearchTerm('');
           setSelectedSkills([]);
           setConformanceFilter('standard');
+          setHealthyOnly(false);
         }}
       />
     </Layout>

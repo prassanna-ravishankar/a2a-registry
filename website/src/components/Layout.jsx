@@ -20,6 +20,8 @@ const Layout = ({
     toggleSkillFilter,
     conformanceFilter,
     setConformanceFilter,
+    healthyOnly,
+    setHealthyOnly,
     selectedAgent,
     onCloseInspection,
     stats
@@ -66,6 +68,8 @@ const Layout = ({
                         toggleSkillFilter={toggleSkillFilter}
                         conformanceFilter={conformanceFilter}
                         setConformanceFilter={setConformanceFilter}
+                        healthyOnly={healthyOnly}
+                        setHealthyOnly={setHealthyOnly}
                     />
                 </div>
 
