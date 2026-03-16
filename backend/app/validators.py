@@ -69,12 +69,34 @@ _SNAKE_TO_CAMEL: dict[str, str] = {
 }
 
 
+_SKILL_SNAKE_TO_CAMEL: dict[str, str] = {
+    "input_modes": "inputModes",
+    "output_modes": "outputModes",
+}
+
+
 def _normalise_fields(card: dict[str, Any]) -> dict[str, Any]:
-    """Return a copy of *card* with snake_case keys promoted to camelCase."""
+    """Return a copy of *card* with snake_case keys promoted to camelCase.
+
+    Also normalises nested skill-level fields (input_modes → inputModes).
+    """
     result = dict(card)
     for snake, camel in _SNAKE_TO_CAMEL.items():
         if snake in result and camel not in result:
             result[camel] = result.pop(snake)
+
+    # Normalise nested skill fields
+    if "skills" in result and isinstance(result["skills"], list):
+        normalised_skills = []
+        for skill in result["skills"]:
+            if isinstance(skill, dict):
+                skill = dict(skill)
+                for snake, camel in _SKILL_SNAKE_TO_CAMEL.items():
+                    if snake in skill and camel not in skill:
+                        skill[camel] = skill.pop(snake)
+            normalised_skills.append(skill)
+        result["skills"] = normalised_skills
+
     return result
 
 

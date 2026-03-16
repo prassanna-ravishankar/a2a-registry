@@ -1,6 +1,6 @@
 """Unit tests for app/validators.py"""
 
-from app.validators import validate_agent_card, validate_well_known_uri
+from app.validators import _normalise_fields, validate_agent_card, validate_well_known_uri
 
 # ---------------------------------------------------------------------------
 # validate_well_known_uri
@@ -188,6 +188,73 @@ def test_validate_agent_card_accepts_full_valid_card():
             }
         ],
         "provider": {"organization": "Acme Corp", "url": "https://acme.example.com"},
+    }
+    errors = validate_agent_card(card)
+    assert len(errors) == 0
+
+
+# ---------------------------------------------------------------------------
+# _normalise_fields
+# ---------------------------------------------------------------------------
+
+def test_normalise_top_level_snake_case():
+    card = {
+        "protocol_version": "0.3.0",
+        "name": "Test",
+        "default_input_modes": ["text/plain"],
+    }
+    result = _normalise_fields(card)
+    assert "protocolVersion" in result
+    assert "defaultInputModes" in result
+    assert "protocol_version" not in result
+
+
+def test_normalise_does_not_overwrite_existing_camel():
+    """If both snake_case and camelCase exist, keep the camelCase value."""
+    card = {
+        "protocol_version": "old",
+        "protocolVersion": "correct",
+    }
+    result = _normalise_fields(card)
+    assert result["protocolVersion"] == "correct"
+
+
+def test_normalise_skill_snake_case_fields():
+    """Skill-level input_modes/output_modes should be normalised."""
+    card = {
+        "name": "Test",
+        "skills": [
+            {"id": "s1", "name": "Skill", "description": "x", "input_modes": ["text/plain"], "output_modes": ["text/plain"]},
+        ],
+    }
+    result = _normalise_fields(card)
+    skill = result["skills"][0]
+    assert "inputModes" in skill
+    assert "outputModes" in skill
+    assert "input_modes" not in skill
+
+
+def test_normalise_accepts_snake_case_agent_card():
+    """A full agent card using snake_case field names should validate after normalisation."""
+    card = {
+        "protocol_version": "0.3.0",
+        "name": "Snake Agent",
+        "description": "Uses snake_case everywhere",
+        "url": "https://example.com/a2a",
+        "version": "1.0.0",
+        "capabilities": {"streaming": False},
+        "default_input_modes": ["text/plain"],
+        "default_output_modes": ["text/plain"],
+        "skills": [
+            {
+                "id": "s1",
+                "name": "Skill One",
+                "description": "A skill",
+                "tags": ["test"],
+                "input_modes": ["text/plain"],
+                "output_modes": ["text/plain"],
+            }
+        ],
     }
     errors = validate_agent_card(card)
     assert len(errors) == 0
