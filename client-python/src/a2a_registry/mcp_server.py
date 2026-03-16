@@ -56,8 +56,11 @@ def _format_agent(agent) -> dict:
         "version": getattr(agent, "version", None),
         "provider": agent.provider.model_dump() if hasattr(agent, "provider") and agent.provider else None,
         "documentationUrl": str(agent.documentationUrl) if hasattr(agent, "documentationUrl") and agent.documentationUrl else None,
+        "conformance": getattr(agent, "conformance", None),
         "is_healthy": getattr(agent, "is_healthy", None),
         "uptime_percentage": getattr(agent, "uptime_percentage", None),
+        "maintainer_notes": getattr(agent, "maintainer_notes", None),
+        "status_notes": getattr(agent, "status_notes", None),
     }
 
 
@@ -213,16 +216,12 @@ print(f"Found: {{agent.name}}")
 
     a2a_snippet = f"""import asyncio
 import httpx
-from a2a import A2ACardResolver
+from a2a.client import ClientFactory
 
 async def main():
-    async with httpx.AsyncClient() as client:
-        resolver = A2ACardResolver(
-            httpx_client=client,
-            base_url="{agent.url}"
-        )
-        card = await resolver.resolve_card()
-        print(f"Connected to {{card.name}}")
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        a2a_client = await ClientFactory.connect("{agent.url}")
+        print("Connected via A2A SDK")
 
 asyncio.run(main())
 """
