@@ -554,7 +554,7 @@ class StatsRepository:
     async def get_registry_stats(self) -> RegistryStats:
         """Get registry-wide statistics"""
 
-        # Get basic counts
+        # Single query for agent counts (total, healthy, new this week/month)
         basic_stats = await self.db.fetchrow("""
             SELECT
                 COUNT(*) as total_agents,
@@ -565,7 +565,17 @@ class StatsRepository:
                         WHERE checked_at > NOW() - INTERVAL '1 hour'
                           AND success = true
                     )
-                ) as healthy_agents
+                ) as healthy_agents,
+                COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as new_this_week,
+                COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') as new_this_month,
+                (SELECT COUNT(DISTINCT skill_id) FROM (
+                    SELECT jsonb_array_elements(a2.skills) ->> 'id' as skill_id
+                    FROM agents a2 WHERE a2.hidden = false
+                ) _sk) as total_skills,
+                (SELECT COALESCE(AVG(response_time_ms)::int, 0)
+                 FROM health_checks
+                 WHERE checked_at > NOW() - INTERVAL '24 hours' AND success = true
+                ) as avg_response_time
             FROM agents
             WHERE hidden = false
         """)
@@ -573,39 +583,10 @@ class StatsRepository:
         total_agents = basic_stats["total_agents"]
         healthy_agents = basic_stats["healthy_agents"]
         health_percentage = (healthy_agents / total_agents * 100) if total_agents > 0 else 0
-
-        # New agents counts
-        new_this_week = await self.db.fetchval("""
-            SELECT COUNT(*)
-            FROM agents
-            WHERE created_at > NOW() - INTERVAL '7 days'
-              AND hidden = false
-        """)
-
-        new_this_month = await self.db.fetchval("""
-            SELECT COUNT(*)
-            FROM agents
-            WHERE created_at > NOW() - INTERVAL '30 days'
-              AND hidden = false
-        """)
-
-        # Total unique skills
-        total_skills = await self.db.fetchval("""
-            SELECT COUNT(DISTINCT skill_id)
-            FROM (
-                SELECT jsonb_array_elements(skills) ->> 'id' as skill_id
-                FROM agents
-                WHERE hidden = false
-            ) skill_counts
-        """)
-
-        # Average response time (last 24 hours)
-        avg_response_time = await self.db.fetchval("""
-            SELECT COALESCE(AVG(response_time_ms)::int, 0)
-            FROM health_checks
-            WHERE checked_at > NOW() - INTERVAL '24 hours'
-              AND success = true
-        """)
+        new_this_week = basic_stats["new_this_week"]
+        new_this_month = basic_stats["new_this_month"]
+        total_skills = basic_stats["total_skills"]
+        avg_response_time = basic_stats["avg_response_time"]
 
         # Trending skills: top 10 skill IDs by agent count across all live agents
         trending_rows = await self.db.fetch("""
