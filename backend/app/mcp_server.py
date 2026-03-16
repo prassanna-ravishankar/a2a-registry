@@ -25,7 +25,7 @@ mcp = FastMCP(
 
 
 def _format_agent(agent) -> dict:
-    return {
+    result = {
         "id": str(agent.id),
         "name": agent.name,
         "description": agent.description,
@@ -42,6 +42,11 @@ def _format_agent(agent) -> dict:
         "is_healthy": agent.is_healthy,
         "uptime_percentage": agent.uptime_percentage,
     }
+    if hasattr(agent, "maintainer_notes") and agent.maintainer_notes:
+        result["maintainer_notes"] = agent.maintainer_notes
+    if hasattr(agent, "status_notes") and agent.status_notes:
+        result["status_notes"] = agent.status_notes
+    return result
 
 
 @mcp.tool
