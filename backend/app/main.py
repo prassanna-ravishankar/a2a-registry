@@ -691,20 +691,22 @@ Base URL: https://a2aregistry.org/api
 
 ### Key Endpoints
 
-- GET  /agents              List/search agents (params: search, skill, capability, author, conformance, limit, offset)
-- GET  /agents/{id}         Get a single agent by UUID (includes health metrics)
+- GET  /agents              List/search agents (params: search, skill, capability, author, conformance, healthy, limit, offset)
+- GET  /agents/{id}         Get a single agent by UUID (includes health metrics, maintainer notes)
 - POST /agents/register     Register an agent by providing its wellKnownURI
 - GET  /agents/{id}/health  Current health status (last 24 hours)
 - GET  /agents/{id}/uptime  Historical uptime metrics
+- GET  /agents/{id}/chat    Send a message to an agent via the A2A chat proxy
 - GET  /stats               Registry-wide statistics (total agents, trending skills, health %)
 
 ### Filtering
 
-- ?search=<keyword>         Full-text search across name, description, author
+- ?search=<keyword>         Full-text search across name, description, author, skill names, and skill tags
 - ?skill=<skill-id>         Filter agents that have a specific skill tag
 - ?capability=streaming     Filter by A2A capability (streaming | pushNotifications | stateTransitionHistory)
 - ?conformance=standard     Only strict A2A spec-compliant agents
 - ?conformance=non-standard Non-conformant or unvalidated agents
+- ?healthy=true             Only agents that passed their last health check
 
 ### OpenAPI / Interactive Docs
 
