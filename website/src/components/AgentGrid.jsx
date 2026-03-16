@@ -79,9 +79,9 @@ const AgentGrid = ({
                 </div>
 
                 <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-                {agents.map((agent, index) => (
+                {agents.map((agent) => (
                     <AgentCard
-                        key={index}
+                        key={agent.id}
                         agent={agent}
                         isSelected={selectedAgent?.name === agent.name}
                         onClick={onAgentSelect}
