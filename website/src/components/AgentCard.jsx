@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio } from 'lucide-react';
+import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import HealthBadge from './HealthBadge';
@@ -7,6 +7,9 @@ import HealthBadge from './HealthBadge';
 const AgentCard = ({ agent, isSelected, onClick }) => {
     const provider = agent.author || agent.provider?.organization || 'Unknown';
     const topTags = agent.skills.flatMap((skill) => skill.tags || []).slice(0, 3);
+    const notes = agent.maintainer_notes || '';
+    const isVerified = notes.startsWith('Verified working');
+    const hasIssue = notes && !isVerified;
 
     return (
         <div
@@ -48,6 +51,12 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                                 Streaming
                             </Badge>
                         )}
+                        {isVerified && (
+                            <Badge variant="outline" className="rounded-none border-blue-500/30 bg-blue-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Verified
+                            </Badge>
+                        )}
                     </div>
                     <h3 className={`font-mono text-base font-semibold leading-tight transition-colors group-hover:text-emerald-300 ${isSelected ? 'text-emerald-300' : 'text-zinc-100'}`}>
                         {agent.name}
@@ -78,6 +87,12 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                     {agent.protocolVersion && (
                         <Badge variant="outline" className="rounded-none border-zinc-700 bg-zinc-900 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300">
                             A2A v{agent.protocolVersion}
+                        </Badge>
+                    )}
+                    {hasIssue && (
+                        <Badge variant="outline" className="rounded-none border-amber-700/30 bg-amber-900/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-400" title={notes}>
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            Issue noted
                         </Badge>
                     )}
                 </div>
