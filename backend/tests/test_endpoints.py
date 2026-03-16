@@ -505,11 +505,18 @@ def test_ssrf_blocks_metadata():
 
 def test_ssrf_blocks_internal_domains():
     assert _is_private_url("http://anything.internal/foo") is True
+    assert _is_private_url("http://service.local/foo") is True
+
+
+def test_ssrf_blocks_kubernetes():
+    assert _is_private_url("http://kubernetes.default.svc/foo") is True
+    assert _is_private_url("http://my-service.namespace.svc.cluster.local/foo") is True
 
 
 def test_ssrf_allows_public_urls():
     assert _is_private_url("https://example.com/foo") is False
     assert _is_private_url("https://a2aregistry.org/api") is False
+    assert _is_private_url("https://api.openai.com/v1") is False
 
 
 # ============================================================================

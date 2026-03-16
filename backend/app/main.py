@@ -455,6 +455,16 @@ class ChatRequest(BaseModel):
     context_id: Optional[str] = None
 
 
+_BLOCKED_HOSTS = frozenset({
+    "localhost",
+    "metadata.google.internal",
+    "metadata.google",
+    "kubernetes.default.svc",
+})
+
+_BLOCKED_SUFFIXES = (".internal", ".local", ".svc", ".cluster.local")
+
+
 def _is_private_url(url: str) -> bool:
     """Return True if the URL resolves to a private/internal address (SSRF guard)."""
     try:
@@ -463,7 +473,7 @@ def _is_private_url(url: str) -> bool:
         return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
     except ValueError:
         # hostname — block well-known internal names
-        return host in ("localhost", "metadata.google.internal") or host.endswith(".internal")
+        return host in _BLOCKED_HOSTS or any(host.endswith(s) for s in _BLOCKED_SUFFIXES)
 
 
 def _extract_text(result) -> str:
