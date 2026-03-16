@@ -38,7 +38,6 @@ from .repositories import AgentRepository, FlagRepository, HealthCheckRepository
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
 from .validators import validate_well_known_uri
 
-
 limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
 
 
