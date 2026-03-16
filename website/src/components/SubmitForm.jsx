@@ -44,10 +44,24 @@ const SubmitForm = () => {
             <h3 className="text-lg font-bold text-zinc-100 mb-2">
               {submittedAgent.name}
             </h3>
-            <p className="text-sm text-zinc-400 mb-4">
+            <p className="text-sm text-zinc-400 mb-2">
               Agent is now live on the registry and discoverable by other agents.
+              Health checks run every 30 minutes.
             </p>
-            <div className="flex gap-3">
+            {submittedAgent.id && (
+              <p className="text-xs text-zinc-500 mb-4">
+                Agent ID: <code className="text-zinc-400 bg-zinc-900 px-1">{submittedAgent.id}</code>
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <a href={`/?agent=${submittedAgent.id}`}>
+                <Button
+                  size="sm"
+                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-black font-bold"
+                >
+                  View your agent
+                </Button>
+              </a>
               <Button
                 variant="outline"
                 size="sm"
@@ -59,15 +73,6 @@ const SubmitForm = () => {
               >
                 Register another
               </Button>
-              <a href="/">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-zinc-400 hover:text-zinc-100"
-                >
-                  View registry
-                </Button>
-              </a>
             </div>
           </div>
         </div>
@@ -102,14 +107,19 @@ const SubmitForm = () => {
         </div>
 
         {error && (
-          <div className="border border-red-500/30 bg-red-500/5 p-4">
+          <div className={`border p-4 ${error.includes('already registered') ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
             <div className="flex items-start gap-3">
-              <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <XCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${error.includes('already registered') ? 'text-amber-500' : 'text-red-500'}`} />
               <div>
-                <div className="text-[10px] text-red-500 uppercase tracking-wider mb-1">
-                  ERROR
+                <div className={`text-[10px] uppercase tracking-wider mb-1 ${error.includes('already registered') ? 'text-amber-500' : 'text-red-500'}`}>
+                  {error.includes('already registered') ? 'ALREADY_REGISTERED' : 'ERROR'}
                 </div>
                 <p className="text-sm text-zinc-300">{error}</p>
+                {error.includes('already registered') && (
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Use <code className="text-zinc-400 bg-zinc-900 px-1">PUT /api/agents/{'<id>'}</code> to update an existing agent's metadata.
+                  </p>
+                )}
               </div>
             </div>
           </div>
