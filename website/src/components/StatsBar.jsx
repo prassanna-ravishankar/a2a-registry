@@ -34,11 +34,11 @@ const StatsBar = ({ stats }) => {
   return (
     <div className="w-full bg-black border-b border-zinc-800/50" style={{ flex: 'none' }}>
       <div className="px-4 md:px-6 py-3 md:py-2">
-        <div className="flex gap-2 overflow-x-auto pb-1 md:hidden">
+        <div className="grid grid-cols-2 gap-2 md:hidden">
           {statItems.map((item, index) => (
             <div
               key={index}
-              className="min-w-[140px] shrink-0 border border-zinc-800 bg-zinc-950/80 px-3 py-2"
+              className="border border-zinc-800 bg-zinc-950/80 px-3 py-2"
             >
               <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">
                 <item.icon className="h-3.5 w-3.5 text-emerald-500/70" />

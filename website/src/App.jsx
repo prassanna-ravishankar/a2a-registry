@@ -270,8 +270,11 @@ const A2ARegistry = () => {
   useEffect(() => {
     if (isMobile) {
       if (!previousSelectedAgentRef.current && selectedAgent) {
+        // Double-rAF ensures React has flushed the new DOM before scrolling
         window.requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, behavior: 'auto' });
+          window.requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+          });
         });
       } else if (previousSelectedAgentRef.current && !selectedAgent) {
         window.requestAnimationFrame(() => {

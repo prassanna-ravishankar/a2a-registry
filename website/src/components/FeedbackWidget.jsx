@@ -34,9 +34,9 @@ const FeedbackWidget = () => {
     };
 
     return (
-        <div className={`fixed z-50 flex flex-col gap-2 ${isMobile ? 'bottom-3 right-3 left-3 items-end' : 'bottom-4 right-4 items-end'}`}>
+        <div className={`fixed z-40 flex flex-col gap-2 ${isMobile ? 'bottom-3 right-3 items-end' : 'bottom-4 right-4 items-end'}`}>
             {open && (
-                <div className={`flex flex-col border border-zinc-700 bg-zinc-900 shadow-2xl ${isMobile ? 'w-[min(100%,22rem)]' : 'w-72'}`}>
+                <div className={`flex flex-col border border-zinc-700 bg-zinc-900 shadow-2xl ${isMobile ? 'w-[min(calc(100vw-1.5rem),22rem)]' : 'w-72'}`}>
                     <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
                         <span className="text-[10px] font-mono text-emerald-500 tracking-wider">SEND_FEEDBACK</span>
                         <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-zinc-200 transition-colors">
@@ -77,10 +77,10 @@ const FeedbackWidget = () => {
 
             <button
                 onClick={() => setOpen((o) => !o)}
-                className={`flex items-center gap-2 border border-zinc-700 bg-zinc-900 text-[10px] font-mono uppercase tracking-wider text-zinc-400 shadow-lg transition-all hover:border-emerald-500/50 hover:text-emerald-400 ${isMobile ? 'px-3 py-2.5' : 'px-3 py-2'}`}
+                className={`flex items-center gap-2 border border-zinc-700 bg-zinc-900/80 backdrop-blur text-[10px] font-mono uppercase tracking-wider text-zinc-400 shadow-lg transition-all hover:border-emerald-500/50 hover:text-emerald-400 ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2'}`}
             >
                 <MessageSquare className="w-3.5 h-3.5" />
-                FEEDBACK
+                {!isMobile && 'FEEDBACK'}
             </button>
         </div>
     );
