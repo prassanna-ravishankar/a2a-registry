@@ -65,6 +65,7 @@ class AgentRepository:
     def compute_status_notes(
         uptime_percentage: Optional[float],
         last_5_worker_successes: Optional[list],
+        last_worker_error: Optional[str],
         last_10_chat_errors: Optional[list],
         conformance: Optional[bool],
         conformance_errors: Optional[list[str]],
@@ -79,7 +80,10 @@ class AgentRepository:
             elif uptime_percentage < 80:
                 notes.append(f"Degraded uptime: {pct}% in the last 24h")
         if last_5_worker_successes and not any(last_5_worker_successes):
-            notes.append("Consistently unreachable during health checks")
+            if last_worker_error:
+                notes.append(f"Consistently failing health checks ({last_worker_error})")
+            else:
+                notes.append("Consistently unreachable during health checks")
         if last_10_chat_errors:
             for error_msg in last_10_chat_errors:
                 if error_msg:
@@ -121,7 +125,11 @@ class AgentRepository:
                   AND hc.checked_at > NOW() - INTERVAL '24 hours'
             ) hm ON true
             LEFT JOIN LATERAL (
-                SELECT array_agg(success ORDER BY checked_at DESC) as worker_successes
+                SELECT
+                    array_agg(success ORDER BY checked_at DESC) as worker_successes,
+                    (SELECT error_message FROM health_checks
+                     WHERE agent_id = a.id AND source = 'worker' AND success = false
+                     ORDER BY checked_at DESC LIMIT 1) as last_worker_error
                 FROM (
                     SELECT success, checked_at FROM health_checks
                     WHERE agent_id = a.id AND source = 'worker'
@@ -402,6 +410,7 @@ class AgentRepository:
         status_notes = self.compute_status_notes(
             uptime_percentage=row.get("uptime_percentage"),
             last_5_worker_successes=list(row.get("worker_successes") or []),
+            last_worker_error=row.get("last_worker_error"),
             last_10_chat_errors=list(row.get("chat_errors") or []),
             conformance=agent.conformance,
             conformance_errors=agent.conformance_errors,

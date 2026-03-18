@@ -54,43 +54,58 @@ async def check_agent_health(
             status_code = response.status
             response_time_ms = int((time.time() - start_time) * 1000)
 
-            # Consider 2xx responses as healthy
-            success = 200 <= status_code < 300
+            if not (200 <= status_code < 300):
+                # Non-2xx: unhealthy
+                await health_repo.create(
+                    agent_id=agent_id,
+                    status_code=status_code,
+                    response_time_ms=response_time_ms,
+                    success=False,
+                    error_message=None,
+                )
+                bound_logger.warning("health_check_degraded", status_code=status_code)
+                return
 
-            # Read body once for both health check and conformance validation
+            # 2xx response — now validate it's actually a JSON agent card
+            content_type = response.headers.get("Content-Type", "")
             card_data = None
-            if success:
-                try:
-                    card_data = await response.json()
-                except Exception:
-                    pass
+            try:
+                card_data = await response.json()
+            except Exception:
+                pass
 
-            # Record health check
+            if card_data is None or not isinstance(card_data, dict):
+                # 200 but not valid JSON — likely HTML page, not a real agent card
+                error_message = f"Agent card endpoint returned {status_code} but response is not valid JSON (Content-Type: {content_type[:50]})"
+                await health_repo.create(
+                    agent_id=agent_id,
+                    status_code=status_code,
+                    response_time_ms=response_time_ms,
+                    success=False,
+                    error_message=error_message,
+                )
+                bound_logger.warning("health_check_not_json", status_code=status_code, content_type=content_type[:50])
+                return
+
+            # Valid JSON response — mark healthy
+            success = True
             await health_repo.create(
                 agent_id=agent_id,
                 status_code=status_code,
                 response_time_ms=response_time_ms,
-                success=success,
+                success=True,
                 error_message=None,
             )
+            bound_logger.debug("health_check_ok", status_code=status_code, response_time_ms=response_time_ms)
 
-            if success:
-                bound_logger.debug(
-                    "health_check_ok", status_code=status_code, response_time_ms=response_time_ms
-                )
-                # Re-validate conformance from the live agent card
-                if card_data is not None:
-                    try:
-                        errors = validate_agent_card(card_data, strict=True)
-                        conformance = len(errors) == 0
-                        await agent_repo.update_conformance(agent_id, conformance, errors=errors if errors else None)
-                        bound_logger.debug("conformance_updated", conformance=conformance, errors=errors[:3] if errors else [])
-                    except Exception as conf_err:
-                        bound_logger.warning("conformance_check_failed", error=str(conf_err))
-            else:
-                bound_logger.warning(
-                    "health_check_degraded", status_code=status_code
-                )
+            # Re-validate conformance from the live agent card
+            try:
+                errors = validate_agent_card(card_data, strict=True)
+                conformance = len(errors) == 0
+                await agent_repo.update_conformance(agent_id, conformance, errors=errors if errors else None)
+                bound_logger.debug("conformance_updated", conformance=conformance, errors=errors[:3] if errors else [])
+            except Exception as conf_err:
+                bound_logger.warning("conformance_check_failed", error=str(conf_err))
 
     except asyncio.TimeoutError:
         response_time_ms = int((time.time() - start_time) * 1000)

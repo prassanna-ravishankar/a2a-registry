@@ -8,6 +8,7 @@ def test_no_notes_when_healthy():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -20,6 +21,7 @@ def test_low_uptime_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=30.0,
         last_5_worker_successes=[False, False, True, False, False],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -33,6 +35,7 @@ def test_degraded_uptime_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=65.0,
         last_5_worker_successes=[True, True, False, True, False],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -46,6 +49,7 @@ def test_consistently_unreachable_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=0.0,
         last_5_worker_successes=[False, False, False, False, False],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -54,10 +58,25 @@ def test_consistently_unreachable_note():
     assert any("unreachable" in n.lower() for n in notes)
 
 
+def test_consistently_failing_with_error_detail():
+    """When worker error is available, it should be included in the note."""
+    notes = AgentRepository.compute_status_notes(
+        uptime_percentage=0.0,
+        last_5_worker_successes=[False, False, False, False, False],
+        last_worker_error="Agent card endpoint returned 200 but response is not valid JSON (Content-Type: text/html)",
+        last_10_chat_errors=[],
+        conformance=True,
+        conformance_errors=None,
+        flag_count=0,
+    )
+    assert any("not valid JSON" in n for n in notes)
+
+
 def test_chat_error_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=["Agent returned 502 Bad Gateway"],
         conformance=True,
         conformance_errors=None,
@@ -70,6 +89,7 @@ def test_non_conformant_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=False,
         conformance_errors=["Missing field 'skills[].tags'"],
@@ -83,6 +103,7 @@ def test_non_conformant_without_errors():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=False,
         conformance_errors=None,
@@ -95,6 +116,7 @@ def test_flagged_agent_note():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -108,6 +130,7 @@ def test_flag_count_below_threshold():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=True,
         conformance_errors=None,
@@ -121,6 +144,7 @@ def test_multiple_issues_combined():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=40.0,
         last_5_worker_successes=[False, False, False, False, False],
+        last_worker_error="Timeout after 10000ms",
         last_10_chat_errors=["Timeout"],
         conformance=False,
         conformance_errors=["Missing 'url'"],
@@ -134,6 +158,7 @@ def test_none_uptime_no_crash():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=None,
         last_5_worker_successes=None,
+        last_worker_error=None,
         last_10_chat_errors=None,
         conformance=None,
         conformance_errors=None,
@@ -148,6 +173,7 @@ def test_conformance_errors_capped_at_3():
     notes = AgentRepository.compute_status_notes(
         uptime_percentage=100.0,
         last_5_worker_successes=[True, True, True, True, True],
+        last_worker_error=None,
         last_10_chat_errors=[],
         conformance=False,
         conformance_errors=errors,
