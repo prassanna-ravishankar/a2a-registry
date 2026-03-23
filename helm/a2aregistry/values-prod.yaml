@@ -42,6 +42,7 @@ posthog:
 
 helloWorld:
   enabled: true
+  replicaCount: 1
 
 # Production configuration
 config:
