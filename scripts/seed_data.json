@@ -21,6 +21,7 @@
     "https://www.luminarylane.app/.well-known/agent-card.json",
     "https://grokandmon.com/.well-known/agent-card.json",
     "https://openclaw-node-production.up.railway.app/.well-known/agent-card.json",
-    "https://api.vapagent.com/.well-known/agent-card.json"
+    "https://api.vapagent.com/.well-known/agent-card.json",
+    "https://fleethelp.ai/.well-known/agent.json"
   ]
 }
