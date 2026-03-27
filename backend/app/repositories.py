@@ -279,6 +279,7 @@ class AgentRepository:
             ) hm ON true
             WHERE {where_clause}
             ORDER BY
+                CASE WHEN a.maintainer_notes LIKE 'Verified working%%' THEN 0 ELSE 1 END ASC,
                 CASE
                     WHEN hm.uptime_percentage < 50 THEN 2
                     WHEN hm.uptime_percentage < 80 THEN 1

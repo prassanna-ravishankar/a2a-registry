@@ -32,7 +32,7 @@ const A2ARegistry = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
-  const [healthyOnly, setHealthyOnly] = useState(false);
+  const [healthyOnly, setHealthyOnly] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);

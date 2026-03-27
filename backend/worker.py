@@ -16,6 +16,11 @@ from app.validators import validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 
+# Cycle counter for throttling dead agent checks
+_cycle_count = 0
+# Check dead agents every N cycles (e.g. 48 cycles * 30 min = ~daily)
+DEAD_AGENT_CHECK_INTERVAL = 48
+
 configure_logging(json_logs=True)
 logger = get_logger(__name__)
 
@@ -146,7 +151,9 @@ async def check_agent_health(
 
 async def health_check_cycle():
     """Run a single health check cycle for all agents"""
-    logger.info("health_check_cycle_start")
+    global _cycle_count
+    _cycle_count += 1
+    logger.info("health_check_cycle_start", cycle=_cycle_count)
     start_time = time.time()
 
     agent_repo = AgentRepository(db)
@@ -155,13 +162,32 @@ async def health_check_cycle():
     # Get all active agents
     try:
         agents, total = await agent_repo.list_agents(limit=10000)
-        logger.info("health_check_cycle_agents", total=total)
+
+        # Identify agents that have failed every check in the last 24h (dead agents)
+        # Only re-check these once a day instead of every cycle
+        dead_agent_ids = set()
+        if _cycle_count % DEAD_AGENT_CHECK_INTERVAL != 0:
+            rows = await db.fetch("""
+                SELECT agent_id FROM (
+                    SELECT agent_id,
+                           COUNT(*) FILTER (WHERE success = true) as successes
+                    FROM health_checks
+                    WHERE checked_at > NOW() - INTERVAL '24 hours'
+                    GROUP BY agent_id
+                    HAVING COUNT(*) >= 5 AND COUNT(*) FILTER (WHERE success = true) = 0
+                ) dead
+            """)
+            dead_agent_ids = {row["agent_id"] for row in rows}
+
+        check_agents = [a for a in agents if a.id not in dead_agent_ids]
+        skipped = total - len(check_agents)
+        logger.info("health_check_cycle_agents", total=total, checking=len(check_agents), skipped_dead=skipped)
 
         # Create shared session for all requests
         async with aiohttp.ClientSession() as session:
             # Check all agents concurrently (with some rate limiting)
             batch = []
-            for agent in agents:
+            for agent in check_agents:
                 task = check_agent_health(
                     agent_id=agent.id,
                     well_known_uri=str(agent.wellKnownURI),
@@ -196,6 +222,30 @@ async def health_check_cycle():
             logger.info("health_check_pruned", deleted=deleted)
         except Exception as prune_err:
             logger.warning("health_check_prune_failed", error=str(prune_err))
+
+        # Auto-hide agents that have failed every health check for 7+ days
+        try:
+            hidden = await db.execute("""
+                UPDATE agents SET hidden = true
+                WHERE hidden = false
+                  AND id IN (
+                    SELECT agent_id FROM (
+                        SELECT agent_id,
+                               COUNT(*) as total,
+                               COUNT(*) FILTER (WHERE success = true) as successes,
+                               MIN(checked_at) as earliest
+                        FROM health_checks
+                        WHERE checked_at > NOW() - INTERVAL '7 days'
+                        GROUP BY agent_id
+                        HAVING COUNT(*) >= 10
+                           AND COUNT(*) FILTER (WHERE success = true) = 0
+                    ) dead
+                  )
+            """)
+            if hidden and hidden != "UPDATE 0":
+                logger.info("auto_hidden_dead_agents", result=hidden)
+        except Exception as hide_err:
+            logger.warning("auto_hide_failed", error=str(hide_err))
 
         elapsed = time.time() - start_time
         logger.info("health_check_cycle_done", elapsed_s=round(elapsed, 1))
