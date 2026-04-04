@@ -14,9 +14,9 @@ class Skill(BaseModel):
     name: str
     description: str
     tags: list[str] = Field(default_factory=list)
-    examples: list[str] = Field(default_factory=list)
-    inputModes: list[str] = Field(default_factory=list, alias="inputModes")  # noqa: N815
-    outputModes: list[str] = Field(default_factory=list, alias="outputModes")  # noqa: N815
+    examples: Optional[list[str]] = Field(default_factory=list)
+    inputModes: Optional[list[str]] = Field(default_factory=list, alias="inputModes")  # noqa: N815
+    outputModes: Optional[list[str]] = Field(default_factory=list, alias="outputModes")  # noqa: N815
 
     model_config = {"populate_by_name": True}
 
