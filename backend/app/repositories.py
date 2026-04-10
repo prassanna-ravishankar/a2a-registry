@@ -176,6 +176,24 @@ class AgentRepository:
             return None
         return self._row_to_agent(row)
 
+    async def get_by_name_and_author(self, name: str, author: str) -> Optional[AgentInDB]:
+        """Find an existing agent with the same (name, author) — case- and whitespace-insensitive.
+
+        Used to catch the same agent card being re-registered under different hostnames
+        (a common spam pattern: one card, many parked domains).
+        """
+        query = """
+            SELECT * FROM agents
+            WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+              AND LOWER(TRIM(author)) = LOWER(TRIM($2))
+              AND hidden = false
+            LIMIT 1
+        """
+        row = await self.db.fetchrow(query, name, author)
+        if not row:
+            return None
+        return self._row_to_agent(row)
+
     async def list_agents(
         self,
         skill: Optional[str] = None,

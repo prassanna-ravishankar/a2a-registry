@@ -69,6 +69,7 @@ def test_register_agent_success(client):
         instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.get_by_id = AsyncMock(return_value=mock_public)
 
@@ -122,6 +123,27 @@ def test_register_agent_host_duplicate(client):
         response = client.post(
             "/agents/register",
             json={"wellKnownURI": "https://example.com/.well-known/agent-card.json"},
+        )
+
+    assert response.status_code == 409
+    assert "already registered" in response.json()["detail"]
+
+
+def test_register_agent_card_content_duplicate(client):
+    """Reject registration when the same (name, author) is already registered from a different host."""
+    existing = _make_agent_in_db()
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=existing)
+
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "https://other-host.example.com/.well-known/agent.json"},
         )
 
     assert response.status_code == 409

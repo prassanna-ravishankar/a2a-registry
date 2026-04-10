@@ -223,6 +223,15 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
         agent_card, well_known_uri, author_override=registration.author,
     )
 
+    # Card-content dedup: catches the same card being re-registered under different
+    # hostnames (e.g. one card served from many parked domains).
+    card_duplicate = await agent_repo.get_by_name_and_author(agent_data.name, agent_data.author)
+    if card_duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail=f"An agent with name '{agent_data.name}' by '{agent_data.author}' is already registered (id={card_duplicate.id}). Use PUT /agents/{card_duplicate.id} to update it.",
+        )
+
     # Create agent
     try:
         created_agent = await agent_repo.create(agent_data)
@@ -263,6 +272,15 @@ async def register_agent_full(agent: AgentCreate, request: Request):
                 status_code=409,
                 detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
             )
+
+    # Card-content dedup: catches the same card being re-registered under different
+    # hostnames (e.g. one card served from many parked domains).
+    card_duplicate = await agent_repo.get_by_name_and_author(agent.name, agent.author)
+    if card_duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail=f"An agent with name '{agent.name}' by '{agent.author}' is already registered (id={card_duplicate.id}). Use PUT /agents/{card_duplicate.id} to update it.",
+        )
 
     # Verify ownership via wellKnownURI
     verified, message = await verify_well_known_uri(agent)
