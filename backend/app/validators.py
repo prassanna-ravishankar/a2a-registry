@@ -191,7 +191,7 @@ def _validate_manual(card_data: dict[str, Any], strict: bool) -> list[str]:  # p
             value = card_data[field]
             if not isinstance(value, list):
                 errors.append(f"Field '{field}' must be an array of strings.")
-            elif strict and not value:
+            elif not value:
                 errors.append(f"Field '{field}' must not be empty.")
             elif not all(isinstance(item, str) for item in value):
                 errors.append(f"All items in '{field}' must be strings.")

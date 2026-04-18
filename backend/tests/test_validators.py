@@ -132,9 +132,7 @@ def test_validate_agent_card_rejects_non_dict_capabilities():
     assert any("capabilities" in e.lower() for e in errors)
 
 
-def test_validate_agent_card_allows_empty_input_modes():
-    # The a2a-sdk allows empty defaultInputModes in non-strict mode;
-    # enforcement only applies in strict mode (full spec).
+def test_validate_agent_card_rejects_empty_input_modes():
     card = {
         "name": "Test",
         "description": "Test agent",
@@ -143,7 +141,7 @@ def test_validate_agent_card_allows_empty_input_modes():
         "defaultInputModes": [],
     }
     errors = validate_agent_card(card, strict=False)
-    assert len(errors) == 0
+    assert any("must not be empty" in e for e in errors)
 
 
 def test_validate_agent_card_strict_mode_requires_extended_fields():

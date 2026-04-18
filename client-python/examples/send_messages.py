@@ -89,11 +89,11 @@ async def send_message_to_agent(agent, factory: ClientFactory) -> None:
         )
         request = SendMessageRequest(message=message)
 
+        response_text = ""
         async for event in client.send_message(request):
-            text = extract_text(event)
-            for line in text.split("\n")[:3]:
-                print(f"  Response: {line[:200]}")
-            break  # non-streaming: one event expected
+            response_text = extract_text(event)
+        for line in (response_text or "(no response)").split("\n")[:3]:
+            print(f"  Response: {line[:200]}")
 
     except Exception as e:
         print(f"  FAILED: {type(e).__name__}: {e}")

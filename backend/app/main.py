@@ -599,12 +599,11 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
             send_request = SendMessageRequest(message=message)
             response_text = ""
             async for event in client.send_message(send_request):
-                # StreamResponse has .task, .message, .status_update, .artifact_update
                 if event.HasField("task"):
                     response_text = _extract_text(event.task)
                 elif event.HasField("message"):
                     response_text = _extract_text(event.message)
-                break  # non-streaming: one event expected
+            response_text = response_text or "No response"
     except httpx.TimeoutException:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         await health_repo.create(agent_id, 504, elapsed_ms, False, "Agent request timed out", source='chat')
