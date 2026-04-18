@@ -215,6 +215,7 @@ print(f"Found: {{agent.name}}")
 """
 
     a2a_snippet = f"""import asyncio
+from a2a.client import ClientFactory
 
 async def main():
     factory = ClientFactory()

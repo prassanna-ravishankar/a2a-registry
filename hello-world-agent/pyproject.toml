@@ -6,6 +6,5 @@ dependencies = [
     "a2a-sdk[http-server]==1.0.0a3",
     "grpcio>=1.80.0",
     "grpcio-status>=1.80.0",
-    "grpcio-tools>=1.80.0",
     "uvicorn>=0.34",
 ]

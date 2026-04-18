@@ -596,9 +596,9 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
             client = await factory.create_from_url(
                 agent_base_url, relative_card_path=card_path,
             )
-            request = SendMessageRequest(message=message)
+            send_request = SendMessageRequest(message=message)
             response_text = ""
-            async for event in client.send_message(request):
+            async for event in client.send_message(send_request):
                 # StreamResponse has .task, .message, .status_update, .artifact_update
                 if event.HasField("task"):
                     response_text = _extract_text(event.task)

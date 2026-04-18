@@ -65,7 +65,7 @@ def extract_text(event) -> str:
     return "(unknown event)"
 
 
-async def send_message_to_agent(agent, httpx_client: httpx.AsyncClient) -> None:
+async def send_message_to_agent(agent, factory: ClientFactory) -> None:
     name = agent.name
     message_text = AGENT_MESSAGES.get(name, FALLBACK_MESSAGE)
 
@@ -78,9 +78,6 @@ async def send_message_to_agent(agent, httpx_client: httpx.AsyncClient) -> None:
     print(f"  Sending: {message_text[:80]}")
 
     try:
-        factory = ClientFactory(
-            ClientConfig(httpx_client=httpx_client, streaming=False),
-        )
         client = await factory.create_from_url(
             base_url, relative_card_path=card_path,
         )
@@ -116,8 +113,11 @@ async def main():
     print(f"Found {len(targets)} healthy conformant agents to test\n")
 
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as httpx_client:
+        factory = ClientFactory(
+            ClientConfig(httpx_client=httpx_client, streaming=False),
+        )
         for agent in targets:
-            await send_message_to_agent(agent, httpx_client)
+            await send_message_to_agent(agent, factory)
 
 
 if __name__ == "__main__":

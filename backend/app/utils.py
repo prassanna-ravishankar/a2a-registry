@@ -6,11 +6,7 @@ import aiohttp
 
 from .config import settings
 from .models import AgentCreate
-from .validators import _SDK_AVAILABLE, _normalise_fields, validate_agent_card
-
-if _SDK_AVAILABLE:
-    from a2a.types import AgentCard as _AgentCard
-    from pydantic import ValidationError as _ValidationError
+from .validators import _normalise_fields, validate_agent_card
 
 try:
     from posthog import Posthog
@@ -109,19 +105,7 @@ async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]
                 except Exception as e:
                     return None, f"Invalid JSON in agent card: {e}"
 
-                # Validate agent card structure; when SDK is available, parse
-                # through AgentCard so the returned dict uses canonical field
-                # names and includes SDK-computed defaults.
                 normalised = _normalise_fields(agent_card)
-                if _SDK_AVAILABLE:
-                    try:
-                        parsed = _AgentCard.model_validate(normalised)
-                        return parsed.model_dump(mode="json", by_alias=True), None
-                    except _ValidationError as exc:
-                        errors = [f"{' -> '.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()]
-                        return None, "Agent card validation failed: " + "; ".join(errors)
-
-                # SDK not available - fall back to manual validation
                 validation_errors = validate_agent_card(normalised)
                 if validation_errors:
                     return None, "Agent card validation failed: " + "; ".join(validation_errors)
