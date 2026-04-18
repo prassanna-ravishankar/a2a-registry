@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://www.a2aregistry.org/sitemap.xml
+Sitemap: https://a2aregistry.org/sitemap.xml
 
 # Allow all content for SEO
 Allow: /registry.json
