@@ -16,7 +16,9 @@ try:
     from a2a.types import AgentCard as _AgentCard
     from pydantic import ValidationError as _ValidationError
 
-    _SDK_AVAILABLE = True
+    # a2a-sdk 1.0+ uses protobuf types instead of pydantic -- model_validate
+    # is only available on the pydantic-based 0.3.x models.
+    _SDK_AVAILABLE = hasattr(_AgentCard, "model_validate")
 except ImportError:  # pragma: no cover
     _SDK_AVAILABLE = False
 
@@ -237,7 +239,7 @@ def _validate_manual(card_data: dict[str, Any], strict: bool) -> list[str]:  # p
             value = card_data[field]
             if not isinstance(value, list):
                 errors.append(f"Field '{field}' must be an array of strings.")
-            elif not value:
+            elif strict and not value:
                 errors.append(f"Field '{field}' must not be empty.")
             elif not all(isinstance(item, str) for item in value):
                 errors.append(f"All items in '{field}' must be strings.")

@@ -45,11 +45,11 @@ async = [
     "aiohttp>=3.8.0",
 ]
 a2a = [
-    "a2a-sdk>=0.3.24",
+    "a2a-sdk==1.0.0a3",
 ]
 all = [
     "aiohttp>=3.8.0",
-    "a2a-sdk>=0.3.24",
+    "a2a-sdk==1.0.0a3",
 ]
 
 [project.urls]

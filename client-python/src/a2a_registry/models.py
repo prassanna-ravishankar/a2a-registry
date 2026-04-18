@@ -140,7 +140,6 @@ class Agent(BaseModel):
         """
         try:
             from a2a.client import ClientConfig, ClientFactory
-            from a2a.types import TransportProtocol
         except ImportError as e:
             raise ImportError(
                 "a2a-sdk is required for this feature. "
@@ -159,18 +158,11 @@ class Agent(BaseModel):
         base_url = f"{parsed.scheme}://{parsed.netloc}"
         relative_path = parsed.path if parsed.path else "/.well-known/agent.json"
 
-        if config is None:
-            config = ClientConfig(
-                supported_transports=[
-                    TransportProtocol.jsonrpc,
-                    TransportProtocol.http_json,
-                ],
-            )
+        factory = ClientFactory(config or ClientConfig())
 
         try:
-            return await ClientFactory.connect(
+            return await factory.create_from_url(
                 base_url,
-                client_config=config,
                 relative_card_path=relative_path,
             )
         except Exception as e:
