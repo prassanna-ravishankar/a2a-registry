@@ -215,13 +215,12 @@ print(f"Found: {{agent.name}}")
 """
 
     a2a_snippet = f"""import asyncio
-import httpx
 from a2a.client import ClientFactory
 
 async def main():
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        a2a_client = await ClientFactory.connect("{agent.url}")
-        print("Connected via A2A SDK")
+    factory = ClientFactory()
+    client = await factory.create_from_url("{agent.url}")
+    print("Connected via A2A SDK")
 
 asyncio.run(main())
 """

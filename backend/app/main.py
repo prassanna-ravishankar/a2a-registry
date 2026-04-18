@@ -12,7 +12,7 @@ from uuid import UUID
 import httpx
 import structlog
 from a2a.client import ClientConfig, ClientFactory
-from a2a.types import Message, Part, Role, Task, TextPart, TransportProtocol
+from a2a.types import Message, Part, Role, SendMessageRequest, Task, TaskState
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -529,43 +529,37 @@ def _is_private_url(url: str) -> bool:
         return host in _BLOCKED_HOSTS or any(host.endswith(s) for s in _BLOCKED_SUFFIXES)
 
 
+def _extract_text_from_parts(parts) -> str:
+    """Join text content from a list of Part messages."""
+    return "".join(p.text for p in parts if p.text)
+
+
 def _extract_text(result) -> str:
-    """Extract text from a ClientEvent (tuple[Task, update]) or Message."""
-    # ClientEvent is tuple[Task, TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None]
-    if isinstance(result, tuple):
-        result = result[0]
+    """Extract text from a StreamResponse."""
     if isinstance(result, Message):
-        return "".join(
-            p.root.text for p in result.parts if isinstance(p.root, TextPart)
-        )
+        return _extract_text_from_parts(result.parts)
     if isinstance(result, Task):
         # Check artifacts first
         if result.artifacts:
             text = "".join(
-                p.root.text
+                _extract_text_from_parts(artifact.parts)
                 for artifact in result.artifacts
-                for p in artifact.parts
-                if isinstance(p.root, TextPart)
             )
             if text:
                 return text
         # Fallback: status message
-        if result.status.message:
-            text = "".join(
-                p.root.text for p in result.status.message.parts if isinstance(p.root, TextPart)
-            )
+        if result.status.HasField("message"):
+            text = _extract_text_from_parts(result.status.message.parts)
             if text:
                 return text
         # Fallback: last agent message in history
         if result.history:
             for msg in reversed(result.history):
-                if msg.role == Role.agent:
-                    text = "".join(
-                        p.root.text for p in msg.parts if isinstance(p.root, TextPart)
-                    )
+                if msg.role == Role.ROLE_AGENT:
+                    text = _extract_text_from_parts(msg.parts)
                     if text:
                         return text
-        return f"Task {result.status.state.value}"
+        return f"Task {TaskState.Name(result.status.state)}"
     return "No response"
 
 
@@ -585,33 +579,31 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
     message = Message(
         message_id=str(uuid.uuid4()),
         context_id=context_id,
-        role=Role.user,
-        parts=[Part(root=TextPart(text=body.message))],
+        role=Role.ROLE_USER,
+        parts=[Part(text=body.message)],
     )
 
     health_repo = HealthCheckRepository(db)
     start = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-            # Pass the agent base URL so the SDK resolves the full agent card
-            # (including preferredTransport) via /.well-known/agent-card.json.
             parsed = urlparse(str(agent.wellKnownURI))
             agent_base_url = f"{parsed.scheme}://{parsed.netloc}"
-            client = await ClientFactory.connect(
-                agent_base_url,
-                client_config=ClientConfig(
-                    httpx_client=http_client,
-                    streaming=False,
-                    supported_transports=[
-                        TransportProtocol.jsonrpc,
-                        TransportProtocol.http_json,
-                    ],
-                ),
+            card_path = parsed.path or None
+            factory = ClientFactory(
+                ClientConfig(httpx_client=http_client, streaming=False),
             )
+            client = await factory.create_from_url(
+                agent_base_url, relative_card_path=card_path,
+            )
+            send_request = SendMessageRequest(message=message)
             response_text = ""
-            async for event in client.send_message(message):
-                response_text = _extract_text(event)
-                break  # non-streaming: one event expected
+            async for event in client.send_message(send_request):
+                if event.HasField("task"):
+                    response_text = _extract_text(event.task)
+                elif event.HasField("message"):
+                    response_text = _extract_text(event.message)
+            response_text = response_text or "No response"
     except httpx.TimeoutException:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         await health_repo.create(agent_id, 504, elapsed_ms, False, "Agent request timed out", source='chat')
