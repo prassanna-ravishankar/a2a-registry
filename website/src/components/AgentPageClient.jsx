@@ -1,34 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import InspectionDeck from './InspectionDeck';
-import { api } from '@/lib/api';
 import { trackAgentView } from '@/lib/analytics';
 
-const AgentPageClient = ({ agent: initial }) => {
-  const [agent, setAgent] = useState(initial);
-
+const AgentPageClient = ({ agent }) => {
   useEffect(() => {
-    if (initial?.id) trackAgentView(initial);
-    let cancelled = false;
-    (async () => {
-      try {
-        const fresh = await api.getAgent(initial.id);
-        if (!cancelled && fresh) setAgent(fresh);
-      } catch {
-        // Use server-rendered snapshot if live fetch fails
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [initial]);
+    if (agent?.id) trackAgentView(agent);
+  }, [agent]);
 
   const handleClose = () => {
-    window.location.href = '/';
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = '/';
   };
 
-  return (
-    <div className="border border-zinc-800">
-      <InspectionDeck agent={agent} onClose={handleClose} />
-    </div>
-  );
+  return <InspectionDeck agent={agent} onClose={handleClose} />;
 };
 
 export default AgentPageClient;

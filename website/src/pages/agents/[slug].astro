@@ -1,31 +1,37 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import AgentPageClient from '@/components/AgentPageClient.jsx';
+import { safeExternalUrl } from '@/lib/utils';
 
 export const prerender = true;
 
-const API_BASE = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
-
 export async function getStaticPaths() {
   const base = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
+  const pageSize = 200;
+  const agents = [];
+
   try {
-    const res = await fetch(`${base}/agents?healthy=true&limit=500`);
-    if (!res.ok) {
-      console.warn(`[getStaticPaths] /agents returned ${res.status}; emitting no per-agent pages`);
-      return [];
+    for (let offset = 0; ; offset += pageSize) {
+      const res = await fetch(`${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`);
+      if (!res.ok) {
+        console.warn(`[getStaticPaths] /agents returned ${res.status} at offset ${offset}`);
+        break;
+      }
+      const data = await res.json();
+      const batch = data.agents || [];
+      agents.push(...batch);
+      if (batch.length < pageSize) break;
     }
-    const data = await res.json();
-    const agents = data.agents || [];
-    return agents
-      .filter((a) => a && a.id)
-      .map((agent) => ({
-        params: { slug: agent.id },
-        props: { agent },
-      }));
   } catch (err) {
     console.warn('[getStaticPaths] failed to fetch agents:', err);
-    return [];
   }
+
+  return agents
+    .filter((a) => a && a.id)
+    .map((agent) => ({
+      params: { slug: agent.id },
+      props: { agent },
+    }));
 }
 
 const { agent } = Astro.props;
@@ -37,15 +43,6 @@ const description = shortDesc || `${agent.name} is an A2A Protocol compliant age
 const canonical = `https://a2aregistry.org/agents/${encodeURIComponent(agent.id)}`;
 
 const topTags = Array.from(new Set((agent.skills || []).flatMap((s) => s.tags || []))).slice(0, 8);
-
-const safeExternalUrl = (value) => {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (url.protocol === 'http:' || url.protocol === 'https:') return url.toString();
-  } catch {}
-  return null;
-};
 
 const homepageUrl = safeExternalUrl(agent.homepage) || safeExternalUrl(agent.provider?.url) || safeExternalUrl(agent.documentationUrl) || safeExternalUrl(agent.url);
 
@@ -194,9 +191,7 @@ async def main():
 asyncio.run(main())`}</pre>
       </section>
 
-      <div id="agent-inspection-deck">
-        <AgentPageClient client:visible agent={agent} />
-      </div>
+      <AgentPageClient client:visible agent={agent} />
     </div>
   </article>
 </BaseLayout>

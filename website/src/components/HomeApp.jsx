@@ -28,7 +28,7 @@ function pushHomeUrl() {
   }
 }
 
-const HomeApp = ({ initialAgent = null }) => {
+const HomeApp = () => {
   const getPageScrollTop = () => document.scrollingElement?.scrollTop || window.scrollY || 0;
 
   const [agents, setAgents] = useState([]);
@@ -41,7 +41,7 @@ const HomeApp = ({ initialAgent = null }) => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedAgent, setSelectedAgent] = useState(initialAgent);
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const [stats, setStats] = useState(null);
   const [useStaticFallback, setUseStaticFallback] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -83,13 +83,12 @@ const HomeApp = ({ initialAgent = null }) => {
       setError(null);
       setPage(0);
       try {
+        const statsPromise = api.getStats().catch(() => null);
         await fetchFromAPI(0, false);
         setUseStaticFallback(false);
         setLoading(false);
-        try {
-          const statsData = await api.getStats();
-          if (!cancelled) setStats(statsData);
-        } catch { /* non-critical */ }
+        const statsData = await statsPromise;
+        if (!cancelled && statsData) setStats(statsData);
       } catch {
         try {
           const data = await fetchStaticRegistry();
@@ -149,21 +148,22 @@ const HomeApp = ({ initialAgent = null }) => {
   const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
   useEffect(() => {
-    const resolveSlugFromUrl = async () => {
+    const syncFromUrl = async () => {
       const slug = agentSlugFromPath(window.location.pathname);
-      if (!slug) return;
-      if (selectedAgent && selectedAgent.id === slug) return;
+      if (!slug) {
+        setSelectedAgent(null);
+        return;
+      }
       try {
         const agent = await api.getAgent(slug);
         if (agent) setSelectedAgent(agent);
       } catch {
-        // Agent doesn't exist — leave modal closed; user sees homepage
+        setSelectedAgent(null);
       }
     };
-    resolveSlugFromUrl();
-    const onPop = () => resolveSlugFromUrl();
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
