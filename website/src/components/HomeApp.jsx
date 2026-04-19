@@ -170,13 +170,14 @@ const HomeApp = () => {
           if (current && current.id !== slug) return current;
           return agent;
         });
-      } catch {
+      } catch (err) {
         if (cancelled) return;
-        // If the URL still points at the slug that just 404'd and the user
-        // hasn't picked something else in the meantime, clean the URL back
-        // to / so they're not stuck on a broken deep link.
+        // Only rewrite the URL when the agent is genuinely gone (404). Leave
+        // transient network failures alone so the user can retry on the same
+        // URL instead of bouncing to /.
+        const agentGone = err?.status === 404;
         const stillOnBadSlug = agentSlugFromPath(window.location.pathname) === slug;
-        if (stillOnBadSlug) {
+        if (agentGone && stillOnBadSlug) {
           setSelectedAgent((current) => (current && current.id !== slug ? current : null));
           if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
         } else if (fromPopState) {
