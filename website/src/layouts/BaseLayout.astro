@@ -1,0 +1,108 @@
+---
+import '@/styles/global.css';
+
+export interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article' | 'profile';
+  noindex?: boolean;
+  jsonLd?: unknown[];
+  bodyClass?: string;
+}
+
+const {
+  title,
+  description,
+  canonical,
+  ogImage = 'https://a2aregistry.org/og-image.png',
+  ogType = 'website',
+  noindex = false,
+  jsonLd = [],
+  bodyClass = '',
+} = Astro.props;
+
+const siteOrigin = Astro.site?.origin ?? 'https://a2aregistry.org';
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toString();
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://pypi.org" />
+    <link rel="dns-prefetch" href="https://github.com" />
+    <link rel="dns-prefetch" href="https://modal.com" />
+    <link rel="dns-prefetch" href="https://a2a-protocol.org" />
+    <link rel="preload" href="/logo.svg" as="image" type="image/svg+xml" fetchpriority="high" />
+
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()" />
+
+    <title>{title}</title>
+    <meta name="title" content={title} />
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
+    <meta name="language" content="English" />
+    <meta name="author" content="A2A Registry Community" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="referrer" content="origin-when-cross-origin" />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content="A2A Registry - Community-driven directory of live AI agents" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="A2A Registry" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={canonicalUrl} />
+    <meta property="twitter:title" content={title} />
+    <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content={ogImage} />
+    <meta property="twitter:image:alt" content="A2A Registry - Community-driven directory of live AI agents" />
+
+    <meta name="theme-color" content="#7C3AED" />
+    <meta name="application-name" content="A2A Registry" />
+    <meta name="msapplication-TileColor" content="#7C3AED" />
+
+    <style is:inline>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: monospace;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #000;
+        color: #e4e4e7;
+      }
+      #root, .astro-root { min-height: 100vh; }
+      .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+
+    {jsonLd.map((block) => (
+      <script type="application/ld+json" set:html={JSON.stringify(block).replace(/</g, '\\u003c')} />
+    ))}
+
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <slot />
+
+    <script>
+      import '@/scripts/posthog';
+    </script>
+  </body>
+</html>
