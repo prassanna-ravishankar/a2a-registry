@@ -23,7 +23,7 @@ const {
   bodyClass = '',
 } = Astro.props;
 
-const siteOrigin = 'https://a2aregistry.org';
+const siteOrigin = Astro.site?.origin ?? 'https://a2aregistry.org';
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toString();
 ---
 <!DOCTYPE html>

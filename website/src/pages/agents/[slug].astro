@@ -49,7 +49,8 @@ const provider = agent.author || agent.provider?.organization || 'Unknown';
 const title = `${agent.name} - A2A Protocol Agent | ${provider}`;
 const shortDesc = (agent.description || '').slice(0, 160);
 const description = shortDesc || `${agent.name} is an A2A Protocol compliant agent available on A2A Registry.`;
-const canonical = `https://a2aregistry.org/agents/${encodeURIComponent(agent.id)}`;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://a2aregistry.org').toString();
+const siteRoot = (Astro.site ?? new URL('https://a2aregistry.org')).toString();
 
 const topTags = Array.from(new Set((agent.skills || []).flatMap((s) => s.tags || []))).slice(0, 8);
 
@@ -79,15 +80,15 @@ const jsonLd = [
     isPartOf: {
       '@type': 'WebSite',
       name: 'A2A Registry',
-      url: 'https://a2aregistry.org/',
+      url: siteRoot,
     },
   },
   {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'A2A Registry', item: 'https://a2aregistry.org/' },
-      { '@type': 'ListItem', position: 2, name: 'Agents', item: 'https://a2aregistry.org/' },
+      { '@type': 'ListItem', position: 1, name: 'A2A Registry', item: siteRoot },
+      { '@type': 'ListItem', position: 2, name: 'Agents', item: siteRoot },
       { '@type': 'ListItem', position: 3, name: agent.name, item: canonical },
     ],
   },
@@ -96,7 +97,6 @@ const jsonLd = [
 <BaseLayout
   title={title}
   description={description}
-  canonical={canonical}
   ogType="article"
   jsonLd={jsonLd}
 >
@@ -203,7 +203,7 @@ async def main():
 asyncio.run(main())`}</pre>
       </section>
 
-      <AgentPageClient client:visible agent={agent} />
+      <AgentPageClient client:load agent={agent} />
     </div>
   </article>
 </BaseLayout>
