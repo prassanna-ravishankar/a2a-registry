@@ -148,22 +148,26 @@ const HomeApp = () => {
   const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
   useEffect(() => {
+    let cancelled = false;
     const syncFromUrl = async () => {
       const slug = agentSlugFromPath(window.location.pathname);
       if (!slug) {
-        setSelectedAgent(null);
+        if (!cancelled) setSelectedAgent(null);
         return;
       }
       try {
         const agent = await api.getAgent(slug);
-        if (agent) setSelectedAgent(agent);
+        if (!cancelled && agent) setSelectedAgent(agent);
       } catch {
-        setSelectedAgent(null);
+        if (!cancelled) setSelectedAgent(null);
       }
     };
     syncFromUrl();
     window.addEventListener('popstate', syncFromUrl);
-    return () => window.removeEventListener('popstate', syncFromUrl);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('popstate', syncFromUrl);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

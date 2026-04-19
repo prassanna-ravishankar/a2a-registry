@@ -8,8 +8,7 @@ const AgentPageClient = ({ agent }) => {
   }, [agent]);
 
   const handleClose = () => {
-    if (window.history.length > 1) window.history.back();
-    else window.location.href = '/';
+    window.location.href = '/';
   };
 
   return <InspectionDeck agent={agent} onClose={handleClose} />;

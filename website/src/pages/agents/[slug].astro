@@ -6,7 +6,8 @@ import { safeExternalUrl } from '@/lib/utils';
 export const prerender = true;
 
 export async function getStaticPaths() {
-  const base = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
+  const envBase = import.meta.env.PUBLIC_API_URL;
+  const base = envBase && /^https?:\/\//.test(envBase) ? envBase : 'https://a2aregistry.org/api';
   const pageSize = 200;
   const maxAgents = 10000;
   const agents = [];
