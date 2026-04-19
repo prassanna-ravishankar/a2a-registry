@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly PUBLIC_POSTHOG_KEY?: string;
   readonly PUBLIC_POSTHOG_HOST?: string;
   readonly PUBLIC_API_URL?: string;
+  readonly ALLOW_EMPTY_AGENT_BUILD?: string;
 }
 
 interface ImportMeta {

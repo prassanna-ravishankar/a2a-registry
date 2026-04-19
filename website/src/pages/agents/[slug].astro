@@ -14,25 +14,26 @@ export async function getStaticPaths() {
   const pageSize = 200;
   const maxAgents = 10000;
   const agents = [];
+  const allowEmpty = import.meta.env.ALLOW_EMPTY_AGENT_BUILD === '1';
 
-  try {
-    for (let offset = 0; offset < maxAgents; offset += pageSize) {
-      const res = await fetch(`${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`);
-      if (!res.ok) {
-        console.warn(`[getStaticPaths] /agents returned ${res.status} at offset ${offset}`);
-        break;
-      }
-      const data = await res.json();
-      const batch = data.agents || [];
-      agents.push(...batch);
-      if (batch.length < pageSize) break;
-      if (data.total && agents.length >= data.total) break;
+  for (let offset = 0; offset < maxAgents; offset += pageSize) {
+    const res = await fetch(`${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`);
+    if (!res.ok) {
+      throw new Error(`[getStaticPaths] /agents returned ${res.status} at offset ${offset} from ${base}`);
     }
-    if (agents.length >= maxAgents) {
-      console.warn(`[getStaticPaths] hit safety cap of ${maxAgents} agents; pagination may have stalled`);
-    }
-  } catch (err) {
-    console.warn('[getStaticPaths] failed to fetch agents:', err);
+    const data = await res.json();
+    const batch = data.agents || [];
+    agents.push(...batch);
+    if (batch.length < pageSize) break;
+    if (data.total && agents.length >= data.total) break;
+  }
+
+  if (agents.length >= maxAgents) {
+    console.warn(`[getStaticPaths] hit safety cap of ${maxAgents} agents; pagination may have stalled`);
+  }
+
+  if (agents.length === 0 && !allowEmpty) {
+    throw new Error(`[getStaticPaths] fetched zero agents from ${base}. Set ALLOW_EMPTY_AGENT_BUILD=1 to override (e.g. in local dev without a live API).`);
   }
 
   return agents
@@ -56,7 +57,7 @@ const topTags = Array.from(new Set((agent.skills || []).flatMap((s) => s.tags ||
 
 const homepageUrl = safeExternalUrl(agent.homepage) || safeExternalUrl(agent.provider?.url) || safeExternalUrl(agent.documentationUrl) || safeExternalUrl(agent.url);
 
-const pyEscape = (s) => String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+const pyEscape = (s) => JSON.stringify(String(s ?? '')).slice(1, -1);
 const agentIdPy = pyEscape(agent.id);
 
 const jsonLd = [
