@@ -147,12 +147,15 @@ const HomeApp = () => {
 
   const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
+  const didInitialUrlSync = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     const syncFromUrl = async () => {
       const slug = agentSlugFromPath(window.location.pathname);
       if (!slug) {
         if (!cancelled) setSelectedAgent(null);
+        didInitialUrlSync.current = true;
         return;
       }
       try {
@@ -160,6 +163,8 @@ const HomeApp = () => {
         if (!cancelled && agent) setSelectedAgent(agent);
       } catch {
         if (!cancelled) setSelectedAgent(null);
+      } finally {
+        didInitialUrlSync.current = true;
       }
     };
     syncFromUrl();
@@ -171,6 +176,10 @@ const HomeApp = () => {
   }, [setSelectedAgent]);
 
   useEffect(() => {
+    // Don't touch the URL until the initial sync-from-URL has landed, otherwise
+    // we race the async getAgent fetch and clobber /agents/<unknown-slug> back
+    // to / before the inspection modal can open.
+    if (!didInitialUrlSync.current) return;
     const currentPath = window.location.pathname;
     if (selectedAgent) {
       const target = `/agents/${encodeURIComponent(selectedAgent.id)}`;
