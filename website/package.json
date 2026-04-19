@@ -4,15 +4,21 @@
   "description": "A2A Registry - Community-driven directory of AI agents",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "refresh-data": "cd .. && source .venv/bin/activate && python scripts/generate_registry.py agents/ --output website/public/registry.json --pretty"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/react": "^3.6.2",
+    "@astrojs/sitemap": "^3.2.1",
+    "@astrojs/tailwind": "^5.1.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "astro": "^4.16.18",
     "lucide-react": "^0.309.0",
     "posthog-js": "^1.96.1",
     "react": "^18.2.0",
@@ -20,15 +26,11 @@
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lightningcss": "^1.30.2",
     "postcss": "^8.4.32",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^3.4.0",
-    "terser": "^5.43.1",
-    "vite": "^5.0.10"
+    "tailwindcss": "^3.4.0"
   }
 }

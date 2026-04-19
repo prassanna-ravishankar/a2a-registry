@@ -104,9 +104,9 @@ jobs:
           push: true
           provenance: false
           build-args: |
-            VITE_API_URL=https://a2aregistry.org/api
-            VITE_POSTHOG_HOST=https://eu.posthog.com
-            VITE_POSTHOG_KEY=${{ secrets.VITE_POSTHOG_KEY }}
+            PUBLIC_API_URL=https://a2aregistry.org/api
+            PUBLIC_POSTHOG_HOST=https://eu.posthog.com
+            PUBLIC_POSTHOG_KEY=${{ secrets.VITE_POSTHOG_KEY }}
           tags: |
             gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
             gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:latest

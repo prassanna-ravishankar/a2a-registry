@@ -16,14 +16,18 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 # Build arguments for environment variables
-# VITE_POSTHOG_KEY is a public client-side analytics key (not a secret)
+# PUBLIC_POSTHOG_KEY is a public client-side analytics key (not a secret)
 # hadolint ignore=DL3044
-ARG VITE_API_URL
-ARG VITE_POSTHOG_KEY
-ARG VITE_POSTHOG_HOST
+ARG PUBLIC_API_URL
+ARG PUBLIC_POSTHOG_KEY
+ARG PUBLIC_POSTHOG_HOST
+ENV PUBLIC_API_URL=${PUBLIC_API_URL} \
+    PUBLIC_POSTHOG_KEY=${PUBLIC_POSTHOG_KEY} \
+    PUBLIC_POSTHOG_HOST=${PUBLIC_POSTHOG_HOST} \
+    ASTRO_OUT_DIR=dist
 
-# Build the application (outputs to ../docs by default, but we need dist for Docker)
-RUN mkdir -p dist && npm run build -- --outDir dist
+# Build the Astro site; outputs to ./dist inside the image
+RUN npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

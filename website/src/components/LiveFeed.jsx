@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://a2aregistry.org/api';
+const API_URL = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
 
 const LiveFeed = () => {
     const [agents, setAgents] = useState([]);
