@@ -12,7 +12,7 @@ export async function getStaticPaths() {
   const siteFallback = `${(import.meta.env.SITE || 'https://a2aregistry.org').replace(/\/+$/, '')}/api`;
   const base = (envBase && /^https?:\/\//.test(envBase) ? envBase : siteFallback).replace(/\/+$/, '');
   const pageSize = 200;
-  const maxAgents = 10000;
+  const maxAgents = Number(import.meta.env.MAX_AGENT_PAGES) || 10000;
   const agents = [];
   const allowEmpty = import.meta.env.ALLOW_EMPTY_AGENT_BUILD === '1';
 
@@ -64,6 +64,7 @@ const title = `${agent.name} - A2A Protocol Agent | ${provider}`;
 // Strip common inline Markdown so agents with **bold** / [link](url) /
 // `code` don't show raw syntax in search-engine snippets.
 const stripMarkdown = (s) => String(s ?? '')
+  .replace(/<[^>]*>/g, '')                   // raw HTML tags
   .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // images/links → alt/label
   .replace(/```[\s\S]*?```/g, '')            // fenced code blocks
   .replace(/`([^`]+)`/g, '$1')               // inline code

@@ -171,7 +171,17 @@ const HomeApp = () => {
           return agent;
         });
       } catch {
-        if (!cancelled && fromPopState) setSelectedAgent(null);
+        if (cancelled) return;
+        // If the URL still points at the slug that just 404'd and the user
+        // hasn't picked something else in the meantime, clean the URL back
+        // to / so they're not stuck on a broken deep link.
+        const stillOnBadSlug = agentSlugFromPath(window.location.pathname) === slug;
+        if (stillOnBadSlug) {
+          setSelectedAgent((current) => (current && current.id !== slug ? current : null));
+          if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+        } else if (fromPopState) {
+          setSelectedAgent(null);
+        }
       } finally {
         didInitialUrlSync.current = true;
       }
