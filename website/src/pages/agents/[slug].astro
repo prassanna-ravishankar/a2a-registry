@@ -16,12 +16,24 @@ export async function getStaticPaths() {
   const agents = [];
   const allowEmpty = import.meta.env.ALLOW_EMPTY_AGENT_BUILD === '1';
 
+  const fetchTimeoutMs = 30000;
+
   for (let offset = 0; offset < maxAgents; offset += pageSize) {
-    const res = await fetch(`${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`);
-    if (!res.ok) {
-      throw new Error(`[getStaticPaths] /agents returned ${res.status} at offset ${offset} from ${base}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+    let data;
+    try {
+      const res = await fetch(
+        `${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`,
+        { signal: controller.signal },
+      );
+      if (!res.ok) {
+        throw new Error(`[getStaticPaths] /agents returned ${res.status} at offset ${offset} from ${base}`);
+      }
+      data = await res.json();
+    } finally {
+      clearTimeout(timer);
     }
-    const data = await res.json();
     const batch = data.agents || [];
     agents.push(...batch);
     if (batch.length < pageSize) break;
@@ -48,7 +60,21 @@ const { agent } = Astro.props;
 
 const provider = agent.author || agent.provider?.organization || 'Unknown';
 const title = `${agent.name} - A2A Protocol Agent | ${provider}`;
-const shortDesc = (agent.description || '').slice(0, 160);
+
+// Strip common inline Markdown so agents with **bold** / [link](url) /
+// `code` don't show raw syntax in search-engine snippets.
+const stripMarkdown = (s) => String(s ?? '')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // images/links → alt/label
+  .replace(/```[\s\S]*?```/g, '')            // fenced code blocks
+  .replace(/`([^`]+)`/g, '$1')               // inline code
+  .replace(/(\*\*|__)(.*?)\1/g, '$2')        // bold
+  .replace(/(\*|_)(.*?)\1/g, '$2')           // italic
+  .replace(/~~(.*?)~~/g, '$1')               // strikethrough
+  .replace(/^#{1,6}\s+/gm, '')               // headings
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const shortDesc = stripMarkdown(agent.description).slice(0, 160);
 const description = shortDesc || `${agent.name} is an A2A Protocol compliant agent available on A2A Registry.`;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://a2aregistry.org').toString();
 const siteRoot = (Astro.site ?? new URL('https://a2aregistry.org')).toString();
