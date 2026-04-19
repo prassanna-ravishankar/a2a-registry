@@ -7,7 +7,7 @@ export const prerender = true;
 
 export async function getStaticPaths() {
   const envBase = import.meta.env.PUBLIC_API_URL;
-  const base = envBase && /^https?:\/\//.test(envBase) ? envBase : 'https://a2aregistry.org/api';
+  const base = (envBase && /^https?:\/\//.test(envBase) ? envBase : 'https://a2aregistry.org/api').replace(/\/+$/, '');
   const pageSize = 200;
   const maxAgents = 10000;
   const agents = [];
@@ -51,6 +51,9 @@ const canonical = `https://a2aregistry.org/agents/${encodeURIComponent(agent.id)
 const topTags = Array.from(new Set((agent.skills || []).flatMap((s) => s.tags || []))).slice(0, 8);
 
 const homepageUrl = safeExternalUrl(agent.homepage) || safeExternalUrl(agent.provider?.url) || safeExternalUrl(agent.documentationUrl) || safeExternalUrl(agent.url);
+
+const pyEscape = (s) => String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+const agentIdPy = pyEscape(agent.id);
 
 const jsonLd = [
   {
@@ -190,7 +193,7 @@ from a2a_registry import AsyncRegistry
 
 async def main():
     async with AsyncRegistry() as registry:
-        agent = await registry.get_by_id("${agent.id}")
+        agent = await registry.get_by_id("${agentIdPy}")
         client = await agent.async_connect()
         print(f"Connected to {agent.name}")
 

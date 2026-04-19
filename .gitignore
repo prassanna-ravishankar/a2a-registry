@@ -76,3 +76,4 @@ website/.astro/
 
 # MCP stuff
 .playwright-mcp/
+.claude/scheduled_tasks.lock

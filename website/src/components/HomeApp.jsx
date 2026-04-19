@@ -168,7 +168,7 @@ const HomeApp = () => {
       cancelled = true;
       window.removeEventListener('popstate', syncFromUrl);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setSelectedAgent]);
 
   useEffect(() => {
     const currentPath = window.location.pathname;
