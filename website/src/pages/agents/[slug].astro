@@ -8,10 +8,11 @@ export const prerender = true;
 export async function getStaticPaths() {
   const base = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
   const pageSize = 200;
+  const maxAgents = 10000;
   const agents = [];
 
   try {
-    for (let offset = 0; ; offset += pageSize) {
+    for (let offset = 0; offset < maxAgents; offset += pageSize) {
       const res = await fetch(`${base}/agents?healthy=true&limit=${pageSize}&offset=${offset}`);
       if (!res.ok) {
         console.warn(`[getStaticPaths] /agents returned ${res.status} at offset ${offset}`);
@@ -21,6 +22,10 @@ export async function getStaticPaths() {
       const batch = data.agents || [];
       agents.push(...batch);
       if (batch.length < pageSize) break;
+      if (data.total && agents.length >= data.total) break;
+    }
+    if (agents.length >= maxAgents) {
+      console.warn(`[getStaticPaths] hit safety cap of ${maxAgents} agents; pagination may have stalled`);
     }
   } catch (err) {
     console.warn('[getStaticPaths] failed to fetch agents:', err);

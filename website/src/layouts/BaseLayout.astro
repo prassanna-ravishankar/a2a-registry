@@ -93,7 +93,7 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     </style>
 
     {jsonLd.map((block) => (
-      <script type="application/ld+json" set:html={JSON.stringify(block)} />
+      <script type="application/ld+json" set:html={JSON.stringify(block).replace(/</g, '\\u003c')} />
     ))}
 
     <slot name="head" />

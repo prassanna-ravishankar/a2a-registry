@@ -16,8 +16,6 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
     "astro": "^4.16.18",
     "lucide-react": "^0.309.0",
     "posthog-js": "^1.96.1",
@@ -26,6 +24,8 @@
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
