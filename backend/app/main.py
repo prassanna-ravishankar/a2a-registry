@@ -91,7 +91,7 @@ def _agent_create_from_card(
             protocolVersion=_extract_protocol_version(agent_card),
             name=agent_card["name"],
             description=agent_card.get("description", ""),
-            author=author_override or agent_card.get("provider", {}).get("organization", author_fallback),
+            author=author_override or (agent_card.get("provider") or {}).get("organization", author_fallback),
             wellKnownURI=well_known_uri,
             url=_extract_agent_url(agent_card),
             version=agent_card.get("version", "1.0.0"),
