@@ -84,7 +84,10 @@ const topTags = Array.from(new Set((agent.skills || []).flatMap((s) => s.tags ||
 
 const homepageUrl = safeExternalUrl(agent.homepage) || safeExternalUrl(agent.provider?.url) || safeExternalUrl(agent.documentationUrl) || safeExternalUrl(agent.url);
 
-const pyEscape = (s) => JSON.stringify(String(s ?? '')).slice(1, -1);
+// JSON.stringify handles quotes, backslashes, and control chars — all of
+// which are valid Python escape sequences too. Also escape backticks since
+// the result is interpolated into a JS template literal just below.
+const pyEscape = (s) => JSON.stringify(String(s ?? '')).slice(1, -1).replace(/`/g, '\\`');
 const agentIdPy = pyEscape(agent.id);
 
 const jsonLd = [
