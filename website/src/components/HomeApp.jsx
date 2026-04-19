@@ -140,8 +140,8 @@ const HomeApp = () => {
         agent.skills.some((skill) => skill.tags.some((tag) => selectedSkills.includes(tag)))
       );
     }
-    if (conformanceFilter === 'standard') filtered = filtered.filter((a) => a.conformance === true);
-    else if (conformanceFilter === 'non-standard') filtered = filtered.filter((a) => a.conformance !== true);
+    if (conformanceFilter === 'standard') filtered = filtered.filter((a) => a.conformance !== false);
+    else if (conformanceFilter === 'non-standard') filtered = filtered.filter((a) => a.conformance === false);
     return filtered;
   }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter]);
 
