@@ -7,7 +7,10 @@ export const prerender = true;
 
 export async function getStaticPaths() {
   const envBase = import.meta.env.PUBLIC_API_URL;
-  const base = (envBase && /^https?:\/\//.test(envBase) ? envBase : 'https://a2aregistry.org/api').replace(/\/+$/, '');
+  // Default to `<site>/api` so self-hosters with a custom `site:` in
+  // astro.config.mjs hit their own backend without needing PUBLIC_API_URL set.
+  const siteFallback = `${(import.meta.env.SITE || 'https://a2aregistry.org').replace(/\/+$/, '')}/api`;
+  const base = (envBase && /^https?:\/\//.test(envBase) ? envBase : siteFallback).replace(/\/+$/, '');
   const pageSize = 200;
   const maxAgents = 10000;
   const agents = [];

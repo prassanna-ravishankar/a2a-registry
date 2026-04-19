@@ -32,5 +32,13 @@
     "postcss": "^8.4.32",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.46.2",
+    "@rollup/rollup-darwin-x64": "^4.46.2",
+    "@rollup/rollup-linux-arm64-gnu": "^4.46.2",
+    "@rollup/rollup-linux-arm64-musl": "^4.46.2",
+    "@rollup/rollup-linux-x64-gnu": "^4.46.2",
+    "@rollup/rollup-linux-x64-musl": "^4.46.2"
   }
 }

@@ -5,17 +5,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package.json only. Regrettably the host-generated package-lock.json
-# omits rollup's platform-specific optional deps for the build image (e.g.
-# @rollup/rollup-linux-arm64-musl when developed on darwin-arm64 / linux-gnu)
-# and `npm install` in the container refuses to fetch them even with the
-# lockfile present — see npm/cli#4828. Until we regenerate the lockfile on a
-# matching platform (or enumerate all needed natives under optionalDependencies),
-# omitting the lockfile in the builder is the only reliable workaround.
-COPY package.json ./
+COPY package*.json ./
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm install --no-audit --no-fund
+    npm ci --no-audit --no-fund
 
 # Copy source code
 COPY . .

@@ -151,18 +151,27 @@ const HomeApp = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const syncFromUrl = async () => {
+    const syncFromUrl = async (event) => {
       const slug = agentSlugFromPath(window.location.pathname);
+      const fromPopState = event?.type === 'popstate';
       if (!slug) {
-        if (!cancelled) setSelectedAgent(null);
+        // Only force-close the modal on explicit user navigation (popstate).
+        // On initial mount we must never overwrite a selection the user made
+        // during the sync window.
+        if (!cancelled && fromPopState) setSelectedAgent(null);
         didInitialUrlSync.current = true;
         return;
       }
       try {
         const agent = await api.getAgent(slug);
-        if (!cancelled && agent) setSelectedAgent(agent);
+        if (cancelled || !agent) return;
+        // Don't clobber a newer user selection that landed during the fetch.
+        setSelectedAgent((current) => {
+          if (current && current.id !== slug) return current;
+          return agent;
+        });
       } catch {
-        if (!cancelled) setSelectedAgent(null);
+        if (!cancelled && fromPopState) setSelectedAgent(null);
       } finally {
         didInitialUrlSync.current = true;
       }
