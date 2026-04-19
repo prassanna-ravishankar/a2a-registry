@@ -1,12 +1,16 @@
 {
   "name": "Lokal — Rett fra Bonden",
-  "description": "A2A marketplace for local food in Norway. 1,000+ farms, shops, and producers across 100+ cities.",
+  "description": "A2A marketplace for local food in Norway. 1,400+ farms, shops, and producers across 100+ cities.",
+  "author": "Lokal",
   "url": "https://rettfrabonden.com",
-  "agentCardUrl": "https://rettfrabonden.com/.well-known/agent-card.json",
+  "wellKnownURI": "https://rettfrabonden.com/.well-known/agent-card.json",
   "a2aEndpoint": "https://rettfrabonden.com/a2a",
   "mcpEndpoint": "https://rettfrabonden.com/mcp",
-  "categories": ["food", "marketplace", "local-commerce", "norway", "a2a"],
-  "capabilities": ["discovery", "search", "agent-info", "negotiation"],
+  "registryTags": ["food", "marketplace", "local-commerce", "norway", "a2a"],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
   "region": "NO",
   "languages": ["no", "en"]
 }
