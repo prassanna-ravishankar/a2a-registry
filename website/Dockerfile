@@ -5,12 +5,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package.json only; regenerate the lockfile inside the container so
+# rollup's platform-specific optional deps (e.g. @rollup/rollup-linux-arm64-musl)
+# resolve for the build image's platform rather than the developer machine.
+# See npm/cli#4828.
+COPY package.json ./
 
-# Install dependencies
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm install --no-audit --no-fund
 
 # Copy source code
 COPY . .
