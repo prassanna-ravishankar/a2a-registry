@@ -1,0 +1,12 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Admin from '@/react-pages/Admin.jsx';
+
+const title = 'Admin - A2A Registry';
+const description = 'A2A Registry admin console.';
+---
+<BaseLayout title={title} description={description} noindex>
+  <div id="root">
+    <Admin client:only="react" />
+  </div>
+</BaseLayout>

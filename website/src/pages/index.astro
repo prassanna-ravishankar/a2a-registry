@@ -1,0 +1,193 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import HomeApp from '@/components/HomeApp.jsx';
+
+const title = 'A2A Protocol Agent Registry - Live AI Agents Directory | Python SDK';
+const description = 'Official A2A Protocol compliant agent registry. Discover live, hosted AI agents with verified capabilities. Python SDK, MCP integration, open-source. 15+ production-ready agents.';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'A2A Registry',
+    alternateName: ['A2A Agent Registry', 'AI Agent Directory'],
+    description: 'Community-driven directory of live, hosted A2A Protocol compliant AI agents. Find production-ready agents for integration. Browse 15+ verified agents with capabilities like streaming, push notifications, and state history. Integrate using Python SDK or MCP protocol.',
+    url: 'https://a2aregistry.org/',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: 'https://a2aregistry.org/?search={search_term_string}',
+      'query-input': 'required name=search_term_string',
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'A2A Registry Community',
+      url: 'https://github.com/prassanna-ravishankar/a2a-registry',
+    },
+    keywords: 'ai agent directory, best ai agent platform, AI agents, A2A Protocol, live agents, hosted AI, Agent2Agent, Python SDK, AI integration, production agents, MCP integration',
+    inLanguage: 'en-US',
+    isAccessibleForFree: true,
+    about: {
+      '@type': 'Thing',
+      name: 'A2A Protocol',
+      description: 'Agent2Agent Protocol for AI agent communication and interoperability',
+    },
+    mainEntity: {
+      '@type': 'SoftwareSourceCode',
+      name: 'A2A Registry Platform',
+      description: 'Open source AI agent directory with Python client and MCP support',
+      codeRepository: 'https://github.com/prassanna-ravishankar/a2a-registry',
+      programmingLanguage: ['Python', 'JavaScript'],
+      runtimePlatform: 'Python 3.10+, Node.js',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'A2A Registry Python Client',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Python 3.10+',
+    description: 'Python client library for discovering and connecting to A2A Protocol compliant AI agents',
+    url: 'https://pypi.org/project/a2a-registry-client/',
+    downloadUrl: 'https://pypi.org/project/a2a-registry-client/',
+    author: { '@type': 'Organization', name: 'A2A Registry Community' },
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What is A2A Registry?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'A2A Registry is a community-driven directory of live, hosted AI agents that comply with the A2A (Agent-to-Agent) Protocol. It provides developers with easy discovery and integration of production-ready AI agents.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How do I connect to A2A agents?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: "You can connect to A2A agents using the Python client library: 'pip install a2a-registry-client'. The registry provides agent URLs, capabilities, and integration examples for each agent.",
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the A2A Protocol?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The A2A (Agent-to-Agent) Protocol is a standardized communication protocol that enables AI agents to interact with each other seamlessly. It defines how agents expose their capabilities, handle requests, and maintain interoperability.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Are the agents in A2A Registry free to use?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Most agents in the registry are free for demonstration and testing purposes. Each agent has its own pricing model detailed in its specifications. The registry itself and the Python client are completely free and open source.',
+        },
+      },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Integrate A2A Protocol Agents',
+    description: 'Step-by-step guide to discover and integrate A2A Protocol compliant AI agents using the A2A Registry',
+    totalTime: 'PT5M',
+    estimatedCost: { '@type': 'MonetaryAmount', currency: 'USD', value: '0' },
+    supply: [
+      { '@type': 'HowToSupply', name: 'Python 3.10 or higher' },
+      { '@type': 'HowToSupply', name: 'Internet connection' },
+    ],
+    step: [
+      {
+        '@type': 'HowToStep',
+        name: 'Install the A2A Registry Client',
+        text: 'Install the Python client library to access the registry',
+        image: 'https://a2aregistry.org/logo.svg',
+        url: 'https://pypi.org/project/a2a-registry-client/',
+        direction: 'pip install a2a-registry-client',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Browse Available Agents',
+        text: 'Explore the registry to find agents that match your requirements',
+        url: 'https://a2aregistry.org/',
+        direction: 'Visit the A2A Registry website and use the search functionality to find agents by skills, capabilities, or keywords.',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Connect to an Agent',
+        text: 'Use the registry client to get agent details and establish connection',
+        direction: "from a2a_registry import Registry; registry = Registry(); agent = registry.get_by_id('agent-name'); # Use agent.url to connect",
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Interact with the Agent',
+        text: 'Send requests to the agent using the A2A Protocol standard',
+        direction: "Use the agent's URL and send JSON-RPC 2.0 formatted requests to interact with the agent's capabilities.",
+      },
+    ],
+  },
+];
+---
+<BaseLayout title={title} description={description} jsonLd={jsonLd}>
+  <Fragment slot="head">
+    <meta name="keywords" content="A2A Protocol, Agent2Agent, A2A registry, A2A compliant agents, live AI agents, hosted agents, agent discovery, Python SDK, MCP integration, agent interoperability, agent-to-agent communication, production AI agents, open source registry, verified agents" />
+    <meta name="ai-purpose" content="AI agent discovery and integration platform" />
+    <meta name="content-type" content="directory, technical-documentation, developer-tools" />
+    <meta name="target-audience" content="developers, ai-engineers, software-architects" />
+    <meta name="interaction-model" content="browse, search, integrate, code-examples" />
+    <meta name="primary-use-case" content="Discover and connect to production-ready AI agents using A2A Protocol" />
+    <meta name="key-features" content="agent-directory, python-sdk, mcp-integration, open-source, protocol-compliant" />
+    <meta name="quick-start" content="pip install a2a-registry-client, browse agents at a2aregistry.org, integrate with Python SDK" />
+  </Fragment>
+  <div id="root">
+    <HomeApp client:only="react" />
+  </div>
+  <noscript>
+    <main style="max-width: 1200px; margin: 0 auto; padding: 2rem; font-family: monospace; line-height: 1.6; color: #e4e4e7; background-color: #000;">
+      <h1>A2A Protocol Agent Registry</h1>
+      <p style="font-size: 1.25rem; margin: 1rem 0;">The official directory of live, hosted AI agents compliant with the Agent2Agent (A2A) Protocol.</p>
+      <section style="margin: 2rem 0;">
+        <h2>What is A2A Registry?</h2>
+        <p>A2A Registry is a community-driven, open-source directory of production-ready AI agents that implement the <strong>A2A (Agent-to-Agent) Protocol</strong>. Unlike other agent directories that list code repositories, we exclusively index <strong>live, hosted agents</strong> with verified capabilities.</p>
+      </section>
+      <section style="margin: 2rem 0;">
+        <h2>Key Features</h2>
+        <ul style="margin: 1rem 0; padding-left: 2rem;">
+          <li><strong>A2A Protocol Compliant:</strong> All agents verified via .well-known/agent.json</li>
+          <li><strong>Live & Hosted:</strong> Only production-ready, actively hosted agents</li>
+          <li><strong>Python SDK:</strong> Easy integration with <code>pip install a2a-registry-client</code></li>
+          <li><strong>MCP Support:</strong> Model Context Protocol integration</li>
+          <li><strong>Open Source:</strong> Git-as-database model on GitHub</li>
+          <li><strong>15+ Verified Agents:</strong> Growing collection of production agents</li>
+        </ul>
+      </section>
+      <section style="margin: 2rem 0;">
+        <h2>Quick Start</h2>
+        <ol style="margin: 1rem 0; padding-left: 2rem;">
+          <li><strong>Install:</strong> <code>pip install a2a-registry-client</code></li>
+          <li><strong>Discover:</strong> Browse agents at <a href="https://a2aregistry.org" style="color: #7C3AED;">a2aregistry.org</a></li>
+          <li><strong>Connect:</strong> Use the Python SDK to integrate agents</li>
+          <li><strong>Verify:</strong> All agents are A2A Protocol compliant</li>
+        </ol>
+      </section>
+      <section style="margin: 2rem 0;">
+        <h2>Why A2A Registry?</h2>
+        <p>The A2A Protocol enables standardized communication between AI agents, allowing them to discover, connect, and collaborate across different platforms. Our registry solves the critical agent discovery problem by providing:</p>
+        <ul style="margin: 1rem 0; padding-left: 2rem;">
+          <li>Verified agent capabilities and endpoints</li>
+          <li>Live status monitoring</li>
+          <li>Easy integration via Python SDK</li>
+          <li>Open, community-driven ecosystem</li>
+        </ul>
+      </section>
+      <footer style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #27272a;">
+        <p>JavaScript is required for the full interactive experience. Please enable JavaScript to browse agents, view capabilities, and access integration code examples.</p>
+      </footer>
+    </main>
+  </noscript>
+</BaseLayout>

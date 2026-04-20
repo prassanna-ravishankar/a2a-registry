@@ -7,18 +7,11 @@ used as the primary validator, keeping us in sync with spec updates automaticall
 Falls back to manual validation if the SDK is not available.
 """
 
-# TODO: Once a2a-sdk is a stable transitive dependency everywhere, remove the
-#       manual fallback below and import AgentCard unconditionally.
+# a2a-sdk 1.0 uses protobuf types instead of pydantic, so AgentCard.model_validate()
+# is no longer available. We use manual validation exclusively.
+_SDK_AVAILABLE = False
 
 from typing import Any
-
-try:
-    from a2a.types import AgentCard as _AgentCard
-    from pydantic import ValidationError as _ValidationError
-
-    _SDK_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _SDK_AVAILABLE = False
 
 
 def validate_agent_card(card_data: dict[str, Any], strict: bool = False) -> list[str]:
@@ -44,12 +37,8 @@ def validate_agent_card(card_data: dict[str, Any], strict: bool = False) -> list
 
     Returns a list of error strings (empty if valid).
     """
-    # Normalise snake_case → camelCase so SDK + manual path both work
     card_data = _normalise_fields(card_data)
-
-    if _SDK_AVAILABLE:
-        return _validate_with_sdk(card_data, strict)
-    return _validate_manual(card_data, strict)  # pragma: no cover
+    return _validate_manual(card_data, strict)
 
 
 # ---------------------------------------------------------------------------
@@ -121,42 +110,7 @@ def _normalise_fields(card: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# SDK-backed validation (primary path)
-# ---------------------------------------------------------------------------
-
-def _validate_with_sdk(card_data: dict[str, Any], strict: bool) -> list[str]:
-    """Validate using AgentCard.model_validate() from a2a-sdk."""
-    errors: list[str] = []
-
-    # In non-strict mode the SDK's required fields (capabilities,
-    # defaultInputModes, defaultOutputModes, skills) are not enforced.
-    # We achieve this by supplying safe defaults before SDK validation so
-    # that only the core fields are checked by the SDK.
-    data_for_sdk = dict(card_data)
-    if not strict:
-        data_for_sdk.setdefault("capabilities", {})
-        data_for_sdk.setdefault("defaultInputModes", ["text/plain"])
-        data_for_sdk.setdefault("defaultOutputModes", ["text/plain"])
-        data_for_sdk.setdefault("skills", [])
-
-    try:
-        _AgentCard.model_validate(data_for_sdk)
-    except _ValidationError as exc:
-        for err in exc.errors():
-            loc = " -> ".join(str(p) for p in err["loc"]) if err["loc"] else "root"
-            errors.append(f"Field '{loc}': {err['msg']}")
-
-    # Registry-specific checks the SDK does not enforce
-    errors.extend(_check_non_empty_strings(card_data))
-    errors.extend(_check_url_scheme(card_data))
-    if "skills" in card_data:
-        errors.extend(_validate_skills_extra(card_data["skills"]))
-
-    return errors
-
-
-# ---------------------------------------------------------------------------
-# Shared fine-grained checks used by both paths
+# Shared fine-grained checks
 # ---------------------------------------------------------------------------
 
 def _check_non_empty_strings(card: dict[str, Any]) -> list[str]:

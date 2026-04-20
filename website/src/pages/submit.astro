@@ -1,0 +1,12 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Submit from '@/react-pages/Submit.jsx';
+
+const title = 'Submit an Agent - A2A Registry';
+const description = 'Register your A2A Protocol compliant agent with the A2A Registry. Submit your well-known URI and join the directory of live, hosted AI agents.';
+---
+<BaseLayout title={title} description={description}>
+  <div id="root">
+    <Submit client:only="react" />
+  </div>
+</BaseLayout>

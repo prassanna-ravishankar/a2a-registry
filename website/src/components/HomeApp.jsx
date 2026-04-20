@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import Layout from './components/Layout';
-import AgentGrid from './components/AgentGrid';
-import Submit from './pages/Submit';
-import Admin from './pages/Admin';
-import { api, fetchStaticRegistry } from './lib/api';
-import { trackAgentView, trackSearch, trackFilterChange } from './lib/analytics';
-import useMediaQuery from './hooks/useMediaQuery';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Layout from './Layout';
+import AgentGrid from './AgentGrid';
+import InspectionDeck from './InspectionDeck';
+import { api, fetchStaticRegistry } from '@/lib/api';
+import { trackAgentView, trackFilterChange, trackSearch } from '@/lib/analytics';
+import useMediaQuery from '@/hooks/useMediaQuery';
+
+const LIMIT = 50;
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -16,22 +17,26 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-const A2ARegistry = () => {
+function agentSlugFromPath(pathname) {
+  const match = pathname.match(/^\/agents\/([^/?#]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function pushHomeUrl() {
+  if (window.location.pathname !== '/') {
+    window.history.pushState({}, '', '/');
+  }
+}
+
+const HomeApp = () => {
   const getPageScrollTop = () => document.scrollingElement?.scrollTop || window.scrollY || 0;
 
-  // Initialize page from URL path
-  const [currentPage, setCurrentPage] = useState(() => {
-    const p = window.location.pathname;
-    if (p === '/submit') return 'submit';
-    if (p === '/admin') return 'admin';
-    return 'home';
-  });
   const [agents, setAgents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [conformanceFilter, setConformanceFilter] = useState('standard'); // 'all', 'standard', 'non-standard'
+  const [conformanceFilter, setConformanceFilter] = useState('standard');
   const [healthyOnly, setHealthyOnly] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -45,24 +50,16 @@ const A2ARegistry = () => {
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const LIMIT = 50;
-
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setSelectedAgent(null);
-      }
+      if (e.key === 'Escape') setSelectedAgent(null);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch from API with given offset, optionally appending results
   const fetchFromAPI = useCallback(async (offset, append = false) => {
     const skillParam = selectedSkills.length === 1 ? selectedSkills[0] : undefined;
-
     const data = await api.getAgents({
       search: debouncedSearch || undefined,
       skill: skillParam,
@@ -71,44 +68,28 @@ const A2ARegistry = () => {
       limit: LIMIT,
       offset,
     });
-
     const agentList = data.agents || [];
     const totalCount = data.total ?? agentList.length;
-
-    if (debouncedSearch) {
-      trackSearch(debouncedSearch, totalCount);
-    }
-
-    if (append) {
-      setAgents(prev => [...prev, ...agentList]);
-    } else {
-      setAgents(agentList);
-    }
+    if (debouncedSearch) trackSearch(debouncedSearch, totalCount);
+    if (append) setAgents((prev) => [...prev, ...agentList]);
+    else setAgents(agentList);
     setTotal(totalCount);
   }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
 
-  // Initial load and re-fetch when filters change (reset to page 0)
   useEffect(() => {
     let cancelled = false;
-
     const loadData = async () => {
       setLoading(true);
       setError(null);
       setPage(0);
-
       try {
+        const statsPromise = api.getStats().catch(() => null);
         await fetchFromAPI(0, false);
         setUseStaticFallback(false);
         setLoading(false);
-
-        try {
-          const statsData = await api.getStats();
-          if (!cancelled) setStats(statsData);
-        } catch {
-          // stats are non-critical
-        }
+        const statsData = await statsPromise;
+        if (!cancelled && statsData) setStats(statsData);
       } catch {
-        // Fallback to static registry.json
         try {
           const data = await fetchStaticRegistry();
           const agentList = data.agents || [];
@@ -126,12 +107,10 @@ const A2ARegistry = () => {
         }
       }
     };
-
     loadData();
     return () => { cancelled = true; };
-  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, fetchFromAPI]);
 
-  // Load more handler
   const handleLoadMore = useCallback(async () => {
     const nextPage = page + 1;
     const offset = nextPage * LIMIT;
@@ -144,103 +123,104 @@ const A2ARegistry = () => {
     }
   }, [page, fetchFromAPI]);
 
-  // Client-side filtering for static fallback
   const filteredAgents = useMemo(() => {
     if (!useStaticFallback) return agents;
-
-    let filtered = agents.filter(agent =>
-      agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (agent.author && agent.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      agent.skills.some(skill =>
-        skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    const q = searchTerm.toLowerCase();
+    let filtered = agents.filter((agent) =>
+      agent.name.toLowerCase().includes(q) ||
+      agent.description.toLowerCase().includes(q) ||
+      (agent.author && agent.author.toLowerCase().includes(q)) ||
+      agent.skills.some((skill) =>
+        skill.name.toLowerCase().includes(q) ||
+        skill.tags.some((tag) => tag.toLowerCase().includes(q))
       )
     );
-
     if (selectedSkills.length > 0) {
-      filtered = filtered.filter(agent =>
-        agent.skills.some(skill =>
-          skill.tags.some(tag => selectedSkills.includes(tag))
-        )
+      filtered = filtered.filter((agent) =>
+        agent.skills.some((skill) => skill.tags.some((tag) => selectedSkills.includes(tag)))
       );
     }
-
-    if (conformanceFilter === 'standard') {
-      filtered = filtered.filter(agent => agent.conformance === true);
-    } else if (conformanceFilter === 'non-standard') {
-      filtered = filtered.filter(agent => agent.conformance !== true);
-    }
-
+    if (conformanceFilter === 'standard') filtered = filtered.filter((a) => a.conformance !== false);
+    else if (conformanceFilter === 'non-standard') filtered = filtered.filter((a) => a.conformance === false);
     return filtered;
   }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter]);
 
   const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
-  // URL Synchronization
-  useEffect(() => {
-    if (!loading && agents.length > 0) {
-      const params = new URLSearchParams(window.location.search);
-      const agentId = params.get('agent');
-      if (agentId && !selectedAgent) {
-        const found = agents.find(a => a.id === agentId);
-        if (found) setSelectedAgent(found);
-      }
-    }
-  }, [loading, agents]);
+  const didInitialUrlSync = useRef(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    let cancelled = false;
+    const syncFromUrl = async (event) => {
+      const slug = agentSlugFromPath(window.location.pathname);
+      const fromPopState = event?.type === 'popstate';
+      if (!slug) {
+        // Only force-close the modal on explicit user navigation (popstate).
+        // On initial mount we must never overwrite a selection the user made
+        // during the sync window.
+        if (!cancelled && fromPopState) setSelectedAgent(null);
+        didInitialUrlSync.current = true;
+        return;
+      }
+      try {
+        const agent = await api.getAgent(slug);
+        if (cancelled || !agent) return;
+        // Don't clobber a newer user selection that landed during the fetch.
+        setSelectedAgent((current) => {
+          if (current && current.id !== slug) return current;
+          return agent;
+        });
+      } catch (err) {
+        if (cancelled) return;
+        // Only rewrite the URL when the agent is genuinely gone (404). Leave
+        // transient network failures alone so the user can retry on the same
+        // URL instead of bouncing to /.
+        const agentGone = err?.status === 404;
+        const stillOnBadSlug = agentSlugFromPath(window.location.pathname) === slug;
+        if (agentGone && stillOnBadSlug) {
+          setSelectedAgent((current) => (current && current.id !== slug ? current : null));
+          if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+        } else if (fromPopState) {
+          setSelectedAgent(null);
+        }
+      } finally {
+        didInitialUrlSync.current = true;
+      }
+    };
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('popstate', syncFromUrl);
+    };
+  }, [setSelectedAgent]);
+
+  useEffect(() => {
+    // Don't touch the URL until the initial sync-from-URL has landed, otherwise
+    // we race the async getAgent fetch and clobber /agents/<unknown-slug> back
+    // to / before the inspection modal can open.
+    if (!didInitialUrlSync.current) return;
+    const currentPath = window.location.pathname;
     if (selectedAgent) {
-      const agentId = selectedAgent.id;
-      if (params.get('agent') !== agentId) {
-        params.set('agent', agentId);
-        window.history.pushState({}, '', `?${params.toString()}`);
-      }
-    } else {
-      if (params.has('agent')) {
-        params.delete('agent');
-        const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-        window.history.pushState({}, '', newUrl);
-      }
+      const target = `/agents/${encodeURIComponent(selectedAgent.id)}`;
+      if (currentPath !== target) window.history.pushState({}, '', target);
+    } else if (currentPath.startsWith('/agents/')) {
+      pushHomeUrl();
     }
   }, [selectedAgent]);
 
-  // Handle browser back/forward for agent deep-links
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const agentId = params.get('agent');
-      if (agentId) {
-        const found = agents.find(a => a.id === agentId);
-        if (found) setSelectedAgent(found);
-      } else {
-        setSelectedAgent(null);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [agents]);
-
-  // Extract all tags for filter list
   const allTags = useMemo(() => {
     let relevantAgents = agents;
-    if (conformanceFilter === 'standard') {
-      relevantAgents = agents.filter(agent => agent.conformance !== false);
-    } else if (conformanceFilter === 'non-standard') {
-      relevantAgents = agents.filter(agent => agent.conformance === false);
-    }
-
+    if (conformanceFilter === 'standard') relevantAgents = agents.filter((a) => a.conformance !== false);
+    else if (conformanceFilter === 'non-standard') relevantAgents = agents.filter((a) => a.conformance === false);
     const tagCounts = {};
-    relevantAgents.forEach(agent => {
-      agent.skills.forEach(skill => {
-        (skill.tags || []).forEach(tag => {
+    relevantAgents.forEach((agent) => {
+      agent.skills.forEach((skill) => {
+        (skill.tags || []).forEach((tag) => {
           tagCounts[tag] = (tagCounts[tag] || 0) + 1;
         });
       });
     });
-
     return Object.keys(tagCounts).sort((a, b) => {
       const countDiff = tagCounts[b] - tagCounts[a];
       return countDiff !== 0 ? countDiff : a.localeCompare(b);
@@ -248,19 +228,15 @@ const A2ARegistry = () => {
   }, [agents, conformanceFilter]);
 
   const toggleSkillFilter = useCallback((tag) => {
-    setSelectedSkills(prev => {
-      const newSkills = prev.includes(tag)
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag];
+    setSelectedSkills((prev) => {
+      const newSkills = prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag];
       trackFilterChange('skill', tag);
       return newSkills;
     });
   }, []);
 
   const handleAgentSelect = useCallback((agent) => {
-    if (isMobile) {
-      mobileScrollRef.current = getPageScrollTop();
-    }
+    if (isMobile) mobileScrollRef.current = getPageScrollTop();
     setSelectedAgent(agent);
     trackAgentView(agent);
   }, [isMobile]);
@@ -272,7 +248,6 @@ const A2ARegistry = () => {
   useEffect(() => {
     if (isMobile) {
       if (!previousSelectedAgentRef.current && selectedAgent) {
-        // Double-rAF ensures React has flushed the new DOM before scrolling
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'auto' });
@@ -286,43 +261,6 @@ const A2ARegistry = () => {
     }
     previousSelectedAgentRef.current = selectedAgent;
   }, [isMobile, selectedAgent]);
-
-  // Handle page navigation
-  useEffect(() => {
-    const handleNavigate = (e) => {
-      const link = e.target.closest('a');
-      if (link && link.pathname === '/submit') {
-        e.preventDefault();
-        setCurrentPage('submit');
-        window.history.pushState({}, '', '/submit');
-      } else if (link && link.pathname === '/admin') {
-        e.preventDefault();
-        setCurrentPage('admin');
-        window.history.pushState({}, '', '/admin');
-      } else if (link && link.pathname === '/' && link.origin === window.location.origin) {
-        e.preventDefault();
-        setCurrentPage('home');
-        window.history.pushState({}, '', '/');
-      }
-    };
-
-    const handlePopState = () => {
-      const p = window.location.pathname;
-      if (p === '/submit') setCurrentPage('submit');
-      else if (p === '/admin') setCurrentPage('admin');
-      else setCurrentPage('home');
-    };
-
-    document.addEventListener('click', handleNavigate);
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      document.removeEventListener('click', handleNavigate);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
-
-  if (currentPage === 'submit') return <Submit />;
-  if (currentPage === 'admin') return <Admin />;
 
   const showLoadMore = !useStaticFallback && displayedAgents.length < total;
 
@@ -364,4 +302,5 @@ const A2ARegistry = () => {
   );
 };
 
-export default A2ARegistry;
+export default HomeApp;
+export { InspectionDeck };
