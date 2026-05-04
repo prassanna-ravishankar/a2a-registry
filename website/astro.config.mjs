@@ -12,7 +12,7 @@ export default defineConfig({
   integrations: [
     react(),
     tailwind({ applyBaseStyles: false }),
-    sitemap(),
+    sitemap({ filter: (page) => !page.includes('/admin') }),
   ],
   build: {
     assets: 'assets',
