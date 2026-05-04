@@ -65,12 +65,14 @@ def test_register_agent_success(client):
 
     with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.validate_well_known_uri", return_value=[]), \
-         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)):
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "Verified working at registration."))):
         instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.get_by_id = AsyncMock(return_value=mock_public)
 
         response = client.post(
@@ -81,6 +83,54 @@ def test_register_agent_success(client):
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "Test Agent"
+
+
+def test_register_agent_smoke_test_rejects_no_transports(client):
+    """Hard-reject when smoke test reports NO_TRANSPORTS."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("NO_TRANSPORTS", "Agent card does not declare any transports compatible with the A2A SDK"))):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
+
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 400
+    assert "transports" in response.json()["detail"].lower()
+
+
+def test_register_agent_smoke_test_failure_attaches_note(client):
+    """Soft failures (e.g. 404) still register but get the note attached."""
+    mock_public = _make_agent_public()
+    note = "Agent card is valid but the A2A endpoint returns **404 Not Found** when sending messages."
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("404", note))):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.update_maintainer_notes = AsyncMock(return_value=True)
+        instance.get_by_id = AsyncMock(return_value=mock_public)
+
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 201
+    instance.update_maintainer_notes.assert_awaited_once()
+    args = instance.update_maintainer_notes.await_args
+    assert args.args[1] == note
 
 
 def test_register_agent_invalid_uri(client):
