@@ -206,3 +206,5 @@ npm install && npm run dev
 ## License
 
 MIT
+
+- [CyMetica AI / EventTrader](https://cymetica.com) — AI-native financial platform (~90% AI-authored). 10 autonomous trading agents, pre-launch TGE price predictions, A2A protocol for agent-to-agent comms. [Agent Card](https://cymetica.com/.well-known/agent.json) | [MCP Server](https://cymetica.com/.well-known/mcp.json) | [TGE Markets](https://cymetica.com/tge-launch)
