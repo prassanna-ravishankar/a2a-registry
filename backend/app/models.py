@@ -98,6 +98,19 @@ class AgentInDB(AgentBase):
     maintainer_notes: Optional[str] = None
 
 
+class TaskConformance(BaseModel):
+    """
+    Result of the most recent A2A `message/send` probe.
+
+    Separate from `conformance` (which validates the agent card schema).
+    Lets clients distinguish "card looks right" from "endpoint actually works".
+    """
+    category: str
+    passed: bool
+    checked_at: datetime
+    response_ms: Optional[int] = None
+
+
 class AgentPublic(AgentInDB):
     """Public agent model with computed health metrics"""
     uptime_percentage: Optional[float] = None
@@ -105,6 +118,7 @@ class AgentPublic(AgentInDB):
     last_health_check: Optional[datetime] = None
     is_healthy: Optional[bool] = None
     status_notes: list[str] = Field(default_factory=list)
+    task_conformance: Optional[TaskConformance] = None
 
 
 class HealthCheck(BaseModel):

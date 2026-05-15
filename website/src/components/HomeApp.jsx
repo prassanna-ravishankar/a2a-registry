@@ -38,6 +38,7 @@ const HomeApp = () => {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [conformanceFilter, setConformanceFilter] = useState('standard');
   const [healthyOnly, setHealthyOnly] = useState(true);
+  const [taskVerifiedOnly, setTaskVerifiedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -65,6 +66,7 @@ const HomeApp = () => {
       skill: skillParam,
       conformance: conformanceFilter !== 'all' ? conformanceFilter : undefined,
       healthy: healthyOnly || undefined,
+      task_verified: taskVerifiedOnly || undefined,
       limit: LIMIT,
       offset,
     });
@@ -74,7 +76,7 @@ const HomeApp = () => {
     if (append) setAgents((prev) => [...prev, ...agentList]);
     else setAgents(agentList);
     setTotal(totalCount);
-  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, taskVerifiedOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +111,7 @@ const HomeApp = () => {
     };
     loadData();
     return () => { cancelled = true; };
-  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, fetchFromAPI]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, taskVerifiedOnly, fetchFromAPI]);
 
   const handleLoadMore = useCallback(async () => {
     const nextPage = page + 1;
@@ -124,6 +126,9 @@ const HomeApp = () => {
   }, [page, fetchFromAPI]);
 
   const filteredAgents = useMemo(() => {
+    // Live path: server already applied every filter (including task_verified)
+    // before paginating, so no client-side post-filter needed. Static-fallback
+    // path has no server, so the full filter runs below.
     if (!useStaticFallback) return agents;
     const q = searchTerm.toLowerCase();
     let filtered = agents.filter((agent) =>
@@ -142,8 +147,11 @@ const HomeApp = () => {
     }
     if (conformanceFilter === 'standard') filtered = filtered.filter((a) => a.conformance !== false);
     else if (conformanceFilter === 'non-standard') filtered = filtered.filter((a) => a.conformance === false);
+    if (taskVerifiedOnly) {
+      filtered = filtered.filter((a) => a.task_conformance && a.task_conformance.passed === true);
+    }
     return filtered;
-  }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter]);
+  }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter, taskVerifiedOnly]);
 
   const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
@@ -278,6 +286,8 @@ const HomeApp = () => {
       setConformanceFilter={setConformanceFilter}
       healthyOnly={healthyOnly}
       setHealthyOnly={setHealthyOnly}
+      taskVerifiedOnly={taskVerifiedOnly}
+      setTaskVerifiedOnly={setTaskVerifiedOnly}
       selectedAgent={selectedAgent}
       onCloseInspection={handleCloseInspection}
       stats={stats}
@@ -296,6 +306,7 @@ const HomeApp = () => {
           setSelectedSkills([]);
           setConformanceFilter('standard');
           setHealthyOnly(false);
+          setTaskVerifiedOnly(false);
         }}
       />
     </Layout>

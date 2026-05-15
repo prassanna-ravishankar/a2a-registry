@@ -66,13 +66,14 @@ def test_register_agent_success(client):
     with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.validate_well_known_uri", return_value=[]), \
          patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
-         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "Verified working at registration."))):
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "Verified working at registration.", 123))):
         instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.update_maintainer_notes = AsyncMock(return_value=True)
+        instance.update_task_conformance = AsyncMock(return_value=None)
         instance.get_by_id = AsyncMock(return_value=mock_public)
 
         response = client.post(
@@ -90,7 +91,7 @@ def test_register_agent_smoke_test_rejects_no_transports(client):
     with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.validate_well_known_uri", return_value=[]), \
          patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
-         patch("app.main.smoke_test", new=AsyncMock(return_value=("NO_TRANSPORTS", "Agent card does not declare any transports compatible with the A2A SDK"))):
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("NO_TRANSPORTS", "Agent card does not declare any transports compatible with the A2A SDK", None))):
         instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
@@ -113,13 +114,14 @@ def test_register_agent_smoke_test_failure_attaches_note(client):
     with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.validate_well_known_uri", return_value=[]), \
          patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
-         patch("app.main.smoke_test", new=AsyncMock(return_value=("404", note))):
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("404", note, 87))):
         instance = mock_repo.return_value
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.update_maintainer_notes = AsyncMock(return_value=True)
+        instance.update_task_conformance = AsyncMock(return_value=None)
         instance.get_by_id = AsyncMock(return_value=mock_public)
 
         response = client.post(

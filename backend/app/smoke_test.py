@@ -5,6 +5,7 @@ Used at registration time to validate that the card actually leads to a working
 A2A endpoint. Returns a category + maintainer-note-ready message.
 """
 
+import time
 import uuid
 from typing import Optional
 from urllib.parse import urlparse
@@ -18,6 +19,12 @@ logger = structlog.get_logger()
 
 SMOKE_TEST_TIMEOUT_SECONDS = 15
 SMOKE_TEST_MESSAGE = "Hello, what can you do?"
+
+# Default UA for registration-time smoke tests. Worker uses TaskProbe UA so
+# operators can distinguish recurring probes from one-shot registration checks
+# in their access logs.
+SMOKE_TEST_USER_AGENT = "A2A-Registry-Smoke/1.0 (+https://a2aregistry.org)"
+TASK_PROBE_USER_AGENT = "A2A-Registry-TaskProbe/1.0 (+https://a2aregistry.org)"
 
 
 CATEGORY_NOTES = {
@@ -75,21 +82,29 @@ def classify_error(exc: BaseException) -> str:
     return "OTHER"
 
 
-async def smoke_test(well_known_uri: str) -> tuple[str, str]:
+async def smoke_test(
+    well_known_uri: str,
+    user_agent: str = SMOKE_TEST_USER_AGENT,
+) -> tuple[str, str, Optional[int]]:
     """
     Send a real A2A message/send to the agent and classify the result.
 
-    Returns (category, maintainer_note). Category is one of the keys in
-    CATEGORY_NOTES; maintainer_note is the human-readable message to store.
+    Returns (category, maintainer_note, response_ms). Category is one of the
+    keys in CATEGORY_NOTES; maintainer_note is the human-readable message;
+    response_ms is wall-clock time from connect to last streamed event (or to
+    failure), or None if no timing was captured.
     """
     parsed = urlparse(well_known_uri)
     base_url = f"{parsed.scheme}://{parsed.netloc}"
     card_path = parsed.path or None
 
+    start = time.monotonic()
+
     try:
         async with httpx.AsyncClient(
             timeout=SMOKE_TEST_TIMEOUT_SECONDS,
             follow_redirects=True,
+            headers={"User-Agent": user_agent},
         ) as http_client:
             factory = ClientFactory(
                 ClientConfig(httpx_client=http_client, streaming=False),
@@ -104,10 +119,12 @@ async def smoke_test(well_known_uri: str) -> tuple[str, str]:
             saw_event = False
             async for _ in client.send_message(request):
                 saw_event = True
+            response_ms = int((time.time() - start) * 1000)
             if not saw_event:
-                return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"]
-            return "WORKING", CATEGORY_NOTES["WORKING"]
+                return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
+            return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
     except Exception as exc:
+        response_ms = int((time.time() - start) * 1000)
         category = classify_error(exc)
         logger.info(
             "smoke_test_failed",
@@ -116,7 +133,7 @@ async def smoke_test(well_known_uri: str) -> tuple[str, str]:
             exc_type=type(exc).__name__,
             exc_msg=str(exc)[:200],
         )
-        return category, CATEGORY_NOTES.get(category, CATEGORY_NOTES["OTHER"])
+        return category, CATEGORY_NOTES.get(category, CATEGORY_NOTES["OTHER"]), response_ms
 
 
 # Categories that should hard-reject registration (operator must fix the card).
