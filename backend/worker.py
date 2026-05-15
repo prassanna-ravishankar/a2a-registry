@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.repositories import AgentRepository, HealthCheckRepository
+from app.smoke_test import TASK_PROBE_USER_AGENT, smoke_test
 from app.validators import validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
@@ -20,6 +21,11 @@ HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 _cycle_count = 0
 # Check dead agents every N cycles (e.g. 48 cycles * 30 min = ~daily)
 DEAD_AGENT_CHECK_INTERVAL = 48
+# Probe POST message/send on the same cadence — once per day, not every 30min.
+# Hitting every agent's task endpoint twice an hour would be rude. Reuses
+# DEAD_AGENT_CHECK_INTERVAL boundary so probes and dead-agent revalidation
+# land in the same daily "deep cycle".
+TASK_PROBE_INTERVAL = DEAD_AGENT_CHECK_INTERVAL
 
 configure_logging(json_logs=True)
 logger = get_logger(__name__)
@@ -149,6 +155,48 @@ async def check_agent_health(
         bound_logger.error("health_check_error", error=error_message)
 
 
+async def probe_one_task(agent, agent_repo: AgentRepository) -> str:
+    """Send an A2A message/send to one agent and persist the result category."""
+    bound_logger = logger.bind(agent_id=agent.id)
+    try:
+        category, _note, response_ms = await smoke_test(
+            str(agent.wellKnownURI),
+            user_agent=TASK_PROBE_USER_AGENT,
+        )
+        await agent_repo.update_task_conformance(agent.id, category, response_ms)
+        bound_logger.debug("task_probe_done", category=category, response_ms=response_ms)
+        return category
+    except Exception as exc:
+        # Don't let one probe failure crash the batch.
+        bound_logger.warning("task_probe_error", error=str(exc)[:120])
+        return "OTHER"
+
+
+async def run_task_probes(agent_repo: AgentRepository, agents) -> int:
+    """
+    Probe every supplied agent for A2A `message/send` conformance.
+
+    Smaller batches than the GET health cycle (probes are slower and hit a
+    real endpoint, not just an agent-card JSON file).
+    """
+    BATCH = 10
+    PAUSE_S = 2
+
+    total = 0
+    batch: list = []
+    for agent in agents:
+        batch.append(probe_one_task(agent, agent_repo))
+        if len(batch) >= BATCH:
+            await asyncio.gather(*batch, return_exceptions=True)
+            total += len(batch)
+            batch = []
+            await asyncio.sleep(PAUSE_S)
+    if batch:
+        await asyncio.gather(*batch, return_exceptions=True)
+        total += len(batch)
+    return total
+
+
 async def health_check_cycle():
     """Run a single health check cycle for all agents"""
     global _cycle_count
@@ -213,6 +261,16 @@ async def health_check_cycle():
                 for result in results:
                     if isinstance(result, Exception):
                         logger.error("health_check_task_error", error=str(result))
+
+        # Task probe (daily): real A2A message/send via the SDK. Persists a
+        # structured category so the UI can show "task-verified" alongside
+        # the cheaper GET-only health signal.
+        if _cycle_count % TASK_PROBE_INTERVAL == 0:
+            try:
+                probed = await run_task_probes(agent_repo, check_agents)
+                logger.info("task_probe_cycle_done", probed=probed)
+            except Exception as probe_err:
+                logger.warning("task_probe_cycle_failed", error=str(probe_err))
 
         # Prune health_checks older than 90 days
         try:

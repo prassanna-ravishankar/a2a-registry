@@ -11,6 +11,8 @@ const Sidebar = ({
     setConformanceFilter,
     healthyOnly,
     setHealthyOnly,
+    taskVerifiedOnly,
+    setTaskVerifiedOnly,
     isMobile
 }) => {
     const filterOptions = [
@@ -98,6 +100,24 @@ const Sidebar = ({
                                     <div className="mt-1 text-[11px] text-zinc-500">Hide agents that are down</div>
                                 </div>
                                 <div className={`mt-1 h-2 w-2 rounded-full ${healthyOnly ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setTaskVerifiedOnly(!taskVerifiedOnly)}
+                            className={`
+                                w-full border px-3 py-3 text-left transition-all
+                                ${taskVerifiedOnly
+                                    ? 'border-emerald-500/50 bg-emerald-500/10'
+                                    : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
+                                }
+                            `}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className={`text-xs font-mono ${taskVerifiedOnly ? 'text-zinc-100' : 'text-zinc-300'}`}>TASK_VERIFIED</div>
+                                    <div className="mt-1 text-[11px] text-zinc-500">Responded to a real A2A message/send</div>
+                                </div>
+                                <div className={`mt-1 h-2 w-2 rounded-full ${taskVerifiedOnly ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
                             </div>
                         </button>
                     </div>

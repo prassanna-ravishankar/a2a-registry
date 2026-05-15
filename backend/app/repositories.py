@@ -14,6 +14,7 @@ from .models import (
     HealthCheck,
     HealthStatus,
     RegistryStats,
+    TaskConformance,
     UptimeMetrics,
 )
 
@@ -388,6 +389,35 @@ class AgentRepository:
         )
         return result == "UPDATE 1"
 
+    async def update_task_conformance(
+        self,
+        agent_id: UUID,
+        category: str,
+        response_ms: Optional[int],
+    ) -> None:
+        """
+        Record the result of an A2A `message/send` task probe.
+
+        `passed` is derived: True iff category == 'WORKING'. Category values
+        are constrained at the DB level to the smoke_test.py taxonomy.
+        """
+        passed = category == "WORKING"
+        await self.db.execute(
+            """
+            UPDATE agents
+            SET task_conformance_category = $1,
+                task_conformance_passed = $2,
+                task_conformance_checked_at = NOW(),
+                task_conformance_response_ms = $3,
+                updated_at = NOW()
+            WHERE id = $4
+            """,
+            category,
+            passed,
+            response_ms,
+            agent_id,
+        )
+
     async def increment_flag_count(self, agent_id: UUID):
         """Increment flag count for an agent"""
         query = "UPDATE agents SET flag_count = flag_count + 1 WHERE id = $1"
@@ -435,6 +465,18 @@ class AgentRepository:
             conformance_errors=agent.conformance_errors,
             flag_count=agent.flag_count,
         )
+
+        task_conformance = None
+        tc_category = row.get("task_conformance_category")
+        tc_checked = row.get("task_conformance_checked_at")
+        if tc_category and tc_checked:
+            task_conformance = TaskConformance(
+                category=tc_category,
+                passed=bool(row.get("task_conformance_passed")),
+                checked_at=tc_checked,
+                response_ms=row.get("task_conformance_response_ms"),
+            )
+
         return AgentPublic(
             **agent.model_dump(),
             uptime_percentage=row.get("uptime_percentage"),
@@ -442,6 +484,7 @@ class AgentRepository:
             last_health_check=row.get("last_health_check"),
             is_healthy=row.get("is_healthy"),
             status_notes=status_notes,
+            task_conformance=task_conformance,
         )
 
 

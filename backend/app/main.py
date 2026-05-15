@@ -235,14 +235,16 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
 
     # Smoke test: send a real `message/send` to confirm the card actually leads
     # to a working endpoint. Hard-reject categories that indicate a broken card.
-    smoke_category, smoke_note = await smoke_test(well_known_uri)
+    smoke_category, smoke_note, smoke_ms = await smoke_test(well_known_uri)
     if should_reject(smoke_category):
         raise HTTPException(status_code=400, detail=rejection_message(smoke_category) or "Agent failed smoke test")
 
-    # Create agent, then attach smoke-test result as initial maintainer note.
+    # Create agent, then attach smoke-test result as initial maintainer note
+    # AND as the first task_conformance datapoint.
     try:
         created_agent = await agent_repo.create(agent_data)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
+        await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
     except Exception as e:
@@ -296,14 +298,16 @@ async def register_agent_full(agent: AgentCreate, request: Request):
         raise HTTPException(status_code=400, detail=f"Ownership verification failed: {message}")
 
     # Smoke test the live endpoint and hard-reject obviously broken cards.
-    smoke_category, smoke_note = await smoke_test(well_known_uri)
+    smoke_category, smoke_note, smoke_ms = await smoke_test(well_known_uri)
     if should_reject(smoke_category):
         raise HTTPException(status_code=400, detail=rejection_message(smoke_category) or "Agent failed smoke test")
 
-    # Create agent, then attach smoke-test result as initial maintainer note.
+    # Create agent, then attach smoke-test result as initial maintainer note
+    # AND as the first task_conformance datapoint.
     try:
         created_agent = await agent_repo.create(agent)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
+        await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
         result = await agent_repo.get_by_id(created_agent.id)
         logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category)
         return result

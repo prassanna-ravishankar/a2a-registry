@@ -22,12 +22,16 @@ const Layout = ({
     setConformanceFilter,
     healthyOnly,
     setHealthyOnly,
+    taskVerifiedOnly,
+    setTaskVerifiedOnly,
     selectedAgent,
     onCloseInspection,
     stats
 }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const activeFilterCount = selectedSkills.length + (conformanceFilter !== 'standard' ? 1 : 0);
+    const activeFilterCount = selectedSkills.length
+        + (conformanceFilter !== 'standard' ? 1 : 0)
+        + (taskVerifiedOnly ? 1 : 0);
 
     // Keyboard shortcut: "/" to focus search
     useEffect(() => {
@@ -70,6 +74,8 @@ const Layout = ({
                         setConformanceFilter={setConformanceFilter}
                         healthyOnly={healthyOnly}
                         setHealthyOnly={setHealthyOnly}
+                        taskVerifiedOnly={taskVerifiedOnly}
+                        setTaskVerifiedOnly={setTaskVerifiedOnly}
                     />
                 </div>
 
@@ -131,6 +137,10 @@ const Layout = ({
                             toggleSkillFilter={toggleSkillFilter}
                             conformanceFilter={conformanceFilter}
                             setConformanceFilter={setConformanceFilter}
+                            healthyOnly={healthyOnly}
+                            setHealthyOnly={setHealthyOnly}
+                            taskVerifiedOnly={taskVerifiedOnly}
+                            setTaskVerifiedOnly={setTaskVerifiedOnly}
                             isMobile
                         />
                     </div>

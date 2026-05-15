@@ -130,6 +130,20 @@ Base URL: `https://a2aregistry.org/api`
 | `limit` | Max results (default: 50, max: 100) |
 | `offset` | Pagination offset |
 
+## Quality signals
+
+Each agent carries three independent signals:
+
+| Signal | Probe | Cadence | What it means |
+|--------|-------|---------|---------------|
+| `is_healthy` | `GET <wellKnownURI>` | 30 min | Agent card endpoint reachable, returns valid JSON |
+| `conformance` | Schema-validate the card | 30 min | Card structure matches the A2A spec |
+| `task_conformance` | `message/send` via A2A SDK | daily | Endpoint actually responds to a real A2A request |
+
+`task_conformance` is the strongest signal for routing — a card can validate (`conformance = true`) while its endpoint 404s or rejects auth on POST. The daily probe runs the same classifier as registration-time smoke-tests; categories are exposed on `/api/agents` as `task_conformance.category` (one of `WORKING`, `404`, `405`, `401`/`402`/`403`/`400`, `NO_TRANSPORTS`, `DNS`, `VERSION`, `BAD_RESPONSE`, `BAD_JSON`, `METHOD`, `PARSE`, `AUTH_BACKEND`, `INTERNAL`, `TIMEOUT`, `OTHER`).
+
+Operators can identify our probes by User-Agent: `A2A-Registry-TaskProbe/1.0` for the daily worker run, `A2A-Registry-Smoke/1.0` for the registration-time check.
+
 ## Architecture
 
 ```

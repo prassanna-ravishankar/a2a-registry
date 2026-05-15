@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import HealthBadge from './HealthBadge';
@@ -8,7 +8,12 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
     const provider = agent.author || agent.provider?.organization || 'Unknown';
     const topTags = agent.skills.flatMap((skill) => skill.tags || []).slice(0, 3);
     const notes = agent.maintainer_notes || '';
-    const isVerified = notes.startsWith('Verified working');
+    // Prefer the structured task_conformance signal — it's kept current by the
+    // daily worker probe. Fall back to maintainer_notes for agents that haven't
+    // been re-probed since the field was introduced.
+    const tc = agent.task_conformance;
+    const taskVerified = tc ? tc.passed === true : notes.startsWith('Verified working');
+    const isVerified = taskVerified;
     const hasIssue = notes && !isVerified;
 
     return (
@@ -55,6 +60,16 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                             <Badge variant="outline" className="rounded-none border-blue-500/30 bg-blue-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-300">
                                 <CheckCircle2 className="mr-1 h-3 w-3" />
                                 Verified
+                            </Badge>
+                        )}
+                        {tc && tc.passed === true && (
+                            <Badge
+                                variant="outline"
+                                title={`A2A message/send probe succeeded at ${new Date(tc.checked_at).toLocaleString()}`}
+                                className="rounded-none border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-300"
+                            >
+                                <Zap className="mr-1 h-3 w-3" />
+                                Task-verified
                             </Badge>
                         )}
                     </div>
