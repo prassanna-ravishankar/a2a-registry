@@ -36,7 +36,7 @@ async function fetchAPI(endpoint, options = {}) {
 
 export const api = {
   // Get all agents with optional filtering
-  async getAgents({ skill, capability, author, search, conformance, healthy, limit = 50, offset = 0 } = {}) {
+  async getAgents({ skill, capability, author, search, conformance, healthy, task_verified, limit = 50, offset = 0 } = {}) {
     const params = new URLSearchParams();
     if (skill) params.append('skill', skill);
     if (capability) params.append('capability', capability);
@@ -44,6 +44,7 @@ export const api = {
     if (search) params.append('search', search);
     if (conformance) params.append('conformance', conformance);
     if (healthy !== undefined) params.append('healthy', healthy);
+    if (task_verified !== undefined) params.append('task_verified', task_verified);
     params.append('limit', limit);
     params.append('offset', offset);
 

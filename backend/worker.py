@@ -21,11 +21,10 @@ HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 _cycle_count = 0
 # Check dead agents every N cycles (e.g. 48 cycles * 30 min = ~daily)
 DEAD_AGENT_CHECK_INTERVAL = 48
-# Probe POST message/send on the same cadence — once per day, not every 30min.
-# Hitting every agent's task endpoint twice an hour would be rude. Reuses
-# DEAD_AGENT_CHECK_INTERVAL boundary so probes and dead-agent revalidation
-# land in the same daily "deep cycle".
-TASK_PROBE_INTERVAL = DEAD_AGENT_CHECK_INTERVAL
+# Task probe staleness: re-probe an agent if its last `message/send` check is
+# older than this. DB-backed (task_conformance_checked_at), so the schedule
+# survives worker restarts — every cycle re-evaluates which agents are stale.
+TASK_PROBE_STALENESS = "24 hours"
 
 configure_logging(json_logs=True)
 logger = get_logger(__name__)
@@ -155,6 +154,28 @@ async def check_agent_health(
         bound_logger.error("health_check_error", error=error_message)
 
 
+async def _agents_needing_task_probe(agents) -> set:
+    """
+    Return the set of agent_ids whose last task probe is stale (or never run).
+
+    A single query keeps this cheap regardless of agent count. We pass in the
+    candidate set so we only ever consider live (non-dead) agents.
+    """
+    if not agents:
+        return set()
+    agent_ids = [a.id for a in agents]
+    rows = await db.fetch(
+        f"""
+        SELECT id FROM agents
+        WHERE id = ANY($1::uuid[])
+          AND (task_conformance_checked_at IS NULL
+               OR task_conformance_checked_at < NOW() - INTERVAL '{TASK_PROBE_STALENESS}')
+        """,
+        agent_ids,
+    )
+    return {row["id"] for row in rows}
+
+
 async def probe_one_task(agent, agent_repo: AgentRepository) -> str:
     """Send an A2A message/send to one agent and persist the result category."""
     bound_logger = logger.bind(agent_id=agent.id)
@@ -262,15 +283,17 @@ async def health_check_cycle():
                     if isinstance(result, Exception):
                         logger.error("health_check_task_error", error=str(result))
 
-        # Task probe (daily): real A2A message/send via the SDK. Persists a
-        # structured category so the UI can show "task-verified" alongside
-        # the cheaper GET-only health signal.
-        if _cycle_count % TASK_PROBE_INTERVAL == 0:
-            try:
-                probed = await run_task_probes(agent_repo, check_agents)
-                logger.info("task_probe_cycle_done", probed=probed)
-            except Exception as probe_err:
-                logger.warning("task_probe_cycle_failed", error=str(probe_err))
+        # Task probes: real A2A message/send via the SDK, persisted as a
+        # structured category. DB-driven (re-probe agents whose last probe is
+        # >24h old) instead of a cycle-counter — survives worker restarts.
+        try:
+            stale_ids = await _agents_needing_task_probe(check_agents)
+            stale_agents = [a for a in check_agents if a.id in stale_ids]
+            if stale_agents:
+                probed = await run_task_probes(agent_repo, stale_agents)
+                logger.info("task_probe_cycle_done", probed=probed, eligible=len(stale_agents))
+        except Exception as probe_err:
+            logger.warning("task_probe_cycle_failed", error=str(probe_err))
 
         # Prune health_checks older than 90 days
         try:

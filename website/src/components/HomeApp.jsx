@@ -66,6 +66,7 @@ const HomeApp = () => {
       skill: skillParam,
       conformance: conformanceFilter !== 'all' ? conformanceFilter : undefined,
       healthy: healthyOnly || undefined,
+      task_verified: taskVerifiedOnly || undefined,
       limit: LIMIT,
       offset,
     });
@@ -75,7 +76,7 @@ const HomeApp = () => {
     if (append) setAgents((prev) => [...prev, ...agentList]);
     else setAgents(agentList);
     setTotal(totalCount);
-  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, taskVerifiedOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +111,7 @@ const HomeApp = () => {
     };
     loadData();
     return () => { cancelled = true; };
-  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, fetchFromAPI]);
+  }, [debouncedSearch, selectedSkills, conformanceFilter, healthyOnly, taskVerifiedOnly, fetchFromAPI]);
 
   const handleLoadMore = useCallback(async () => {
     const nextPage = page + 1;
@@ -125,14 +126,10 @@ const HomeApp = () => {
   }, [page, fetchFromAPI]);
 
   const filteredAgents = useMemo(() => {
-    if (!useStaticFallback) {
-      // Task-verified filter is client-side (API doesn't index on it yet).
-      // Applied as a post-filter on whatever the server returned.
-      if (taskVerifiedOnly) {
-        return agents.filter((a) => a.task_conformance && a.task_conformance.passed === true);
-      }
-      return agents;
-    }
+    // Live path: server already applied every filter (including task_verified)
+    // before paginating, so no client-side post-filter needed. Static-fallback
+    // path has no server, so the full filter runs below.
+    if (!useStaticFallback) return agents;
     const q = searchTerm.toLowerCase();
     let filtered = agents.filter((agent) =>
       agent.name.toLowerCase().includes(q) ||
@@ -156,10 +153,7 @@ const HomeApp = () => {
     return filtered;
   }, [useStaticFallback, agents, searchTerm, selectedSkills, conformanceFilter, taskVerifiedOnly]);
 
-  // filteredAgents handles both paths: static-fallback does the full client
-  // filter, live-API path only post-filters on task_verified (everything else
-  // is server-side via API params).
-  const displayedAgents = filteredAgents;
+  const displayedAgents = useStaticFallback ? filteredAgents : agents;
 
   const didInitialUrlSync = useRef(false);
 

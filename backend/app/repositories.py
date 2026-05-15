@@ -203,6 +203,7 @@ class AgentRepository:
         search: Optional[str] = None,
         conformance: Optional[str] = None,
         healthy: Optional[bool] = None,
+        task_verified: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -254,6 +255,11 @@ class AgentRepository:
             where_clauses.append("conformance = true")
         elif conformance == "non-standard":
             where_clauses.append("conformance IS NOT TRUE")
+
+        if task_verified is True:
+            where_clauses.append("task_conformance_passed = true")
+        elif task_verified is False:
+            where_clauses.append("task_conformance_passed IS NOT TRUE")
 
         # healthy filter uses a correlated subquery on the most recent health check
         if healthy is not None:

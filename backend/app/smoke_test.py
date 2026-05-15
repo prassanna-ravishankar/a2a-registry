@@ -98,7 +98,7 @@ async def smoke_test(
     base_url = f"{parsed.scheme}://{parsed.netloc}"
     card_path = parsed.path or None
 
-    start = time.time()
+    start = time.monotonic()
 
     try:
         async with httpx.AsyncClient(

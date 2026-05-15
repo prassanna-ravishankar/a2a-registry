@@ -323,6 +323,7 @@ async def list_agents(
     search: Optional[str] = None,
     conformance: Optional[str] = None,
     healthy: Optional[bool] = None,
+    task_verified: Optional[bool] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -336,6 +337,7 @@ async def list_agents(
     - author: Filter by author name (case-insensitive partial match)
     - conformance: Filter by conformance ("standard" or "non-standard")
     - healthy: Filter by health status (true = healthy, false = unhealthy)
+    - task_verified: true = only agents whose last A2A message/send probe passed
     - limit: Max results to return (default: 50, max: 100)
     - offset: Pagination offset (default: 0)
     """
@@ -347,6 +349,7 @@ async def list_agents(
         search=search,
         conformance=conformance,
         healthy=healthy,
+        task_verified=task_verified,
         limit=limit,
         offset=offset,
     )
@@ -367,6 +370,7 @@ async def list_agents(
         search=search,
         conformance=conformance,
         healthy=healthy,
+        task_verified=task_verified,
         limit=limit,
         offset=offset,
     )

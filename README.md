@@ -127,6 +127,7 @@ Base URL: `https://a2aregistry.org/api`
 | `capability` | Filter by A2A capability (streaming, pushNotifications) |
 | `author` | Filter by author name |
 | `conformance` | `standard` (A2A spec compliant) or `non-standard` |
+| `task_verified` | `true` = only agents whose last A2A `message/send` probe passed |
 | `limit` | Max results (default: 50, max: 100) |
 | `offset` | Pagination offset |
 
