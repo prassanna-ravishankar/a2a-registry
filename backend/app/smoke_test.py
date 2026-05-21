@@ -119,12 +119,12 @@ async def smoke_test(
             saw_event = False
             async for _ in client.send_message(request):
                 saw_event = True
-            response_ms = int((time.time() - start) * 1000)
+            response_ms = int((time.monotonic() - start) * 1000)
             if not saw_event:
                 return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
             return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
     except Exception as exc:
-        response_ms = int((time.time() - start) * 1000)
+        response_ms = int((time.monotonic() - start) * 1000)
         category = classify_error(exc)
         logger.info(
             "smoke_test_failed",
