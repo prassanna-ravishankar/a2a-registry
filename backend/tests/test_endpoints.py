@@ -343,7 +343,11 @@ def test_update_agent_rejects_private_body_well_known_uri(client):
     existing = _make_agent_public()
 
     with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.validate_well_known_uri", return_value=[]):
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
@@ -352,6 +356,7 @@ def test_update_agent_rejects_private_body_well_known_uri(client):
         response = client.put(
             f"/agents/{MOCK_UUID}",
             json={"wellKnownURI": "http://127.0.0.1/.well-known/agent.json"},
+            headers={"X-Admin-Key": "test-admin-key"},
         )
 
     assert response.status_code == 400
