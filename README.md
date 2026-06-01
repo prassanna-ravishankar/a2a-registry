@@ -111,7 +111,7 @@ Base URL: `https://a2aregistry.org/api`
 | `/agents/register` | POST | Register agent by wellKnownURI |
 | `/agents` | GET | List/search agents |
 | `/agents/{id}` | GET | Get agent details |
-| `/agents/{id}` | PUT | Re-fetch and update agent from wellKnownURI |
+| `/agents/{id}` | PUT | Re-fetch and update agent from wellKnownURI (admin key required) |
 | `/agents/{id}` | DELETE | Remove agent (ownership verified) |
 | `/agents/{id}/health` | GET | Get health status |
 | `/agents/{id}/uptime` | GET | Get uptime metrics |

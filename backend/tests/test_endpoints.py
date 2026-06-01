@@ -234,23 +234,67 @@ def test_update_agent_success(client):
     updated_card = {**MOCK_AGENT_CARD, "name": "Updated Agent"}
 
     with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.fetch_agent_card", return_value=(updated_card, None)):
+         patch("app.main.fetch_agent_card", return_value=(updated_card, None)), \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.update = AsyncMock(return_value=_make_agent_in_db())
 
-        response = client.put(f"/agents/{MOCK_UUID}")
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 200
 
 
+def test_update_agent_requires_admin(client):
+    """PUT without admin key returns 403 before repository or fetch work."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card") as mock_fetch:
+        response = client.put(f"/agents/{MOCK_UUID}")
+
+    assert response.status_code == 403
+    mock_repo.assert_not_called()
+    mock_fetch.assert_not_called()
+
+
+def test_update_agent_wrong_admin_key(client):
+    """PUT with wrong admin key returns 403 before repository or fetch work."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card") as mock_fetch, \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
+
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            headers={"X-Admin-Key": "wrong-key"},
+        )
+
+    assert response.status_code == 403
+    mock_repo.assert_not_called()
+    mock_fetch.assert_not_called()
+
+
 def test_update_agent_not_found(client):
     """PUT on nonexistent agent returns 404."""
-    with patch("app.main.AgentRepository") as mock_repo:
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=None)
 
-        response = client.put(f"/agents/{MOCK_UUID}")
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 404
 
@@ -260,11 +304,18 @@ def test_update_agent_fetch_fails(client):
     existing = _make_agent_public()
 
     with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.fetch_agent_card", return_value=(None, "Timeout")):
+         patch("app.main.fetch_agent_card", return_value=(None, "Timeout")), \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
 
-        response = client.put(f"/agents/{MOCK_UUID}")
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 400
     assert "Timeout" in response.json()["detail"]
@@ -289,7 +340,11 @@ def test_update_agent_uses_body_well_known_uri(client):
     with patch("app.main.AgentRepository") as mock_repo, \
          patch("app.main.validate_well_known_uri", return_value=[]), \
          patch("app.main.fetch_agent_card", return_value=(updated_card, None)) as mock_fetch, \
-         patch("app.main._agent_create_from_card") as mock_build:
+         patch("app.main._agent_create_from_card") as mock_build, \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
@@ -297,7 +352,11 @@ def test_update_agent_uses_body_well_known_uri(client):
         instance.update = AsyncMock(return_value=_make_agent_in_db())
         mock_build.return_value = _make_agent_in_db()
 
-        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            json={"wellKnownURI": NEW_URI},
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 200
     # The NEW url was fetched — not the stale existing one.
@@ -311,12 +370,19 @@ def test_update_agent_no_body_refetches_existing(client):
     existing = _make_agent_public()
 
     with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)) as mock_fetch:
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)) as mock_fetch, \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.update = AsyncMock(return_value=_make_agent_in_db())
 
-        response = client.put(f"/agents/{MOCK_UUID}")
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 200
     mock_fetch.assert_called_once_with(str(existing.wellKnownURI))
@@ -328,12 +394,20 @@ def test_update_agent_body_uri_conflict(client):
     other = _make_agent_in_db(id=UUID(OTHER_UUID), name="Other Agent")
 
     with patch("app.main.AgentRepository") as mock_repo, \
-         patch("app.main.validate_well_known_uri", return_value=[]):
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.settings") as mock_settings:
+        mock_settings.admin_api_key = "test-admin-key"
+        mock_settings.rate_limit_enabled = True
+        mock_settings.cors_origins = ["*"]
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.get_by_well_known_uri = AsyncMock(return_value=other)
 
-        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            json={"wellKnownURI": NEW_URI},
+            headers={"X-Admin-Key": "test-admin-key"},
+        )
 
     assert response.status_code == 409
     assert OTHER_UUID in response.json()["detail"]
