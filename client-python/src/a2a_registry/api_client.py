@@ -5,7 +5,7 @@ New API-backed registry client for server-side filtering and health checks.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import requests
 

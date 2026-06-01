@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from a2a_registry import Registry
 
+
 def test_basic_functionality():
     """Test basic registry operations"""
     print("=" * 60)

@@ -5,7 +5,7 @@ Model Context Protocol server for the A2A Registry.
 Provides tools for discovering and querying AI agents from the live API.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastmcp import FastMCP
 
@@ -48,14 +48,23 @@ def _format_agent(agent) -> dict:
         "author": agent.author,
         "url": str(agent.url) if agent.url else None,
         "wellKnownURI": str(agent.wellKnownURI) if agent.wellKnownURI else None,
-        "capabilities": agent.capabilities.model_dump() if hasattr(agent, "capabilities") and agent.capabilities else {},
+        "capabilities": (
+            agent.capabilities.model_dump()
+            if hasattr(agent, "capabilities") and agent.capabilities else {}
+        ),
         "skills": [s.model_dump() for s in (agent.skills or [])],
         "defaultInputModes": agent.defaultInputModes or [],
         "defaultOutputModes": agent.defaultOutputModes or [],
         "protocolVersion": getattr(agent, "protocolVersion", None),
         "version": getattr(agent, "version", None),
-        "provider": agent.provider.model_dump() if hasattr(agent, "provider") and agent.provider else None,
-        "documentationUrl": str(agent.documentationUrl) if hasattr(agent, "documentationUrl") and agent.documentationUrl else None,
+        "provider": (
+            agent.provider.model_dump()
+            if hasattr(agent, "provider") and agent.provider else None
+        ),
+        "documentationUrl": (
+            str(agent.documentationUrl)
+            if hasattr(agent, "documentationUrl") and agent.documentationUrl else None
+        ),
         "conformance": getattr(agent, "conformance", None),
         "is_healthy": getattr(agent, "is_healthy", None),
         "uptime_percentage": getattr(agent, "uptime_percentage", None),
@@ -189,7 +198,10 @@ def refresh_registry() -> dict:
         Status message
     """
     _registry.clear_cache()
-    return {"status": "success", "message": "Registry cache cleared — next query will fetch fresh data"}
+    return {
+        "status": "success",
+        "message": "Registry cache cleared — next query will fetch fresh data",
+    }
 
 
 @mcp.tool
