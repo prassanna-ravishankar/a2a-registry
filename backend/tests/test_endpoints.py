@@ -270,6 +270,108 @@ def test_update_agent_fetch_fails(client):
     assert "Timeout" in response.json()["detail"]
 
 
+# --- #133: PUT must honor a wellKnownURI in the request body ----------------
+#
+# update_agent used to read wellKnownURI only from the existing DB row and
+# ignore the request body, so an agent stuck on a dead URL could never be
+# pointed at a live one — every PUT re-fetched the dead URL and 404'd. These
+# tests pin that a body wellKnownURI is fetched/validated/persisted, while a
+# no-body PUT still re-fetches the existing URI (backward compatible).
+
+NEW_URI = "https://new-live-host.example/.well-known/agent-card.json"
+
+
+def test_update_agent_uses_body_well_known_uri(client):
+    """PUT with a new wellKnownURI fetches and persists the NEW url, not the old one."""
+    existing = _make_agent_public()  # wellKnownURI = https://example.com/.well-known/agent.json
+    updated_card = {**MOCK_AGENT_CARD, "name": "Moved Agent"}
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(updated_card, None)) as mock_fetch, \
+         patch("app.main._agent_create_from_card") as mock_build:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.update = AsyncMock(return_value=_make_agent_in_db())
+        mock_build.return_value = _make_agent_in_db()
+
+        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+
+    assert response.status_code == 200
+    # The NEW url was fetched — not the stale existing one.
+    mock_fetch.assert_called_once_with(NEW_URI)
+    # And the new url is what gets persisted (passed to the card->row builder).
+    assert mock_build.call_args[0][1] == NEW_URI
+
+
+def test_update_agent_no_body_refetches_existing(client):
+    """PUT with no body re-fetches the existing wellKnownURI (backward compatible)."""
+    existing = _make_agent_public()
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)) as mock_fetch:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.update = AsyncMock(return_value=_make_agent_in_db())
+
+        response = client.put(f"/agents/{MOCK_UUID}")
+
+    assert response.status_code == 200
+    mock_fetch.assert_called_once_with(str(existing.wellKnownURI))
+
+
+def test_update_agent_body_uri_conflict(client):
+    """PUT to a wellKnownURI owned by a different agent returns 409."""
+    existing = _make_agent_public()
+    other = _make_agent_in_db(id=UUID(OTHER_UUID), name="Other Agent")
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.get_by_well_known_uri = AsyncMock(return_value=other)
+
+        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+
+    assert response.status_code == 409
+    assert OTHER_UUID in response.json()["detail"]
+
+
+async def test_repo_update_persists_well_known_uri():
+    """Repo-level regression for #133: AgentRepository.update() must write the
+    well_known_uri column, else a body-supplied URI is fetched but never
+    persisted and the worker keeps health-checking the dead URL.
+
+    Endpoint mock tests can't catch this (they stop at _agent_create_from_card),
+    so this drives the real UPDATE through a fake db and asserts the SQL sets
+    well_known_uri and binds the new URI.
+    """
+    from app.repositories import AgentRepository
+
+    captured = {}
+
+    async def fake_fetchrow(query, *params):
+        captured["query"] = query
+        captured["params"] = params
+        return MOCK_AGENT_ROW
+
+    db = AsyncMock()
+    db.fetchrow = fake_fetchrow
+
+    agent = _make_agent_in_db(wellKnownURI=NEW_URI)
+    await AgentRepository(db).update(UUID(MOCK_UUID), agent)
+
+    sql = " ".join(captured["query"].split()).lower()
+    assert "well_known_uri = $1" in sql
+    # well_known_uri is $1, so the new URI must be the first bound param.
+    # (HttpUrl may normalize, so compare on prefix.)
+    assert str(captured["params"][0]).startswith(NEW_URI), (
+        f"new wellKnownURI not bound to well_known_uri = $1; params={captured['params']}"
+    )
+
+
 # ============================================================================
 # Delete Agent (DELETE /agents/{id})
 # ============================================================================
@@ -501,6 +603,57 @@ def test_get_agent_health_not_found(client):
     assert response.status_code == 404
 
 
+async def test_get_health_status_does_not_project_bound_param():
+    """Regression for #134: GET /agents/{id}/health 500'd with asyncpg
+    'inconsistent types deduced for parameter $1: uuid versus text'.
+
+    The query bound the agent_id placeholder ($1) twice: once as a bare
+    projected value (`SELECT $1 as agent_id`, inferred text) and once in
+    `WHERE agent_id = $1` (inferred uuid). asyncpg cannot reconcile the two,
+    so the endpoint 500'd for every agent with health rows. The fix drops the
+    bare projection and returns the Python agent_id instead.
+
+    No live Postgres in CI, so we can't trigger asyncpg's deducer directly.
+    Instead we assert the structural cause is gone: the SQL must not project a
+    bare placeholder, and the returned agent_id must come from the argument.
+    """
+    from uuid import uuid4
+
+    from app.repositories import HealthCheckRepository
+
+    captured = {}
+
+    async def fake_fetchrow(query, *params):
+        captured["query"] = query
+        captured["params"] = params
+        return {
+            "is_healthy": True,
+            "uptime_percentage": 100.0,
+            "avg_response_time_ms": 42,
+            "last_check": datetime.fromisoformat("2024-01-01T00:00:00"),
+            "total_checks": 3,
+            "successful_checks": 3,
+        }
+
+    db = AsyncMock()
+    db.fetchrow = fake_fetchrow
+    agent_id = uuid4()
+
+    status = await HealthCheckRepository(db).get_health_status(agent_id)
+
+    sql = " ".join(captured["query"].split())
+    # The bare projection that caused the uuid-vs-text conflict must be gone.
+    # An explicit cast (e.g. `$1::uuid as agent_id`) would also be acceptable,
+    # so we only forbid the un-cast projection.
+    assert "$1 as agent_id" not in sql.lower()
+    # $1 is still bound exactly once, in the WHERE clause.
+    assert sql.count("$1") == 1
+    assert "where agent_id = $1" in sql.lower()
+    # agent_id comes from the Python argument, not a projected row column.
+    assert status is not None
+    assert status.agent_id == agent_id
+
+
 def test_get_agent_uptime_not_found(client):
     """GET uptime for agent with no data returns 404."""
     with patch("app.main.HealthCheckRepository") as mock_repo:
@@ -625,3 +778,182 @@ def test_api_root(client):
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "A2A Registry API"
+
+
+# ============================================================================
+# Chat proxy (#135): must target the card's url, not the wellKnownURI host
+# ============================================================================
+#
+# An agent can publish its card on one host (wellKnownURI) and run the actual
+# A2A handler on another (card.url) — a common split-host deployment. The chat
+# proxy used to derive the A2A base URL from the wellKnownURI host, so JSON-RPC
+# POSTs went to the wrong host and 502'd. The fix builds the client from the
+# parsed card (factory.create), whose transport targets card.url.
+
+
+def test_chat_targets_card_url_not_well_known_host(client):
+    """The SDK client must be built from the parsed card, so the message is
+    sent to the card's declared url, not the wellKnownURI host."""
+    from unittest.mock import MagicMock
+
+    # Card published on cesaryague.es but A2A handler lives on workers.dev.
+    split_host_card = {
+        **MOCK_AGENT_CARD,
+        "url": "https://paki-api.elfresonero.workers.dev/a2a",
+    }
+    existing = _make_agent_public(
+        wellKnownURI="https://cesaryague.es/.well-known/agent.json",
+        url="https://paki-api.elfresonero.workers.dev/a2a",
+    )
+
+    async def _events():
+        ev = MagicMock()
+        ev.HasField = lambda f: f == "message"
+        ev.message = MagicMock()
+        yield ev
+
+    fake_client = MagicMock()
+    fake_client.send_message = MagicMock(return_value=_events())
+    # The SSRF guard reads the transport url; give it the real (public) target.
+    fake_client._transport = MagicMock()
+    fake_client._transport.url = "https://paki-api.elfresonero.workers.dev/a2a"
+
+    captured = {}
+
+    def fake_create(card):
+        captured["card"] = card
+        return fake_client
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(split_host_card, None)) as mock_fetch, \
+         patch("app.main._extract_text", return_value="hi from worker"), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["response"] == "hi from worker"
+    # The card was refetched from the agent's stored wellKnownURI, not request input.
+    mock_fetch.assert_called_once_with("https://cesaryague.es/.well-known/agent.json")
+    # Crisp old-vs-new signal: the fix builds the client via factory.create(card).
+    # The old code used factory.create_from_url and never called create(), so
+    # `captured` stays empty against the pre-fix handler.
+    assert "card" in captured, "client must be built via factory.create(parsed_card)"
+    # The client was built from the parsed card whose endpoint is the worker.
+    parsed_card = captured["card"]
+    iface = (getattr(parsed_card, "supported_interfaces", None)
+             or getattr(parsed_card, "supportedInterfaces", None))
+    assert iface, "parsed card has no supported interface url"
+    assert iface[0].url == "https://paki-api.elfresonero.workers.dev/a2a"
+
+
+def test_chat_rejects_private_card_url_after_refetch(client):
+    """SSRF guard on the actual send target: even when stored agent.url and the
+    wellKnownURI are public, a freshly fetched card whose url points at a
+    private/internal host must be rejected before any message is sent."""
+    from unittest.mock import MagicMock
+
+    # Stored url is public (passes the first guard), but the refetched card
+    # points the A2A endpoint at loopback.
+    private_card = {**MOCK_AGENT_CARD, "url": "http://127.0.0.1/a2a"}
+    existing = _make_agent_public(
+        wellKnownURI="https://public-host.example/.well-known/agent.json",
+        url="https://public-host.example/a2a",
+    )
+
+    fake_client = MagicMock()
+    # If the guard fails to fire, send_message would be hit — make that loud.
+    fake_client.send_message = MagicMock(side_effect=AssertionError("send_message must not be called"))
+
+    def fake_create(card):
+        c = MagicMock()
+        c._transport = MagicMock()
+        c._transport.url = "http://127.0.0.1/a2a"
+        c.send_message = fake_client.send_message
+        return c
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.HealthCheckRepository") as mock_health_cls, \
+         patch("app.main.fetch_agent_card", return_value=(private_card, None)), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_health_cls.return_value.create = AsyncMock(return_value=None)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    # Rejected before send, and NOT relabeled as a generic 502 by the broad handler.
+    assert response.status_code == 400, response.text
+    assert "not publicly reachable" in response.json()["detail"]
+    fake_client.send_message.assert_not_called()
+
+
+def test_chat_fails_closed_when_target_url_indeterminate(client):
+    """If the SDK client's transport url can't be read, the SSRF guard must
+    fail closed (reject) rather than send blind — so a future SDK that hides
+    the transport target can't silently bypass the guard."""
+    from unittest.mock import MagicMock
+
+    existing = _make_agent_public(
+        wellKnownURI="https://public-host.example/.well-known/agent.json",
+        url="https://public-host.example/a2a",
+    )
+
+    fake_client = MagicMock()
+    fake_client.send_message = MagicMock(side_effect=AssertionError("send_message must not be called"))
+
+    def fake_create(card):
+        c = MagicMock()
+        # No resolvable transport url: _transport / transport both absent.
+        c._transport = None
+        c.transport = None
+        c.send_message = fake_client.send_message
+        return c
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.HealthCheckRepository") as mock_health_cls, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_health_cls.return_value.create = AsyncMock(return_value=None)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    assert response.status_code == 400, response.text
+    assert "not publicly reachable" in response.json()["detail"]
+    fake_client.send_message.assert_not_called()
+
+
+def test_parsed_split_host_card_resolves_transport_to_card_url():
+    """SDK contract: parse_agent_card + ClientFactory.create build a transport
+    whose URL is the card's url, even when that differs from the discovery host.
+    Pins the SDK behavior the #135 fix relies on."""
+    import httpx
+    from a2a.client import ClientConfig, ClientFactory
+    from a2a.client.card_resolver import parse_agent_card
+
+    # Self-contained card dict — parse_agent_card mutates its input in place
+    # (it moves `url` into supported_interfaces), so don't derive from a shared
+    # module-level fixture or this becomes order-dependent.
+    card = parse_agent_card({
+        "protocolVersion": "0.3.0",
+        "name": "Split Host Agent",
+        "description": "d",
+        "url": "https://paki-api.elfresonero.workers.dev/a2a",
+        "version": "1.0.0",
+        "capabilities": {},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [],
+    })
+    hc = httpx.AsyncClient()
+    sdk_client = ClientFactory(ClientConfig(httpx_client=hc, streaming=False)).create(card)
+    transport = getattr(sdk_client, "_transport", None) or getattr(sdk_client, "transport", None)
+    assert transport is not None
+    assert transport.url == "https://paki-api.elfresonero.workers.dev/a2a"

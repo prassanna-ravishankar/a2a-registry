@@ -12,6 +12,7 @@ from uuid import UUID
 import httpx
 import structlog
 from a2a.client import ClientConfig, ClientFactory
+from a2a.client.card_resolver import parse_agent_card
 from a2a.types import Message, Part, Role, SendMessageRequest, Task, TaskState
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -402,8 +403,11 @@ async def update_agent(agent_id: UUID, request: Request):
     """
     Re-fetch and update an agent's metadata from its wellKnownURI.
 
-    Verifies ownership by fetching the wellKnownURI and updating all fields
-    from the live agent card.
+    By default re-fetches the agent's current wellKnownURI. To point the agent
+    at a new discovery URL (e.g. its old host rotated or 404s), send a JSON body
+    `{"wellKnownURI": "https://new-host/.well-known/agent-card.json"}`. The new
+    URL is fetched, validated, and persisted on success. With no body the
+    existing URI is used (backward compatible).
     """
     track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
 
@@ -412,7 +416,42 @@ async def update_agent(agent_id: UUID, request: Request):
     if not existing:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    well_known_uri = str(existing.wellKnownURI)
+    # Optionally accept a new wellKnownURI from the request body. Tolerate an
+    # absent/empty/non-JSON body so a plain PUT (re-fetch existing) still works.
+    new_uri = None
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict):
+            new_uri = body.get("wellKnownURI") or None
+
+    existing_uri = str(existing.wellKnownURI)
+    if new_uri and str(new_uri) != existing_uri:
+        well_known_uri = str(new_uri)
+        uri_errors = validate_well_known_uri(well_known_uri)
+        if uri_errors:
+            raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+
+        # Don't let a URI change collide with a *different* agent's record.
+        uri_owner = await agent_repo.get_by_well_known_uri(well_known_uri)
+        if uri_owner and uri_owner.id != agent_id:
+            raise HTTPException(
+                status_code=409,
+                detail=f"That wellKnownURI is already registered to a different agent (id={uri_owner.id}).",
+            )
+        hostname = urlparse(well_known_uri).hostname or ""
+        if hostname:
+            host_owner = await agent_repo.get_by_host(hostname)
+            if host_owner and host_owner.id != agent_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"An agent from this host is already registered: '{host_owner.name}' (id={host_owner.id}).",
+                )
+    else:
+        well_known_uri = existing_uri
+
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
@@ -551,6 +590,19 @@ def _is_private_url(url: str) -> bool:
         return host in _BLOCKED_HOSTS or any(host.endswith(s) for s in _BLOCKED_SUFFIXES)
 
 
+def _client_target_url(client) -> Optional[str]:
+    """The URL the SDK client's transport will POST to, or None if it can't be
+    determined.
+
+    Used to re-run the SSRF guard against the actual send target after the card
+    is (re)fetched at chat time. Callers MUST fail closed on None: if we can't
+    read the target a future SDK change could hide from us, we must not send,
+    rather than fall back to a stale guard.
+    """
+    transport = getattr(client, "_transport", None) or getattr(client, "transport", None)
+    return getattr(transport, "url", None) if transport else None
+
+
 def _extract_text_from_parts(parts) -> str:
     """Join text content from a list of Part messages."""
     return "".join(p.text for p in parts if p.text)
@@ -608,16 +660,46 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
     health_repo = HealthCheckRepository(db)
     start = time.monotonic()
     try:
+        # Build the client from the agent's *card*, not the wellKnownURI host.
+        # Many agents publish their card on a public domain but run the actual
+        # A2A handler elsewhere (Cloudflare Workers, etc.); the card's `url`
+        # (mapped by parse_agent_card into supportedInterfaces[0].url) is the
+        # real endpoint. Deriving the base from the wellKnownURI host instead
+        # sent JSON-RPC POSTs to the wrong host and 502'd (#135).
+        #
+        # The card is refetched from the agent's stored, already-validated
+        # wellKnownURI — never from request-controlled input.
+        card_dict, card_error = await fetch_agent_card(str(agent.wellKnownURI))
+        if card_error or card_dict is None:
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+            detail = f"Could not load agent card: {card_error or 'no data'}"
+            await health_repo.create(agent_id, 502, elapsed_ms, False, detail, source='chat')
+            raise HTTPException(status_code=502, detail=detail)
+
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-            parsed = urlparse(str(agent.wellKnownURI))
-            agent_base_url = f"{parsed.scheme}://{parsed.netloc}"
-            card_path = parsed.path or None
             factory = ClientFactory(
                 ClientConfig(httpx_client=http_client, streaming=False),
             )
-            client = await factory.create_from_url(
-                agent_base_url, relative_card_path=card_path,
-            )
+            client = factory.create(parse_agent_card(card_dict))
+
+            # SSRF guard on the ACTUAL send target. The stored agent.url was
+            # checked above, but #135 refetches the card at chat time, so the
+            # transport may target a different (freshly parsed) url. Re-check it
+            # so a card that rotated to a private/internal address (127.0.0.1,
+            # the GCP metadata host, etc.) can't be used to pivot.
+            #
+            # Fail closed: if we can't read the actual target (None), reject
+            # rather than send — a future SDK that hides the transport url must
+            # not silently bypass this guard.
+            target_url = _client_target_url(client)
+            if target_url is None or _is_private_url(target_url):
+                elapsed_ms = int((time.monotonic() - start) * 1000)
+                await health_repo.create(
+                    agent_id, 400, elapsed_ms, False,
+                    "Agent endpoint is not publicly reachable", source='chat',
+                )
+                raise HTTPException(status_code=400, detail="Agent endpoint is not publicly reachable")
+
             send_request = SendMessageRequest(message=message)
             response_text = ""
             async for event in client.send_message(send_request):
@@ -644,6 +726,10 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         elapsed_ms = int((time.monotonic() - start) * 1000)
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
         raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+    except HTTPException:
+        # Already-formed HTTP errors (e.g. card-load failure above) carry their
+        # own status/detail and a health row was already recorded — re-raise as-is.
+        raise
     except Exception:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         logger.exception("chat_proxy_error", agent_id=str(agent_id))
