@@ -532,9 +532,13 @@ class HealthCheckRepository:
 
     async def get_health_status(self, agent_id: UUID) -> Optional[HealthStatus]:
         """Get current health status for an agent (last 24 hours)"""
+        # Note: don't SELECT $1 here. Using the same placeholder as both a bare
+        # SELECT value (inferred as text) and `WHERE agent_id = $1` (inferred as
+        # uuid) makes asyncpg fail with "inconsistent types deduced for
+        # parameter $1: uuid versus text". agent_id is already in scope, so just
+        # pass it through to the result.
         query = """
             SELECT
-                $1 as agent_id,
                 COUNT(*) FILTER (WHERE success = true) > 0 as is_healthy,
                 COALESCE(
                     COUNT(*) FILTER (WHERE success = true)::float / NULLIF(COUNT(*), 0) * 100,
@@ -557,7 +561,7 @@ class HealthCheckRepository:
             return None
 
         return HealthStatus(
-            agent_id=row["agent_id"],
+            agent_id=agent_id,
             is_healthy=row["is_healthy"],
             uptime_percentage=row["uptime_percentage"],
             avg_response_time_ms=row["avg_response_time_ms"],

@@ -501,6 +501,57 @@ def test_get_agent_health_not_found(client):
     assert response.status_code == 404
 
 
+async def test_get_health_status_does_not_project_bound_param():
+    """Regression for #134: GET /agents/{id}/health 500'd with asyncpg
+    'inconsistent types deduced for parameter $1: uuid versus text'.
+
+    The query bound the agent_id placeholder ($1) twice: once as a bare
+    projected value (`SELECT $1 as agent_id`, inferred text) and once in
+    `WHERE agent_id = $1` (inferred uuid). asyncpg cannot reconcile the two,
+    so the endpoint 500'd for every agent with health rows. The fix drops the
+    bare projection and returns the Python agent_id instead.
+
+    No live Postgres in CI, so we can't trigger asyncpg's deducer directly.
+    Instead we assert the structural cause is gone: the SQL must not project a
+    bare placeholder, and the returned agent_id must come from the argument.
+    """
+    from uuid import uuid4
+
+    from app.repositories import HealthCheckRepository
+
+    captured = {}
+
+    async def fake_fetchrow(query, *params):
+        captured["query"] = query
+        captured["params"] = params
+        return {
+            "is_healthy": True,
+            "uptime_percentage": 100.0,
+            "avg_response_time_ms": 42,
+            "last_check": datetime.fromisoformat("2024-01-01T00:00:00"),
+            "total_checks": 3,
+            "successful_checks": 3,
+        }
+
+    db = AsyncMock()
+    db.fetchrow = fake_fetchrow
+    agent_id = uuid4()
+
+    status = await HealthCheckRepository(db).get_health_status(agent_id)
+
+    sql = " ".join(captured["query"].split())
+    # The bare projection that caused the uuid-vs-text conflict must be gone.
+    # An explicit cast (e.g. `$1::uuid as agent_id`) would also be acceptable,
+    # so we only forbid the un-cast projection.
+    assert "$1 as agent_id" not in sql.lower()
+    # $1 is still bound exactly once, in the WHERE clause.
+    assert sql.count("$1") == 1
+    assert "where agent_id = $1" in sql.lower()
+    # agent_id comes from the Python argument, not a projected row column.
+    assert status is not None
+    assert status.agent_id == agent_id
+
+
 def test_get_agent_uptime_not_found(client):
     """GET uptime for agent with no data returns 404."""
     with patch("app.main.HealthCheckRepository") as mock_repo:
