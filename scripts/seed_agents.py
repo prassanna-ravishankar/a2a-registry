@@ -13,7 +13,8 @@ Usage:
     cat agents.txt | cd backend && uv run python ../scripts/seed_agents.py --stdin
 
     # Export from production, seed locally
-    cd backend && uv run python ../scripts/export_agents.py --api https://beta.a2aregistry.org/api | uv run python ../scripts/seed_agents.py --stdin
+    cd backend && uv run python ../scripts/export_agents.py \
+        --api https://beta.a2aregistry.org/api | uv run python ../scripts/seed_agents.py --stdin
 """
 
 import argparse
@@ -24,13 +25,18 @@ from pathlib import Path
 try:
     import aiohttp
 except ImportError:
-    print("Error: aiohttp not installed. Run from backend directory with: cd backend && uv run python ../scripts/seed_agents.py")
+    print(
+        "Error: aiohttp not installed. Run from backend directory with: "
+        "cd backend && uv run python ../scripts/seed_agents.py"
+    )
     sys.exit(1)
 
 DEFAULT_API_URL = "http://localhost:17001"
 
 
-async def register_agent(session: aiohttp.ClientSession, api_url: str, well_known_uri: str) -> tuple[bool, str]:
+async def register_agent(
+    session: aiohttp.ClientSession, api_url: str, well_known_uri: str,
+) -> tuple[bool, str]:
     """Register a single agent via the API."""
     try:
         async with session.post(

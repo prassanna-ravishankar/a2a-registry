@@ -20,7 +20,10 @@ import sys
 try:
     import aiohttp
 except ImportError:
-    print("Error: aiohttp not installed. Run from backend directory with: cd backend && uv run python ../scripts/export_agents.py")
+    print(
+        "Error: aiohttp not installed. Run from backend directory with: "
+        "cd backend && uv run python ../scripts/export_agents.py"
+    )
     sys.exit(1)
 
 DEFAULT_API_URL = "http://localhost:17001"

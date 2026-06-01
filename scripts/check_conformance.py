@@ -15,11 +15,11 @@ import json
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import aiohttp
 
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 from app.smoke_test import TASK_PROBE_USER_AGENT, smoke_test
@@ -73,7 +73,12 @@ async def fetch_all_agents(session: aiohttp.ClientSession) -> list[dict]:
     return agents
 
 
-async def check_one(agent: dict, session: aiohttp.ClientSession, strict: bool, probe_tasks: bool = False) -> Result:
+async def check_one(
+    agent: dict,
+    session: aiohttp.ClientSession,
+    strict: bool,
+    probe_tasks: bool = False,
+) -> Result:
     result = Result(
         name=agent["name"],
         well_known_uri=agent.get("wellKnownURI", ""),
@@ -90,7 +95,10 @@ async def check_one(agent: dict, session: aiohttp.ClientSession, strict: bool, p
         async with session.get(
             result.well_known_uri,
             timeout=aiohttp.ClientTimeout(total=TIMEOUT),
-            headers={"User-Agent": "A2A-Registry-ConformanceCheck/1.0", "Accept": "application/json"},
+            headers={
+                "User-Agent": "A2A-Registry-ConformanceCheck/1.0",
+                "Accept": "application/json",
+            },
             allow_redirects=True,
             ssl=False,
         ) as resp:
@@ -123,7 +131,9 @@ async def check_one(agent: dict, session: aiohttp.ClientSession, strict: bool, p
             except Exception as e:
                 result.task_category = "OTHER"
                 result.task_response_ms = None
-                result.fetch_error = (result.fetch_error or "") + f" task-probe error: {str(e)[:80]}"
+                result.fetch_error = (
+                    (result.fetch_error or "") + f" task-probe error: {str(e)[:80]}"
+                )
 
     except asyncio.TimeoutError:
         result.fetch_error = f"Timeout (>{TIMEOUT}s)"
@@ -182,7 +192,7 @@ async def main(strict: bool, as_json: bool, probe_tasks: bool):
 
     # ── Human-readable output ─────────────────────────────────────────────────
 
-    W = 42  # name column width
+    name_w = 42  # name column width
 
     print(f"{'='*80}")
     print(f"  A2A CONFORMANCE SCAN  (strict={strict})")
@@ -192,13 +202,13 @@ async def main(strict: bool, as_json: bool, probe_tasks: bool):
     print(f"{'─'*60}")
     for r in sorted(conformant, key=lambda x: x.name):
         flag = " [was non-standard]" if r.current_conformance is False else ""
-        print(f"  {r.name:<{W}}  {r.response_ms:>4}ms{flag}")
+        print(f"  {r.name:<{name_w}}  {r.response_ms:>4}ms{flag}")
 
     print(f"\n❌  NON-CONFORMANT ({len(non_conformant)})")
     print(f"{'─'*60}")
     for r in sorted(non_conformant, key=lambda x: x.name):
         flag = " [was standard]" if r.current_conformance is True else ""
-        print(f"  {r.name:<{W}}{flag}")
+        print(f"  {r.name:<{name_w}}{flag}")
         for e in r.errors[:3]:
             print(f"      • {e}")
         if len(r.errors) > 3:
@@ -207,12 +217,18 @@ async def main(strict: bool, as_json: bool, probe_tasks: bool):
     print(f"\n⚠️   UNREACHABLE ({len(unreachable)})")
     print(f"{'─'*60}")
     for r in sorted(unreachable, key=lambda x: x.name):
-        print(f"  {r.name:<{W}}  {r.fetch_error}")
+        print(f"  {r.name:<{name_w}}  {r.fetch_error}")
 
     print(f"\n{'='*80}")
-    print(f"  SUMMARY: {len(conformant)} conformant / {len(non_conformant)} non-conformant / {len(unreachable)} unreachable  (total {len(results)})")
+    print(
+        f"  SUMMARY: {len(conformant)} conformant / {len(non_conformant)} non-conformant"
+        f" / {len(unreachable)} unreachable  (total {len(results)})"
+    )
 
-    changed = [r for r in results if r.conformant is not None and r.conformant != r.current_conformance]
+    changed = [
+        r for r in results
+        if r.conformant is not None and r.conformant != r.current_conformance
+    ]
     if changed:
         print(f"\n  🔄  CHANGED since last check ({len(changed)}):")
         for r in changed:
@@ -223,7 +239,10 @@ async def main(strict: bool, as_json: bool, probe_tasks: bool):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--strict", action="store_true", help="Full A2A spec validation (requires all fields)")
+    parser.add_argument(
+        "--strict", action="store_true",
+        help="Full A2A spec validation (requires all fields)",
+    )
     parser.add_argument("--json", dest="as_json", action="store_true", help="JSON output")
     parser.add_argument("--probe-tasks", dest="probe_tasks", action="store_true",
                         help="Also send A2A message/send to each agent (matches worker behavior)")
