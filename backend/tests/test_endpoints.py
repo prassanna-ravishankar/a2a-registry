@@ -892,6 +892,44 @@ def test_chat_rejects_private_card_url_after_refetch(client):
     fake_client.send_message.assert_not_called()
 
 
+def test_chat_fails_closed_when_target_url_indeterminate(client):
+    """If the SDK client's transport url can't be read, the SSRF guard must
+    fail closed (reject) rather than send blind — so a future SDK that hides
+    the transport target can't silently bypass the guard."""
+    from unittest.mock import MagicMock
+
+    existing = _make_agent_public(
+        wellKnownURI="https://public-host.example/.well-known/agent.json",
+        url="https://public-host.example/a2a",
+    )
+
+    fake_client = MagicMock()
+    fake_client.send_message = MagicMock(side_effect=AssertionError("send_message must not be called"))
+
+    def fake_create(card):
+        c = MagicMock()
+        # No resolvable transport url: _transport / transport both absent.
+        c._transport = None
+        c.transport = None
+        c.send_message = fake_client.send_message
+        return c
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.HealthCheckRepository") as mock_health_cls, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_health_cls.return_value.create = AsyncMock(return_value=None)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    assert response.status_code == 400, response.text
+    assert "not publicly reachable" in response.json()["detail"]
+    fake_client.send_message.assert_not_called()
+
+
 def test_parsed_split_host_card_resolves_transport_to_card_url():
     """SDK contract: parse_agent_card + ClientFactory.create build a transport
     whose URL is the card's url, even when that differs from the discovery host.
@@ -900,9 +938,19 @@ def test_parsed_split_host_card_resolves_transport_to_card_url():
     from a2a.client import ClientConfig, ClientFactory
     from a2a.client.card_resolver import parse_agent_card
 
+    # Self-contained card dict — parse_agent_card mutates its input in place
+    # (it moves `url` into supported_interfaces), so don't derive from a shared
+    # module-level fixture or this becomes order-dependent.
     card = parse_agent_card({
-        **MOCK_AGENT_CARD,
+        "protocolVersion": "0.3.0",
+        "name": "Split Host Agent",
+        "description": "d",
         "url": "https://paki-api.elfresonero.workers.dev/a2a",
+        "version": "1.0.0",
+        "capabilities": {},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [],
     })
     hc = httpx.AsyncClient()
     sdk_client = ClientFactory(ClientConfig(httpx_client=hc, streaming=False)).create(card)

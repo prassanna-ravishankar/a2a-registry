@@ -591,12 +591,13 @@ def _is_private_url(url: str) -> bool:
 
 
 def _client_target_url(client) -> Optional[str]:
-    """Best-effort: the URL the SDK client's transport will POST to.
+    """The URL the SDK client's transport will POST to, or None if it can't be
+    determined.
 
-    Used to re-run the SSRF guard against the actual send target after the
-    card is (re)fetched at chat time. Returns None if the transport URL can't
-    be determined (in which case the caller should fall back to the stored,
-    already-validated agent.url guard rather than send blind).
+    Used to re-run the SSRF guard against the actual send target after the card
+    is (re)fetched at chat time. Callers MUST fail closed on None: if we can't
+    read the target a future SDK change could hide from us, we must not send,
+    rather than fall back to a stale guard.
     """
     transport = getattr(client, "_transport", None) or getattr(client, "transport", None)
     return getattr(transport, "url", None) if transport else None
@@ -686,8 +687,12 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
             # transport may target a different (freshly parsed) url. Re-check it
             # so a card that rotated to a private/internal address (127.0.0.1,
             # the GCP metadata host, etc.) can't be used to pivot.
+            #
+            # Fail closed: if we can't read the actual target (None), reject
+            # rather than send — a future SDK that hides the transport url must
+            # not silently bypass this guard.
             target_url = _client_target_url(client)
-            if target_url and _is_private_url(target_url):
+            if target_url is None or _is_private_url(target_url):
                 elapsed_ms = int((time.monotonic() - start) * 1000)
                 await health_repo.create(
                     agent_id, 400, elapsed_ms, False,
