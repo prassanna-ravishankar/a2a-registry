@@ -14,11 +14,13 @@ Usage:
     python demo_a2a_integration.py
 """
 
-import sys
 import asyncio
+import sys
+
 sys.path.insert(0, '../src')
 
 from a2a_registry import Registry
+
 
 async def main():
     print("=" * 70)
@@ -36,8 +38,9 @@ async def main():
 
     # Send message
     print("Step 2: Sending message...")
-    from a2a.types import Message, TextPart, Role, TaskQueryParams
     import uuid
+
+    from a2a.types import Message, Role, TaskQueryParams, TextPart
 
     message = Message(
         messageId=str(uuid.uuid4()),

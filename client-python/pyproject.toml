@@ -71,5 +71,15 @@ target-version = ["py310", "py311", "py312"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# models.py mirrors the A2A wire format, whose field names are camelCase
+# (wellKnownURI, defaultInputModes, ...). N815 (mixedCase) is intentional here.
+"src/a2a_registry/models.py" = ["N815"]
+# examples/ are illustrative demo scripts (assign a client to show the pattern,
+# probe-import optional deps); F401/F841/E501 there are deliberate, not drift.
+"examples/*" = ["F401", "F841", "E501"]
 

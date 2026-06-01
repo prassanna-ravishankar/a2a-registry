@@ -3,8 +3,10 @@ A2A Registry client implementation.
 """
 
 from __future__ import annotations
+
 import time
-from typing import List, Optional, Dict, Any, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+
 import requests
 
 if TYPE_CHECKING:
@@ -15,8 +17,8 @@ else:
     except ImportError:
         aiohttp = None
 
-from .models import Agent, RegistryResponse
 from ._base import BaseRegistryLogic
+from .models import Agent, RegistryResponse
 
 
 class Registry(BaseRegistryLogic):
@@ -170,7 +172,9 @@ class Registry(BaseRegistryLogic):
         agents = self.get_all()
         return self.filter_by_output_mode(agents, output_mode)
 
-    def find_by_modes(self, input_mode: Optional[str] = None, output_mode: Optional[str] = None) -> List[Agent]:
+    def find_by_modes(
+        self, input_mode: Optional[str] = None, output_mode: Optional[str] = None,
+    ) -> List[Agent]:
         """
         Find agents that support specific input and/or output modes.
 
@@ -310,16 +314,24 @@ class AsyncRegistry(BaseRegistryLogic):
     async def _fetch_registry(self) -> RegistryResponse:
         """Fetch the registry from the API."""
         if aiohttp is None:
-            raise RuntimeError("aiohttp is required for AsyncRegistry. Install with: pip install 'a2a-registry-client[async]'")
+            raise RuntimeError(
+                "aiohttp is required for AsyncRegistry. "
+                "Install with: pip install 'a2a-registry-client[async]'"
+            )
 
         if not self._session:
             if self._own_session:
                 self._session = aiohttp.ClientSession()
             else:
-                raise RuntimeError("No aiohttp session available. Use async context manager or provide session.")
+                raise RuntimeError(
+                    "No aiohttp session available. "
+                    "Use async context manager or provide session."
+                )
 
         try:
-            async with self._session.get(self.registry_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with self._session.get(
+                self.registry_url, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
                 response.raise_for_status()
                 data = await response.json()
                 # Support both the paginated API format and the legacy static format
@@ -444,7 +456,9 @@ class AsyncRegistry(BaseRegistryLogic):
         agents = await self.get_all()
         return self.filter_by_output_mode(agents, output_mode)
 
-    async def find_by_modes(self, input_mode: Optional[str] = None, output_mode: Optional[str] = None) -> List[Agent]:
+    async def find_by_modes(
+        self, input_mode: Optional[str] = None, output_mode: Optional[str] = None,
+    ) -> List[Agent]:
         """
         Find agents that support specific input and/or output modes.
 

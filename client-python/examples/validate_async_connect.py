@@ -12,7 +12,7 @@ Usage:
 import asyncio
 
 from a2a.client.helpers import create_text_message_object
-from a2a.types import Message, Task
+from a2a.types import Message
 
 from a2a_registry import AsyncAPIRegistry
 
@@ -57,7 +57,7 @@ async def main():
             print(f"  URI: {agent.wellKnownURI}")
             try:
                 client = await agent.async_connect()
-                print(f"  Connected OK")
+                print("  Connected OK")
 
                 message = create_text_message_object(content="Hello, what can you do?")
                 async for event in client.send_message(message):

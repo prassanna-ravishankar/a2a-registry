@@ -36,7 +36,7 @@ def basic_integration():
         client = agent.connect()
         print(f"\n✅ Successfully created A2A client for '{agent.name}'")
         print(f"   Client type: {type(client).__name__}")
-        print(f"   Ready to invoke skills!")
+        print("   Ready to invoke skills!")
 
         # Now you can use the A2A SDK client methods:
         # - client.message.send(...)
@@ -68,7 +68,7 @@ def filtered_discovery():
 
         try:
             client = agent.connect()
-            print(f"✅ Connected! Ready for streaming interactions")
+            print("✅ Connected! Ready for streaming interactions")
 
             # Example: Use streaming capability
             # response = await client.message.stream(
@@ -103,7 +103,7 @@ def search_and_connect():
         if i == 1:
             try:
                 client = agent.connect()
-                print(f"   ✅ Connected via A2A SDK")
+                print("   ✅ Connected via A2A SDK")
             except Exception as e:
                 print(f"   ⚠️  Could not connect: {e}")
 

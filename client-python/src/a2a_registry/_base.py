@@ -2,7 +2,8 @@
 Base registry implementation with shared logic.
 """
 
-from typing import List, Optional, Set, Dict, Any
+from typing import Any, Dict, List, Optional, Set
+
 from .models import Agent
 
 
@@ -269,7 +270,9 @@ class BaseRegistryLogic:
         return filtered
 
     @staticmethod
-    def compute_stats(agents: List[Agent], registry_version: str, registry_generated: str) -> Dict[str, Any]:
+    def compute_stats(
+        agents: List[Agent], registry_version: str, registry_generated: str,
+    ) -> Dict[str, Any]:
         """
         Compute statistics about the registry.
 
@@ -314,8 +317,12 @@ class BaseRegistryLogic:
             "unique_authors": len(unique_authors),
             "capabilities_count": capabilities_count,
             "protocol_versions": sorted(list(protocol_versions)),
-            "available_input_modes": sorted(list(BaseRegistryLogic.get_available_input_modes(agents))),
-            "available_output_modes": sorted(list(BaseRegistryLogic.get_available_output_modes(agents))),
+            "available_input_modes": sorted(
+                list(BaseRegistryLogic.get_available_input_modes(agents))
+            ),
+            "available_output_modes": sorted(
+                list(BaseRegistryLogic.get_available_output_modes(agents))
+            ),
             "skills_list": sorted(list(unique_skills)),
             "authors_list": sorted(list(unique_authors))
         }
