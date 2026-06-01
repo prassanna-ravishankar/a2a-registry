@@ -399,7 +399,11 @@ async def get_agent(agent_id: UUID):
 
 
 @router.put("/agents/{agent_id}", response_model=AgentPublic)
-async def update_agent(agent_id: UUID, request: Request):
+async def update_agent(
+    agent_id: UUID,
+    request: Request,
+    x_admin_key: Optional[str] = Header(default=None),
+):
     """
     Re-fetch and update an agent's metadata from its wellKnownURI.
 
@@ -409,6 +413,7 @@ async def update_agent(agent_id: UUID, request: Request):
     URL is fetched, validated, and persisted on success. With no body the
     existing URI is used (backward compatible).
     """
+    _require_admin(x_admin_key)
     track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
 
     agent_repo = AgentRepository(db)
