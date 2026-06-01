@@ -7,11 +7,11 @@ used as the primary validator, keeping us in sync with spec updates automaticall
 Falls back to manual validation if the SDK is not available.
 """
 
+from typing import Any
+
 # a2a-sdk 1.0 uses protobuf types instead of pydantic, so AgentCard.model_validate()
 # is no longer available. We use manual validation exclusively.
 _SDK_AVAILABLE = False
-
-from typing import Any
 
 
 def validate_agent_card(card_data: dict[str, Any], strict: bool = False) -> list[str]:
