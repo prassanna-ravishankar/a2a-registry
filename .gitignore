@@ -77,3 +77,8 @@ website/dist/
 # MCP stuff
 .playwright-mcp/
 .claude/scheduled_tasks.lock
+
+# Ad-hoc screenshot debris dropped in the website/ root by UI/browser tooling.
+# Real website images live under website/public/ and website/src/, so this only
+# catches stray captures at the top level (agentdance-*.png, *-preview.png, etc).
+/website/*.png
