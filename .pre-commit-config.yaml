@@ -18,16 +18,10 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  # Type checking with ty
-  - repo: local
-    hooks:
-      - id: ty-check
-        name: Type check with ty
-        entry: uvx ty check
-        language: system
-        types: [python]
-        pass_filenames: false
-        always_run: true
+  # Type checking is intentionally NOT a pre-commit hook. ty is pre-1.0 and
+  # its default environment resolution surfaces unresolved-import noise that
+  # made an `always_run` ty hook fail on every commit (so nobody enabled
+  # pre-commit). Run type checks in CI instead, where the venv is configured.
 
   # JSON validation
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -50,13 +44,7 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
 
-  # Validate agents using our custom script
-  - repo: local
-    hooks:
-      - id: validate-agents
-        name: Validate agent JSON files
-        entry: uv run python scripts/validate_agent.py
-        language: system
-        files: ^agents/.*\.json$
-        pass_filenames: true
+  # (Removed: the `validate-agents` hook globbed `agents/*.json` and ran
+  #  scripts/validate_agent.py — both deleted when the "Git as database" model
+  #  was replaced by the live API + PostgreSQL backend.)
 
