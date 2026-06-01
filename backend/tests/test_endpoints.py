@@ -162,6 +162,23 @@ def test_register_agent_fetch_fails(client):
     assert "Connection refused" in response.json()["detail"]
 
 
+def test_register_agent_rejects_private_well_known_uri(client):
+    """POST /agents/register is covered by the centralized card-fetch SSRF guard."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "http://127.0.0.1/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 400
+    assert "non-public" in response.json()["detail"]
+
+
 def test_register_agent_host_duplicate(client):
     """Reject registration when another agent from the same host exists."""
     existing = _make_agent_in_db()
@@ -268,6 +285,26 @@ def test_update_agent_fetch_fails(client):
 
     assert response.status_code == 400
     assert "Timeout" in response.json()["detail"]
+
+
+def test_update_agent_rejects_private_body_well_known_uri(client):
+    """PUT /agents/{id} is covered by the centralized card-fetch SSRF guard."""
+    existing = _make_agent_public()
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+
+        response = client.put(
+            f"/agents/{MOCK_UUID}",
+            json={"wellKnownURI": "http://127.0.0.1/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 400
+    assert "non-public" in response.json()["detail"]
 
 
 # --- #133: PUT must honor a wellKnownURI in the request body ----------------
