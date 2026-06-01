@@ -778,3 +778,85 @@ def test_api_root(client):
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "A2A Registry API"
+
+
+# ============================================================================
+# Chat proxy (#135): must target the card's url, not the wellKnownURI host
+# ============================================================================
+#
+# An agent can publish its card on one host (wellKnownURI) and run the actual
+# A2A handler on another (card.url) — a common split-host deployment. The chat
+# proxy used to derive the A2A base URL from the wellKnownURI host, so JSON-RPC
+# POSTs went to the wrong host and 502'd. The fix builds the client from the
+# parsed card (factory.create), whose transport targets card.url.
+
+
+def test_chat_targets_card_url_not_well_known_host(client):
+    """The SDK client must be built from the parsed card, so the message is
+    sent to the card's declared url, not the wellKnownURI host."""
+    from unittest.mock import MagicMock
+
+    # Card published on cesaryague.es but A2A handler lives on workers.dev.
+    split_host_card = {
+        **MOCK_AGENT_CARD,
+        "url": "https://paki-api.elfresonero.workers.dev/a2a",
+    }
+    existing = _make_agent_public(
+        wellKnownURI="https://cesaryague.es/.well-known/agent.json",
+        url="https://paki-api.elfresonero.workers.dev/a2a",
+    )
+
+    async def _events():
+        ev = MagicMock()
+        ev.HasField = lambda f: f == "message"
+        ev.message = MagicMock()
+        yield ev
+
+    fake_client = MagicMock()
+    fake_client.send_message = MagicMock(return_value=_events())
+
+    captured = {}
+
+    def fake_create(card):
+        captured["card"] = card
+        return fake_client
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(split_host_card, None)) as mock_fetch, \
+         patch("app.main._extract_text", return_value="hi from worker"), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["response"] == "hi from worker"
+    # The card was refetched from the agent's stored wellKnownURI, not request input.
+    mock_fetch.assert_called_once_with("https://cesaryague.es/.well-known/agent.json")
+    # The client was built from the parsed card whose endpoint is the worker.
+    parsed_card = captured["card"]
+    iface = (getattr(parsed_card, "supported_interfaces", None)
+             or getattr(parsed_card, "supportedInterfaces", None))
+    assert iface, "parsed card has no supported interface url"
+    assert iface[0].url == "https://paki-api.elfresonero.workers.dev/a2a"
+
+
+def test_parsed_split_host_card_resolves_transport_to_card_url():
+    """SDK contract: parse_agent_card + ClientFactory.create build a transport
+    whose URL is the card's url, even when that differs from the discovery host.
+    Pins the SDK behavior the #135 fix relies on."""
+    import httpx
+    from a2a.client import ClientConfig, ClientFactory
+    from a2a.client.card_resolver import parse_agent_card
+
+    card = parse_agent_card({
+        **MOCK_AGENT_CARD,
+        "url": "https://paki-api.elfresonero.workers.dev/a2a",
+    })
+    hc = httpx.AsyncClient()
+    sdk_client = ClientFactory(ClientConfig(httpx_client=hc, streaming=False)).create(card)
+    transport = getattr(sdk_client, "_transport", None) or getattr(sdk_client, "transport", None)
+    assert transport is not None
+    assert transport.url == "https://paki-api.elfresonero.workers.dev/a2a"

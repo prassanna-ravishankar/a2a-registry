@@ -12,6 +12,7 @@ from uuid import UUID
 import httpx
 import structlog
 from a2a.client import ClientConfig, ClientFactory
+from a2a.client.card_resolver import parse_agent_card
 from a2a.types import Message, Part, Role, SendMessageRequest, Task, TaskState
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -646,16 +647,27 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
     health_repo = HealthCheckRepository(db)
     start = time.monotonic()
     try:
+        # Build the client from the agent's *card*, not the wellKnownURI host.
+        # Many agents publish their card on a public domain but run the actual
+        # A2A handler elsewhere (Cloudflare Workers, etc.); the card's `url`
+        # (mapped by parse_agent_card into supportedInterfaces[0].url) is the
+        # real endpoint. Deriving the base from the wellKnownURI host instead
+        # sent JSON-RPC POSTs to the wrong host and 502'd (#135).
+        #
+        # The card is refetched from the agent's stored, already-validated
+        # wellKnownURI — never from request-controlled input.
+        card_dict, card_error = await fetch_agent_card(str(agent.wellKnownURI))
+        if card_error or card_dict is None:
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+            detail = f"Could not load agent card: {card_error or 'no data'}"
+            await health_repo.create(agent_id, 502, elapsed_ms, False, detail, source='chat')
+            raise HTTPException(status_code=502, detail=detail)
+
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-            parsed = urlparse(str(agent.wellKnownURI))
-            agent_base_url = f"{parsed.scheme}://{parsed.netloc}"
-            card_path = parsed.path or None
             factory = ClientFactory(
                 ClientConfig(httpx_client=http_client, streaming=False),
             )
-            client = await factory.create_from_url(
-                agent_base_url, relative_card_path=card_path,
-            )
+            client = factory.create(parse_agent_card(card_dict))
             send_request = SendMessageRequest(message=message)
             response_text = ""
             async for event in client.send_message(send_request):
@@ -682,6 +694,10 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         elapsed_ms = int((time.monotonic() - start) * 1000)
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
         raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+    except HTTPException:
+        # Already-formed HTTP errors (e.g. card-load failure above) carry their
+        # own status/detail and a health row was already recorded — re-raise as-is.
+        raise
     except Exception:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         logger.exception("chat_proxy_error", agent_id=str(agent_id))
