@@ -1,12 +1,20 @@
 """Tests for the registration-time smoke-test classifier."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from app.smoke_test import (
     CATEGORY_NOTES,
     HARD_REJECT_CATEGORIES,
     classify_error,
     rejection_message,
     should_reject,
+    smoke_test,
 )
+
+# Upper bound of a PostgreSQL INTEGER (int32). agents.task_conformance_response_ms
+# is declared INTEGER, so smoke_test()'s response_ms must fit or asyncpg rejects
+# the write with "value out of int32 range".
+PG_INT32_MAX = 2_147_483_647
 
 
 def _exc(name: str, msg: str) -> BaseException:
@@ -103,3 +111,66 @@ def test_every_category_has_a_note():
     ):
         assert cat in CATEGORY_NOTES
         assert CATEGORY_NOTES[cat]
+
+
+# --- smoke_test() timing regression ----------------------------------------
+#
+# smoke_test() once started its timer with time.monotonic() but measured the
+# elapsed time with time.time(). Those clocks have different epochs, so the
+# subtraction yielded ~time.time() (~1.78e9 s) instead of a short duration —
+# *1000 gave response_ms ~1.78e12, which overflowed the INTEGER
+# agents.task_conformance_response_ms column and made every registration fail
+# with "invalid input for query argument $3: ... (value out of int32 range)".
+#
+# These tests pin response_ms to the int32 range on both code paths. If the
+# clock mismatch is reintroduced, response_ms blows past PG_INT32_MAX and they
+# fail.
+
+
+def _async_iter(items):
+    """Wrap a list as an async iterator (mock for client.send_message)."""
+    async def _gen():
+        for item in items:
+            yield item
+    return _gen()
+
+
+@patch("app.smoke_test.ClientFactory")
+async def test_smoke_test_response_ms_fits_int32_on_success(mock_factory_cls):
+    mock_client = MagicMock()
+    mock_client.send_message = MagicMock(return_value=_async_iter([object()]))
+    mock_factory = MagicMock()
+    mock_factory.create_from_url = AsyncMock(return_value=mock_client)
+    mock_factory_cls.return_value = mock_factory
+
+    category, _note, response_ms = await smoke_test(
+        "https://example.com/.well-known/agent.json"
+    )
+
+    assert category == "WORKING"
+    assert response_ms is not None
+    assert 0 <= response_ms <= PG_INT32_MAX, (
+        f"response_ms={response_ms} does not fit a PostgreSQL INTEGER column — "
+        "smoke_test() is mixing time.monotonic() and time.time()"
+    )
+    # A smoke test cannot legitimately run longer than its 15s timeout.
+    assert response_ms < 60_000
+
+
+@patch("app.smoke_test.ClientFactory")
+async def test_smoke_test_response_ms_fits_int32_on_failure(mock_factory_cls):
+    # The except branch computes response_ms too — it must also fit int32.
+    mock_factory = MagicMock()
+    mock_factory.create_from_url = AsyncMock(side_effect=RuntimeError("boom"))
+    mock_factory_cls.return_value = mock_factory
+
+    _category, _note, response_ms = await smoke_test(
+        "https://example.com/.well-known/agent.json"
+    )
+
+    assert response_ms is not None
+    assert 0 <= response_ms <= PG_INT32_MAX, (
+        f"response_ms={response_ms} does not fit a PostgreSQL INTEGER column — "
+        "smoke_test() is mixing time.monotonic() and time.time()"
+    )
+    assert response_ms < 60_000
