@@ -336,28 +336,30 @@ class AgentRepository:
         """Update an existing agent's metadata from a re-fetched agent card"""
         query = """
             UPDATE agents SET
-                protocol_version = $1,
-                name = $2,
-                description = $3,
-                author = $4,
-                url = $5,
-                version = $6,
-                provider = $7,
-                documentation_url = $8,
-                capabilities = $9,
-                default_input_modes = $10,
-                default_output_modes = $11,
-                skills = $12,
-                icon_url = $13,
-                supports_authenticated_extended_card = $14,
-                security_requirements = $15,
-                security_schemes = $16,
+                well_known_uri = $1,
+                protocol_version = $2,
+                name = $3,
+                description = $4,
+                author = $5,
+                url = $6,
+                version = $7,
+                provider = $8,
+                documentation_url = $9,
+                capabilities = $10,
+                default_input_modes = $11,
+                default_output_modes = $12,
+                skills = $13,
+                icon_url = $14,
+                supports_authenticated_extended_card = $15,
+                security_requirements = $16,
+                security_schemes = $17,
                 updated_at = NOW()
-            WHERE id = $17 AND hidden = false
+            WHERE id = $18 AND hidden = false
             RETURNING *
         """
         row = await self.db.fetchrow(
             query,
+            str(agent.wellKnownURI),
             agent.protocolVersion,
             agent.name,
             agent.description,

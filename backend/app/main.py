@@ -402,8 +402,11 @@ async def update_agent(agent_id: UUID, request: Request):
     """
     Re-fetch and update an agent's metadata from its wellKnownURI.
 
-    Verifies ownership by fetching the wellKnownURI and updating all fields
-    from the live agent card.
+    By default re-fetches the agent's current wellKnownURI. To point the agent
+    at a new discovery URL (e.g. its old host rotated or 404s), send a JSON body
+    `{"wellKnownURI": "https://new-host/.well-known/agent-card.json"}`. The new
+    URL is fetched, validated, and persisted on success. With no body the
+    existing URI is used (backward compatible).
     """
     track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
 
@@ -412,7 +415,42 @@ async def update_agent(agent_id: UUID, request: Request):
     if not existing:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    well_known_uri = str(existing.wellKnownURI)
+    # Optionally accept a new wellKnownURI from the request body. Tolerate an
+    # absent/empty/non-JSON body so a plain PUT (re-fetch existing) still works.
+    new_uri = None
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict):
+            new_uri = body.get("wellKnownURI") or None
+
+    existing_uri = str(existing.wellKnownURI)
+    if new_uri and str(new_uri) != existing_uri:
+        well_known_uri = str(new_uri)
+        uri_errors = validate_well_known_uri(well_known_uri)
+        if uri_errors:
+            raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+
+        # Don't let a URI change collide with a *different* agent's record.
+        uri_owner = await agent_repo.get_by_well_known_uri(well_known_uri)
+        if uri_owner and uri_owner.id != agent_id:
+            raise HTTPException(
+                status_code=409,
+                detail=f"That wellKnownURI is already registered to a different agent (id={uri_owner.id}).",
+            )
+        hostname = urlparse(well_known_uri).hostname or ""
+        if hostname:
+            host_owner = await agent_repo.get_by_host(hostname)
+            if host_owner and host_owner.id != agent_id:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"An agent from this host is already registered: '{host_owner.name}' (id={host_owner.id}).",
+                )
+    else:
+        well_known_uri = existing_uri
+
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")

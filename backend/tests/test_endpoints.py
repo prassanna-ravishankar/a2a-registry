@@ -270,6 +270,108 @@ def test_update_agent_fetch_fails(client):
     assert "Timeout" in response.json()["detail"]
 
 
+# --- #133: PUT must honor a wellKnownURI in the request body ----------------
+#
+# update_agent used to read wellKnownURI only from the existing DB row and
+# ignore the request body, so an agent stuck on a dead URL could never be
+# pointed at a live one — every PUT re-fetched the dead URL and 404'd. These
+# tests pin that a body wellKnownURI is fetched/validated/persisted, while a
+# no-body PUT still re-fetches the existing URI (backward compatible).
+
+NEW_URI = "https://new-live-host.example/.well-known/agent-card.json"
+
+
+def test_update_agent_uses_body_well_known_uri(client):
+    """PUT with a new wellKnownURI fetches and persists the NEW url, not the old one."""
+    existing = _make_agent_public()  # wellKnownURI = https://example.com/.well-known/agent.json
+    updated_card = {**MOCK_AGENT_CARD, "name": "Moved Agent"}
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(updated_card, None)) as mock_fetch, \
+         patch("app.main._agent_create_from_card") as mock_build:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.update = AsyncMock(return_value=_make_agent_in_db())
+        mock_build.return_value = _make_agent_in_db()
+
+        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+
+    assert response.status_code == 200
+    # The NEW url was fetched — not the stale existing one.
+    mock_fetch.assert_called_once_with(NEW_URI)
+    # And the new url is what gets persisted (passed to the card->row builder).
+    assert mock_build.call_args[0][1] == NEW_URI
+
+
+def test_update_agent_no_body_refetches_existing(client):
+    """PUT with no body re-fetches the existing wellKnownURI (backward compatible)."""
+    existing = _make_agent_public()
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)) as mock_fetch:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.update = AsyncMock(return_value=_make_agent_in_db())
+
+        response = client.put(f"/agents/{MOCK_UUID}")
+
+    assert response.status_code == 200
+    mock_fetch.assert_called_once_with(str(existing.wellKnownURI))
+
+
+def test_update_agent_body_uri_conflict(client):
+    """PUT to a wellKnownURI owned by a different agent returns 409."""
+    existing = _make_agent_public()
+    other = _make_agent_in_db(id=UUID(OTHER_UUID), name="Other Agent")
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        instance.get_by_well_known_uri = AsyncMock(return_value=other)
+
+        response = client.put(f"/agents/{MOCK_UUID}", json={"wellKnownURI": NEW_URI})
+
+    assert response.status_code == 409
+    assert OTHER_UUID in response.json()["detail"]
+
+
+async def test_repo_update_persists_well_known_uri():
+    """Repo-level regression for #133: AgentRepository.update() must write the
+    well_known_uri column, else a body-supplied URI is fetched but never
+    persisted and the worker keeps health-checking the dead URL.
+
+    Endpoint mock tests can't catch this (they stop at _agent_create_from_card),
+    so this drives the real UPDATE through a fake db and asserts the SQL sets
+    well_known_uri and binds the new URI.
+    """
+    from app.repositories import AgentRepository
+
+    captured = {}
+
+    async def fake_fetchrow(query, *params):
+        captured["query"] = query
+        captured["params"] = params
+        return MOCK_AGENT_ROW
+
+    db = AsyncMock()
+    db.fetchrow = fake_fetchrow
+
+    agent = _make_agent_in_db(wellKnownURI=NEW_URI)
+    await AgentRepository(db).update(UUID(MOCK_UUID), agent)
+
+    sql = " ".join(captured["query"].split()).lower()
+    assert "well_known_uri = $1" in sql
+    # well_known_uri is $1, so the new URI must be the first bound param.
+    # (HttpUrl may normalize, so compare on prefix.)
+    assert str(captured["params"][0]).startswith(NEW_URI), (
+        f"new wellKnownURI not bound to well_known_uri = $1; params={captured['params']}"
+    )
+
+
 # ============================================================================
 # Delete Agent (DELETE /agents/{id})
 # ============================================================================
