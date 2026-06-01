@@ -590,6 +590,18 @@ def _is_private_url(url: str) -> bool:
         return host in _BLOCKED_HOSTS or any(host.endswith(s) for s in _BLOCKED_SUFFIXES)
 
 
+def _client_target_url(client) -> Optional[str]:
+    """Best-effort: the URL the SDK client's transport will POST to.
+
+    Used to re-run the SSRF guard against the actual send target after the
+    card is (re)fetched at chat time. Returns None if the transport URL can't
+    be determined (in which case the caller should fall back to the stored,
+    already-validated agent.url guard rather than send blind).
+    """
+    transport = getattr(client, "_transport", None) or getattr(client, "transport", None)
+    return getattr(transport, "url", None) if transport else None
+
+
 def _extract_text_from_parts(parts) -> str:
     """Join text content from a list of Part messages."""
     return "".join(p.text for p in parts if p.text)
@@ -668,6 +680,21 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
                 ClientConfig(httpx_client=http_client, streaming=False),
             )
             client = factory.create(parse_agent_card(card_dict))
+
+            # SSRF guard on the ACTUAL send target. The stored agent.url was
+            # checked above, but #135 refetches the card at chat time, so the
+            # transport may target a different (freshly parsed) url. Re-check it
+            # so a card that rotated to a private/internal address (127.0.0.1,
+            # the GCP metadata host, etc.) can't be used to pivot.
+            target_url = _client_target_url(client)
+            if target_url and _is_private_url(target_url):
+                elapsed_ms = int((time.monotonic() - start) * 1000)
+                await health_repo.create(
+                    agent_id, 400, elapsed_ms, False,
+                    "Agent endpoint is not publicly reachable", source='chat',
+                )
+                raise HTTPException(status_code=400, detail="Agent endpoint is not publicly reachable")
+
             send_request = SendMessageRequest(message=message)
             response_text = ""
             async for event in client.send_message(send_request):

@@ -814,6 +814,9 @@ def test_chat_targets_card_url_not_well_known_host(client):
 
     fake_client = MagicMock()
     fake_client.send_message = MagicMock(return_value=_events())
+    # The SSRF guard reads the transport url; give it the real (public) target.
+    fake_client._transport = MagicMock()
+    fake_client._transport.url = "https://paki-api.elfresonero.workers.dev/a2a"
 
     captured = {}
 
@@ -835,12 +838,58 @@ def test_chat_targets_card_url_not_well_known_host(client):
     assert response.json()["response"] == "hi from worker"
     # The card was refetched from the agent's stored wellKnownURI, not request input.
     mock_fetch.assert_called_once_with("https://cesaryague.es/.well-known/agent.json")
+    # Crisp old-vs-new signal: the fix builds the client via factory.create(card).
+    # The old code used factory.create_from_url and never called create(), so
+    # `captured` stays empty against the pre-fix handler.
+    assert "card" in captured, "client must be built via factory.create(parsed_card)"
     # The client was built from the parsed card whose endpoint is the worker.
     parsed_card = captured["card"]
     iface = (getattr(parsed_card, "supported_interfaces", None)
              or getattr(parsed_card, "supportedInterfaces", None))
     assert iface, "parsed card has no supported interface url"
     assert iface[0].url == "https://paki-api.elfresonero.workers.dev/a2a"
+
+
+def test_chat_rejects_private_card_url_after_refetch(client):
+    """SSRF guard on the actual send target: even when stored agent.url and the
+    wellKnownURI are public, a freshly fetched card whose url points at a
+    private/internal host must be rejected before any message is sent."""
+    from unittest.mock import MagicMock
+
+    # Stored url is public (passes the first guard), but the refetched card
+    # points the A2A endpoint at loopback.
+    private_card = {**MOCK_AGENT_CARD, "url": "http://127.0.0.1/a2a"}
+    existing = _make_agent_public(
+        wellKnownURI="https://public-host.example/.well-known/agent.json",
+        url="https://public-host.example/a2a",
+    )
+
+    fake_client = MagicMock()
+    # If the guard fails to fire, send_message would be hit — make that loud.
+    fake_client.send_message = MagicMock(side_effect=AssertionError("send_message must not be called"))
+
+    def fake_create(card):
+        c = MagicMock()
+        c._transport = MagicMock()
+        c._transport.url = "http://127.0.0.1/a2a"
+        c.send_message = fake_client.send_message
+        return c
+
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.HealthCheckRepository") as mock_health_cls, \
+         patch("app.main.fetch_agent_card", return_value=(private_card, None)), \
+         patch("app.main.ClientFactory") as mock_factory_cls:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=existing)
+        mock_health_cls.return_value.create = AsyncMock(return_value=None)
+        mock_factory_cls.return_value.create = fake_create
+
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+
+    # Rejected before send, and NOT relabeled as a generic 502 by the broad handler.
+    assert response.status_code == 400, response.text
+    assert "not publicly reachable" in response.json()["detail"]
+    fake_client.send_message.assert_not_called()
 
 
 def test_parsed_split_host_card_resolves_transport_to_card_url():
