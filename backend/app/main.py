@@ -732,8 +732,9 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         raise HTTPException(status_code=code, detail=error_msg)
     except httpx.RequestError as exc:
         elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.warning("chat_agent_unreachable", agent_id=str(agent_id), error=str(exc))
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
-        raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+        raise HTTPException(status_code=502, detail="Agent unreachable")
     except HTTPException:
         # Already-formed HTTP errors (e.g. card-load failure above) carry their
         # own status/detail and a health row was already recorded — re-raise as-is.

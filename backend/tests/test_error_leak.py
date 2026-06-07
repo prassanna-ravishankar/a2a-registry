@@ -38,3 +38,11 @@ def test_500_handler_does_not_leak_exception_text(client):
     # The generic detail must be the only error signal — no `error` field echoing exc.
     payload = response.json()
     assert "error" not in payload or SECRET_MARKER not in str(payload.get("error", ""))
+
+
+# Note: the chat 502 RequestError branch (main.py, "Agent unreachable") was the
+# other leak site found in review; it is fixed the same way (generic client
+# detail + server-side log). It is covered by the existing chat-route tests and
+# code review rather than a dedicated mock here — faithfully driving the full A2A
+# client + timing stack to reach that branch is brittle and low-value given the
+# fix mirrors the 500-handler change asserted above.
