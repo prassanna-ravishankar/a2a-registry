@@ -1,0 +1,31 @@
+name: PR CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/pr-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests and lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          working-directory: backend
+
+      - name: Run tests
+        run: uv run --extra dev pytest
+
+      - name: Run ruff
+        run: uv run --extra dev ruff check app tests
