@@ -42,7 +42,7 @@ def test_500_handler_does_not_leak_exception_text(client):
 
 # Note: the chat 502 RequestError branch (main.py, "Agent unreachable") was the
 # other leak site found in review; it is fixed the same way (generic client
-# detail + server-side log). It is covered by the existing chat-route tests and
-# code review rather than a dedicated mock here — faithfully driving the full A2A
-# client + timing stack to reach that branch is brittle and low-value given the
-# fix mirrors the 500-handler change asserted above.
+# detail + server-side log). It has NO dedicated test here: reaching that branch
+# requires faithfully driving the full A2A client + timing stack, which is
+# brittle and low-value given the fix mirrors the 500-handler change asserted
+# above and is grep-verifiable (no `{exc}`/`str(exc)` in any 5xx response body).
