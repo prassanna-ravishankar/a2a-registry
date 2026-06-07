@@ -12,6 +12,7 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -22,10 +23,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
         cache: 'npm'
@@ -35,17 +36,19 @@ jobs:
       working-directory: website
       run: npm ci
     
-    - name: Build React website
+    - name: Build Astro website
       working-directory: website
+      env:
+        ASTRO_OUT_DIR: dist
       run: |
-        echo "🔄 Building React website..."
+        echo "Building Astro website..."
         npm run build
-        echo "✅ Website built successfully"
+        echo "Website built successfully"
     
     - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-pages-artifact@v4
       with:
-        path: docs/
+        path: website/dist/
 
   deploy-pages:
     needs: build-website
@@ -59,7 +62,7 @@ jobs:
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@v5
 
   publish-client:
     runs-on: ubuntu-latest
@@ -67,10 +70,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     
     - name: Set up uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
     
@@ -100,8 +103,8 @@ jobs:
     - name: Display package info
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
       run: |
-        echo "📦 Python client package built successfully"
-        echo "📋 This is a dry run - package was not published"
-        echo "🏷️  To publish, create a tag: git tag v0.1.0 && git push --tags"
+        echo "Python client package built successfully"
+        echo "This is a dry run - package was not published"
+        echo "To publish, create a tag: git tag v0.1.0 && git push --tags"
         echo ""
         ls -la client-python/dist/
