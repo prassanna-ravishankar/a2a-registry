@@ -2,6 +2,7 @@
 
 import asyncio
 import ipaddress
+import logging
 import socket
 from typing import Any, Optional, Tuple
 from urllib.parse import urljoin, urlparse
@@ -12,6 +13,8 @@ from aiohttp.abc import AbstractResolver
 from .config import settings
 from .models import AgentCreate
 from .validators import _normalise_fields, validate_agent_card
+
+logger = logging.getLogger(__name__)
 
 try:
     from posthog import Posthog
@@ -228,8 +231,9 @@ async def verify_well_known_uri(agent_data: AgentCreate) -> Tuple[bool, str]:
         return False, str(e)
     except aiohttp.ClientError as e:
         return False, f"Network error accessing {well_known_uri}: {e}"
-    except Exception as e:
-        return False, f"Unexpected error: {e}"
+    except Exception:
+        logger.exception("well_known_fetch_unexpected_error", extra={"uri": well_known_uri})
+        return False, "Unexpected error while fetching the well-known URI"
 
 
 async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]], Optional[str]]:
@@ -263,8 +267,9 @@ async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]
         return None, str(e)
     except aiohttp.ClientError as e:
         return None, f"Network error fetching agent card: {e}"
-    except Exception as e:
-        return None, f"Unexpected error: {e}"
+    except Exception:
+        logger.exception("agent_card_fetch_unexpected_error")
+        return None, "Unexpected error while fetching the agent card"
 
 
 def track_event(event_name: str, properties: dict | None = None):

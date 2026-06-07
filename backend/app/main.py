@@ -249,7 +249,8 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
         result = await agent_repo.get_by_id(created_agent.id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
+        logger.error("create_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to create agent")
 
 
 @router.post("/agents", response_model=AgentPublic, status_code=201)
@@ -313,7 +314,8 @@ async def register_agent_full(agent: AgentCreate, request: Request):
         logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create agent: {e}")
+        logger.error("create_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to create agent")
 
 
 @router.get("/agents", response_model=PaginatedAgents)
@@ -472,7 +474,8 @@ async def update_agent(
         result = await agent_repo.get_by_id(agent_id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update agent: {e}")
+        logger.error("update_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to update agent")
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
@@ -729,8 +732,9 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         raise HTTPException(status_code=code, detail=error_msg)
     except httpx.RequestError as exc:
         elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.warning("chat_agent_unreachable", agent_id=str(agent_id), error=str(exc))
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent unreachable", source='chat')
-        raise HTTPException(status_code=502, detail=f"Agent unreachable: {exc}")
+        raise HTTPException(status_code=502, detail="Agent unreachable")
     except HTTPException:
         # Already-formed HTTP errors (e.g. card-load failure above) carry their
         # own status/detail and a health row was already recorded — re-raise as-is.
@@ -918,8 +922,13 @@ async def not_found_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(500)
 async def internal_error_handler(request: Request, exc: Exception):
-    """Custom 500 handler"""
+    """Custom 500 handler.
+
+    Log the exception server-side; never return the raw exception text to the
+    client (it can leak stack/DB internals, paths, and secrets). See #140.
+    """
+    logger.error("internal_error", path=str(request.url), error=str(exc), exc_info=exc)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)},
+        content={"detail": "Internal server error"},
     )
