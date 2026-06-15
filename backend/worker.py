@@ -63,6 +63,11 @@ def _canonical_url(value: str) -> str:
         return value
 
 
+def _raw_str(value) -> bool:
+    """True if `value` is a present, non-empty string."""
+    return isinstance(value, str) and bool(value.strip())
+
+
 def _raw_has(raw_card: dict, *keys: str) -> bool:
     """True if the RAW card carries a present, non-empty string under any of the
     given key spellings.
@@ -72,11 +77,41 @@ def _raw_has(raw_card: dict, *keys: str) -> bool:
     so a normalised card always *looks* like it has a version even when the live
     card omitted it. Reading presence from the raw card is what stops a default
     from clobbering real stored data (PR #154 BLOCKING #1)."""
-    for key in keys:
-        value = raw_card.get(key)
-        if isinstance(value, str) and value.strip():
-            return True
-    return False
+    return any(_raw_str(raw_card.get(key)) for key in keys)
+
+
+def _first_interface(raw_card: dict) -> Optional[dict]:
+    """The first declared interface entry in a v1.0 card (interfaces[] or
+    supportedInterfaces[]), or None for a v0.3 (top-level url) card.
+
+    Mirrors how app.agent_card's extractors locate the interface so presence
+    detection and value extraction agree on the same source.
+    """
+    for key in ("interfaces", "supportedInterfaces"):
+        entries = raw_card.get(key)
+        if isinstance(entries, list) and entries and isinstance(entries[0], dict):
+            return entries[0]
+    return None
+
+
+def _raw_has_endpoint(raw_card: dict) -> bool:
+    """True if the RAW card declares a usable endpoint URL — top-level `url`
+    (v0.3) OR a nested interfaces[0].url (v1.0). A list under `interfaces` is
+    not itself a string, so _raw_has can't see it; this is the #127-class
+    top-level-vs-nested trap the worker must handle for v1.0 cards."""
+    if _raw_str(raw_card.get("url")):
+        return True
+    iface = _first_interface(raw_card)
+    return iface is not None and _raw_str(iface.get("url"))
+
+
+def _raw_has_protocol_version(raw_card: dict) -> bool:
+    """True if the RAW card declares a protocol version — top-level (either
+    spelling, v0.3) OR a nested interfaces[0].protocolVersion (v1.0)."""
+    if _raw_has(raw_card, "protocolVersion", "protocol_version"):
+        return True
+    iface = _first_interface(raw_card)
+    return iface is not None and _raw_str(iface.get("protocolVersion"))
 
 
 def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
@@ -84,8 +119,9 @@ def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
 
     Presence is decided from `raw_card` (so injected defaults never count);
     values come from `normalised` (so snake_case spellings and v0.3/v1.0 shape
-    differences are already resolved). A field absent from the raw card is
-    omitted entirely — never written with a default.
+    differences are already resolved by _normalise_fields, which lifts a v1.0
+    interfaces[0].url/protocolVersion to top level). A field absent from the raw
+    card is omitted entirely — never written with a default.
     """
     fields: dict[str, str] = {}
 
@@ -98,20 +134,19 @@ def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
     if _raw_has(raw_card, "description"):
         fields["description"] = normalised["description"]
 
-    # url present iff the card had a usable endpoint (top-level url or
-    # interfaces[].url). The extractor raises KeyError when neither exists.
-    if _raw_has(raw_card, "url", "interfaces", "supportedInterfaces"):
+    # url present iff the card declares an endpoint, top-level OR nested (v1.0).
+    if _raw_has_endpoint(raw_card):
         try:
             url = extract_agent_url(normalised)
-            if isinstance(url, str) and url.strip():
+            if _raw_str(url):
                 # Canonicalise so it compares/writes stably against the stored
                 # HttpUrl form (avoids per-cycle rewrites on a trailing slash).
                 fields["url"] = _canonical_url(url)
         except KeyError:
             pass
 
-    # protocolVersion: present under either spelling, or nested in interfaces.
-    if _raw_has(raw_card, "protocolVersion", "protocol_version", "interfaces", "supportedInterfaces"):
+    # protocolVersion present iff declared top-level OR nested (v1.0).
+    if _raw_has_protocol_version(raw_card):
         protocol_version = extract_protocol_version(normalised)
         # Sentinel 'unknown' means we couldn't actually read one — don't write it.
         if isinstance(protocol_version, str) and protocol_version not in ("", "unknown"):

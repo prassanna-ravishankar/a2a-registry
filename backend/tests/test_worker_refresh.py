@@ -52,6 +52,24 @@ def _live_card(**overrides):
     return card
 
 
+def _live_card_v1(iface_url="https://new.example/messages", iface_proto="1.0", **overrides):
+    """A v1.0-shaped card: no top-level url/protocolVersion; both live nested in
+    interfaces[0]. _normalise_fields lifts them to top level for value extraction,
+    but presence must be detected from this raw nested shape."""
+    card = {
+        "name": "inferGONKA",
+        "description": "Spend less. Build more.",
+        "version": "1.3.0",
+        "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [],
+        "interfaces": [{"url": iface_url, "protocolVersion": iface_proto}],
+    }
+    card.update(overrides)
+    return card
+
+
 # ── refresh_agent_metadata ──────────────────────────────────────────────────
 
 
@@ -261,6 +279,67 @@ async def test_refresh_skips_unknown_protocol_version_sentinel():
     assert changed is True  # name changed
     _, fields = repo.update_card_metadata.await_args.args
     assert "protocolVersion" not in fields
+
+
+# ── v1.0 nested-interface presence (PR #154 re-review: still-blocking) ───────
+
+
+async def test_refresh_v1_interface_only_url_and_protocol_drift_refreshes():
+    """STILL-BLOCKING: a strict-valid v1.0 card whose url + protocolVersion live
+    ONLY in interfaces[0] must still refresh when they drift. Presence detection
+    has to look inside the nested interface, not just top-level string keys."""
+    stored = _stored_agent(
+        url="https://old.example/messages",
+        protocolVersion="0.3.0",
+        # name/version/description match so the ONLY drift is the nested fields.
+        name="inferGONKA",
+        version="1.3.0",
+        description="Spend less. Build more.",
+    )
+    repo = _metadata_repo()
+    card = _live_card_v1(iface_url="https://new.example/messages", iface_proto="1.0")
+
+    changed = await worker.refresh_agent_metadata(stored, card, repo)
+
+    assert changed is True
+    repo.update.assert_not_awaited()
+    _, fields = repo.update_card_metadata.await_args.args
+    assert fields["url"] == "https://new.example/messages"
+    assert fields["protocolVersion"] == "1.0"
+    # Only the nested fields drifted, so only those are written.
+    assert set(fields) == {"url", "protocolVersion"}
+
+
+async def test_refresh_v1_interface_missing_nested_values_writes_no_sentinel():
+    """A v1.0 card whose interface lacks url/protocolVersion (and has only a
+    top-level url) must not write the 'unknown' protocolVersion sentinel, and
+    must not blank a stored url it can't re-derive."""
+    stored = _stored_agent(
+        url="https://top.example/x",
+        protocolVersion="0.3.0",
+        name="Old Name",  # force a real change so a write happens at all
+        version="1.3.0",
+        description="Spend less. Build more.",
+    )
+    repo = _metadata_repo()
+    card = {
+        "name": "inferGONKA",
+        "description": "Spend less. Build more.",
+        "version": "1.3.0",
+        "url": "https://top.example/x",  # top-level url present (unchanged)
+        "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [],
+        "interfaces": [{"transport": "JSONRPC"}],  # no url, no protocolVersion
+    }
+
+    changed = await worker.refresh_agent_metadata(stored, card, repo)
+
+    assert changed is True  # name changed
+    _, fields = repo.update_card_metadata.await_args.args
+    assert fields == {"name": "inferGONKA"}
+    assert "protocolVersion" not in fields  # never the 'unknown' sentinel
 
 
 # ── refresh_recovery_notes ──────────────────────────────────────────────────
