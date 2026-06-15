@@ -4,10 +4,12 @@
 import asyncio
 import time
 from pathlib import Path
+from typing import Optional
 
 import aiohttp
+from pydantic import HttpUrl, TypeAdapter
 
-from app.agent_card import agent_create_from_card
+from app.agent_card import extract_agent_url, extract_protocol_version
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
@@ -34,6 +36,10 @@ logger = get_logger(__name__)
 # these drifts from what we have stored, we re-fetch the full record. Excludes
 # wellKnownURI (the worker never changes an agent's discovery URL — only the PUT
 # endpoint does that, with collision checks).
+# Displayed card fields the worker keeps in sync with the live card, mapped to
+# how each is read out of a normalised card dict. Excludes wellKnownURI (only
+# the admin PUT changes discovery URLs) and everything the worker can't safely
+# re-derive from a card fetch (capabilities/skills/security/icon/auth flags).
 _REFRESHED_FIELDS = ("name", "version", "url", "protocolVersion", "description")
 
 # System-generated maintainer notes the worker is allowed to overwrite once an
@@ -41,43 +47,132 @@ _REFRESHED_FIELDS = ("name", "version", "url", "protocolVersion", "description")
 # registry itself (i.e. a human-written note) is left untouched.
 _SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values())
 
+# Coerce candidate URLs the same way the stored record does on read (the `url`
+# column round-trips through AgentBase.url: HttpUrl). Without this, a card URL
+# of "https://x.com" diffs forever against the stored "https://x.com/" that
+# HttpUrl produces, causing a rewrite every cycle.
+_HTTP_URL_ADAPTER = TypeAdapter(HttpUrl)
 
-def _metadata_differs(stored, candidate) -> bool:
-    """True if any displayed field on the live card differs from what we store."""
-    for field in _REFRESHED_FIELDS:
-        if str(getattr(stored, field, None)) != str(getattr(candidate, field, None)):
+
+def _canonical_url(value: str) -> str:
+    """Render a URL in the same canonical form HttpUrl uses, or return it
+    unchanged if it can't be parsed (the strict-validity gate already ran)."""
+    try:
+        return str(_HTTP_URL_ADAPTER.validate_python(value))
+    except Exception:
+        return value
+
+
+def _raw_has(raw_card: dict, *keys: str) -> bool:
+    """True if the RAW card carries a present, non-empty string under any of the
+    given key spellings.
+
+    Presence is judged against the raw (pre-normalisation) card on purpose:
+    _normalise_fields injects defaults (e.g. version='1.0.0' via setdefault),
+    so a normalised card always *looks* like it has a version even when the live
+    card omitted it. Reading presence from the raw card is what stops a default
+    from clobbering real stored data (PR #154 BLOCKING #1)."""
+    for key in keys:
+        value = raw_card.get(key)
+        if isinstance(value, str) and value.strip():
             return True
     return False
 
 
-async def refresh_agent_metadata(stored, card_data: dict, agent_repo: AgentRepository) -> bool:
-    """Re-sync displayed card metadata (name/version/url/protocolVersion/...) from
-    the live card when it has drifted from what we store.
+def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
+    """The displayed fields actually present (non-empty) in the live card.
 
-    The health worker fetches the raw card directly (not via fetch_agent_card),
-    so we normalise field names here the same way registration does before
-    building the record. Returns True if an update was written.
-
-    Never changes the agent's wellKnownURI — discovery-URL changes only happen
-    via the admin PUT endpoint, which carries collision checks the worker lacks.
+    Presence is decided from `raw_card` (so injected defaults never count);
+    values come from `normalised` (so snake_case spellings and v0.3/v1.0 shape
+    differences are already resolved). A field absent from the raw card is
+    omitted entirely — never written with a default.
     """
+    fields: dict[str, str] = {}
+
+    if _raw_has(raw_card, "name"):
+        fields["name"] = normalised["name"]
+    if _raw_has(raw_card, "version"):
+        fields["version"] = normalised["version"]
+    # description may legitimately be empty; only a present non-empty string is
+    # authoritative, so we never blank a real stored description.
+    if _raw_has(raw_card, "description"):
+        fields["description"] = normalised["description"]
+
+    # url present iff the card had a usable endpoint (top-level url or
+    # interfaces[].url). The extractor raises KeyError when neither exists.
+    if _raw_has(raw_card, "url", "interfaces", "supportedInterfaces"):
+        try:
+            url = extract_agent_url(normalised)
+            if isinstance(url, str) and url.strip():
+                # Canonicalise so it compares/writes stably against the stored
+                # HttpUrl form (avoids per-cycle rewrites on a trailing slash).
+                fields["url"] = _canonical_url(url)
+        except KeyError:
+            pass
+
+    # protocolVersion: present under either spelling, or nested in interfaces.
+    if _raw_has(raw_card, "protocolVersion", "protocol_version", "interfaces", "supportedInterfaces"):
+        protocol_version = extract_protocol_version(normalised)
+        # Sentinel 'unknown' means we couldn't actually read one — don't write it.
+        if isinstance(protocol_version, str) and protocol_version not in ("", "unknown"):
+            fields["protocolVersion"] = protocol_version
+
+    return fields
+
+
+async def refresh_agent_metadata(
+    stored,
+    card_data: dict,
+    agent_repo: AgentRepository,
+    *,
+    conformance_errors: Optional[list] = None,
+) -> bool:
+    """Re-sync displayed card metadata (name/version/url/protocolVersion/
+    description) from the live card when it has drifted.
+
+    Safety invariants (data-integrity, see PR #154 review):
+    - Only refreshes from a STRICT-valid card. If the live card has any
+      conformance errors, we skip — a degraded-but-parseable card must not
+      overwrite good stored data. Pass the strict-validation result in via
+      `conformance_errors`; when omitted we compute it here.
+    - Writes ONLY the five displayed fields via a column-scoped patch, never the
+      full record, so provider/capabilities/skills/icon/security/auth metadata
+      the worker can't re-derive are always preserved.
+    - Never writes a missing/empty card field over a stored value (see
+      _present_card_fields) and never changes wellKnownURI.
+
+    Returns True if an update was written.
+    """
+    # _normalise_fields returns a new dict (it does not mutate card_data), so
+    # card_data stays the RAW live card for presence detection.
     normalised = _normalise_fields(card_data)
-    candidate = agent_create_from_card(
-        normalised,
-        str(stored.wellKnownURI),
-        author_fallback=stored.author,
-    )
-    if not _metadata_differs(stored, candidate):
+
+    errors = conformance_errors
+    if errors is None:
+        errors = validate_agent_card(card_data, strict=True)
+    if errors:
+        # Degraded card — refresh nothing. Conformance is recorded separately.
         return False
 
-    await agent_repo.update(stored.id, candidate)
-    logger.info(
-        "agent_metadata_refreshed",
-        agent_id=stored.id,
-        name_change=(stored.name, candidate.name) if stored.name != candidate.name else None,
-        version_change=(stored.version, candidate.version) if stored.version != candidate.version else None,
-    )
-    return True
+    present = _present_card_fields(card_data, normalised)
+    changed = {
+        field: value
+        for field, value in present.items()
+        if str(getattr(stored, field, None)) != str(value)
+    }
+    if not changed:
+        return False
+
+    written = await agent_repo.update_card_metadata(stored.id, changed)
+    if written:
+        logger.info(
+            "agent_metadata_refreshed",
+            agent_id=stored.id,
+            fields=sorted(changed.keys()),
+            name_change=(stored.name, changed["name"]) if "name" in changed else None,
+            version_change=(stored.version, changed["version"]) if "version" in changed else None,
+        )
+    return written
 
 
 async def refresh_recovery_notes(stored, category: str, agent_repo: AgentRepository) -> bool:
@@ -184,20 +279,26 @@ async def check_agent_health(
             bound_logger.debug("health_check_ok", status_code=status_code, response_time_ms=response_time_ms)
 
             # Re-validate conformance from the live agent card
+            strict_errors: Optional[list] = None
             try:
-                errors = validate_agent_card(card_data, strict=True)
-                conformance = len(errors) == 0
-                await agent_repo.update_conformance(agent_id, conformance, errors=errors if errors else None)
-                bound_logger.debug("conformance_updated", conformance=conformance, errors=errors[:3] if errors else [])
+                strict_errors = validate_agent_card(card_data, strict=True)
+                conformance = len(strict_errors) == 0
+                await agent_repo.update_conformance(agent_id, conformance, errors=strict_errors if strict_errors else None)
+                bound_logger.debug("conformance_updated", conformance=conformance, errors=strict_errors[:3] if strict_errors else [])
             except Exception as conf_err:
                 bound_logger.warning("conformance_check_failed", error=str(conf_err))
 
             # Refresh the displayed card metadata (name/version/url/protocolVersion/
-            # description/skills/...) from the live card. Without this, an agent that
-            # renames or version-bumps shows frozen-at-registration metadata forever,
-            # even though we successfully fetch its current card every cycle (#153).
+            # description) from the live card. Only from a strict-valid card, and
+            # only the displayed columns — never the full record — so a degraded
+            # card can't overwrite good data with defaults or NULL out fields the
+            # worker can't re-derive (capabilities/skills/security/icon). See #153
+            # and the PR #154 review. If conformance validation above raised,
+            # strict_errors stays None and refresh_agent_metadata re-validates.
             try:
-                await refresh_agent_metadata(agent, card_data, agent_repo)
+                await refresh_agent_metadata(
+                    agent, card_data, agent_repo, conformance_errors=strict_errors,
+                )
             except Exception as refresh_err:
                 bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))
 

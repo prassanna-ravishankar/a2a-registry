@@ -332,6 +332,50 @@ class AgentRepository:
             agent_id,
         )
 
+    # Displayed-metadata columns the background health worker is allowed to
+    # refresh in place. Deliberately excludes everything else (provider,
+    # capabilities, skills, icon, security, securitySchemes, auth flags, modes)
+    # so a name/version drift can never NULL out fields the worker doesn't
+    # re-derive. Maps public field name -> DB column.
+    _WORKER_REFRESHABLE_COLUMNS = {
+        "name": "name",
+        "version": "version",
+        "url": "url",
+        "protocolVersion": "protocol_version",
+        "description": "description",
+    }
+
+    async def update_card_metadata(self, agent_id: UUID, fields: dict[str, str]) -> bool:
+        """Patch only the supplied displayed-metadata columns, preserving all others.
+
+        Used by the health worker to keep name/version/url/protocolVersion/
+        description in sync with the live card without touching capabilities,
+        skills, security, icon, or auth metadata (which a partial card fetch
+        cannot safely re-derive). Unknown keys are rejected to keep the write
+        surface locked to the whitelist. Returns True if a row was updated.
+        """
+        columns = {}
+        for key, value in fields.items():
+            if key not in self._WORKER_REFRESHABLE_COLUMNS:
+                raise ValueError(f"Field '{key}' is not worker-refreshable")
+            columns[self._WORKER_REFRESHABLE_COLUMNS[key]] = value
+        if not columns:
+            return False
+
+        set_fragments = []
+        params: list = []
+        for idx, (column, value) in enumerate(columns.items(), start=1):
+            set_fragments.append(f"{column} = ${idx}")
+            params.append(value)
+        set_clause = ", ".join(set_fragments)
+        params.append(agent_id)
+        result = await self.db.execute(
+            f"UPDATE agents SET {set_clause}, updated_at = NOW() "
+            f"WHERE id = ${len(params)} AND hidden = false",
+            *params,
+        )
+        return result == "UPDATE 1"
+
     async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card"""
         query = """
