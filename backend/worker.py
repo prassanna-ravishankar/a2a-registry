@@ -4,16 +4,16 @@
 import asyncio
 import time
 from pathlib import Path
-from uuid import UUID
 
 import aiohttp
 
+from app.agent_card import agent_create_from_card
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.repositories import AgentRepository, HealthCheckRepository
-from app.smoke_test import TASK_PROBE_USER_AGENT, smoke_test
-from app.validators import validate_agent_card
+from app.smoke_test import CATEGORY_NOTES, TASK_PROBE_USER_AGENT, smoke_test
+from app.validators import _normalise_fields, validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
 
@@ -30,9 +30,83 @@ configure_logging(json_logs=True)
 logger = get_logger(__name__)
 
 
+# Displayed card fields the worker keeps in sync with the live card. If any of
+# these drifts from what we have stored, we re-fetch the full record. Excludes
+# wellKnownURI (the worker never changes an agent's discovery URL — only the PUT
+# endpoint does that, with collision checks).
+_REFRESHED_FIELDS = ("name", "version", "url", "protocolVersion", "description")
+
+# System-generated maintainer notes the worker is allowed to overwrite once an
+# agent's task probe flips back to WORKING. Anything not authored by the
+# registry itself (i.e. a human-written note) is left untouched.
+_SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values())
+
+
+def _metadata_differs(stored, candidate) -> bool:
+    """True if any displayed field on the live card differs from what we store."""
+    for field in _REFRESHED_FIELDS:
+        if str(getattr(stored, field, None)) != str(getattr(candidate, field, None)):
+            return True
+    return False
+
+
+async def refresh_agent_metadata(stored, card_data: dict, agent_repo: AgentRepository) -> bool:
+    """Re-sync displayed card metadata (name/version/url/protocolVersion/...) from
+    the live card when it has drifted from what we store.
+
+    The health worker fetches the raw card directly (not via fetch_agent_card),
+    so we normalise field names here the same way registration does before
+    building the record. Returns True if an update was written.
+
+    Never changes the agent's wellKnownURI — discovery-URL changes only happen
+    via the admin PUT endpoint, which carries collision checks the worker lacks.
+    """
+    normalised = _normalise_fields(card_data)
+    candidate = agent_create_from_card(
+        normalised,
+        str(stored.wellKnownURI),
+        author_fallback=stored.author,
+    )
+    if not _metadata_differs(stored, candidate):
+        return False
+
+    await agent_repo.update(stored.id, candidate)
+    logger.info(
+        "agent_metadata_refreshed",
+        agent_id=stored.id,
+        name_change=(stored.name, candidate.name) if stored.name != candidate.name else None,
+        version_change=(stored.version, candidate.version) if stored.version != candidate.version else None,
+    )
+    return True
+
+
+async def refresh_recovery_notes(stored, category: str, agent_repo: AgentRepository) -> bool:
+    """Clear stale system-generated failure notes once an agent recovers.
+
+    When a probe flips to WORKING but the stored maintainer_notes is an old
+    system-authored failure note (e.g. a "404 Not Found" or "host down" message
+    from a previous probe), refresh it to the WORKING note so the displayed
+    state stops contradicting the live health/task status (#150, #153).
+
+    Human-authored notes are never touched. Returns True if notes were changed.
+    """
+    if category != "WORKING":
+        return False
+    current = (stored.maintainer_notes or "").strip()
+    # Only overwrite notes the registry itself wrote. Empty notes need no change;
+    # human notes must be preserved.
+    if not current or current not in _SYSTEM_AUTHORED_NOTES:
+        return False
+    working_note = CATEGORY_NOTES["WORKING"]
+    if current == working_note:
+        return False
+    await agent_repo.update_maintainer_notes(stored.id, working_note)
+    logger.info("recovery_notes_refreshed", agent_id=stored.id)
+    return True
+
+
 async def check_agent_health(
-    agent_id: UUID,
-    well_known_uri: str,
+    agent,
     session: aiohttp.ClientSession,
     health_repo: HealthCheckRepository,
     agent_repo: AgentRepository,
@@ -41,15 +115,17 @@ async def check_agent_health(
     Check health of a single agent by pinging its wellKnownURI.
 
     Args:
-        agent_id: UUID of the agent
-        well_known_uri: The agent's wellKnownURI endpoint
+        agent: The stored agent record (AgentPublic) to check and, if healthy,
+            refresh displayed metadata for.
         session: Aiohttp session for making requests
         health_repo: Repository for recording results
+        agent_repo: Repository for recording conformance/metadata updates
     """
+    agent_id = agent.id
+    well_known_uri = str(agent.wellKnownURI)
     bound_logger = logger.bind(agent_id=agent_id)
     start_time = time.time()
     status_code = None
-    success = False
     error_message = None
 
     try:
@@ -98,7 +174,6 @@ async def check_agent_health(
                 return
 
             # Valid JSON response — mark healthy
-            success = True
             await health_repo.create(
                 agent_id=agent_id,
                 status_code=status_code,
@@ -116,6 +191,15 @@ async def check_agent_health(
                 bound_logger.debug("conformance_updated", conformance=conformance, errors=errors[:3] if errors else [])
             except Exception as conf_err:
                 bound_logger.warning("conformance_check_failed", error=str(conf_err))
+
+            # Refresh the displayed card metadata (name/version/url/protocolVersion/
+            # description/skills/...) from the live card. Without this, an agent that
+            # renames or version-bumps shows frozen-at-registration metadata forever,
+            # even though we successfully fetch its current card every cycle (#153).
+            try:
+                await refresh_agent_metadata(agent, card_data, agent_repo)
+            except Exception as refresh_err:
+                bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))
 
     except asyncio.TimeoutError:
         response_time_ms = int((time.time() - start_time) * 1000)
@@ -185,6 +269,12 @@ async def probe_one_task(agent, agent_repo: AgentRepository) -> str:
             user_agent=TASK_PROBE_USER_AGENT,
         )
         await agent_repo.update_task_conformance(agent.id, category, response_ms)
+        # If the agent recovered, drop any stale system-authored failure note so
+        # the displayed state stops contradicting the live result (#150, #153).
+        try:
+            await refresh_recovery_notes(agent, category, agent_repo)
+        except Exception as note_err:
+            bound_logger.warning("recovery_notes_refresh_failed", error=str(note_err))
         bound_logger.debug("task_probe_done", category=category, response_ms=response_ms)
         return category
     except Exception as exc:
@@ -258,8 +348,7 @@ async def health_check_cycle():
             batch = []
             for agent in check_agents:
                 task = check_agent_health(
-                    agent_id=agent.id,
-                    well_known_uri=str(agent.wellKnownURI),
+                    agent,
                     session=session,
                     health_repo=health_repo,
                     agent_repo=agent_repo,
