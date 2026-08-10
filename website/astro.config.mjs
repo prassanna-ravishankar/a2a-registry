@@ -1,7 +1,6 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
-import tailwind from '@astrojs/tailwind';
 
 const outDir = process.env.ASTRO_OUT_DIR || '../docs';
 
@@ -11,7 +10,6 @@ export default defineConfig({
   trailingSlash: 'ignore',
   integrations: [
     react(),
-    tailwind({ applyBaseStyles: false }),
     sitemap({ filter: (page) => !page.includes('/admin') }),
   ],
   build: {

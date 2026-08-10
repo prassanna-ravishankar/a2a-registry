@@ -332,33 +332,37 @@ class AgentRepository:
             agent_id,
         )
 
-    # Displayed-metadata columns the background health worker is allowed to
-    # refresh in place. Deliberately excludes everything else (provider,
-    # capabilities, skills, icon, security, securitySchemes, auth flags, modes)
-    # so a name/version drift can never NULL out fields the worker doesn't
-    # re-derive. Maps public field name -> DB column.
+    # Card columns the background worker can safely re-derive from a strict-valid
+    # live card. Everything else stays excluded so a partial refresh cannot
+    # clobber unrelated registration metadata.
     _WORKER_REFRESHABLE_COLUMNS = {
         "name": "name",
         "version": "version",
         "url": "url",
         "protocolVersion": "protocol_version",
         "description": "description",
+        "provider": "provider",
+        "security": "security_requirements",
+        "securitySchemes": "security_schemes",
     }
 
-    async def update_card_metadata(self, agent_id: UUID, fields: dict[str, str]) -> bool:
+    _WORKER_JSON_FIELDS = {"provider", "security", "securitySchemes"}
+
+    async def update_card_metadata(self, agent_id: UUID, fields: dict) -> bool:
         """Patch only the supplied displayed-metadata columns, preserving all others.
 
         Used by the health worker to keep name/version/url/protocolVersion/
-        description in sync with the live card without touching capabilities,
-        skills, security, icon, or auth metadata (which a partial card fetch
-        cannot safely re-derive). Unknown keys are rejected to keep the write
-        surface locked to the whitelist. Returns True if a row was updated.
+        description and explicit auth declarations in sync with the live card.
+        Unknown keys are rejected to keep the write surface locked to the
+        whitelist. Returns True if a row was updated.
         """
         columns = {}
         for key, value in fields.items():
             if key not in self._WORKER_REFRESHABLE_COLUMNS:
                 raise ValueError(f"Field '{key}' is not worker-refreshable")
-            columns[self._WORKER_REFRESHABLE_COLUMNS[key]] = value
+            columns[self._WORKER_REFRESHABLE_COLUMNS[key]] = (
+                json.dumps(value) if key in self._WORKER_JSON_FIELDS else value
+            )
         if not columns:
             return False
 

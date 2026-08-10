@@ -1,5 +1,6 @@
 """Tests for utility functions that perform outbound network fetches."""
 
+import json
 import socket
 from unittest.mock import patch
 
@@ -77,6 +78,8 @@ async def test_fetch_agent_card_follows_public_redirect_with_each_hop_guarded(mo
             self.status = status
             self.headers = headers or {}
             self.payload = payload or MOCK_AGENT_CARD
+            self.content_length = None
+            self.content = self
 
         async def __aenter__(self):
             return self
@@ -84,8 +87,8 @@ async def test_fetch_agent_card_follows_public_redirect_with_each_hop_guarded(mo
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def json(self):
-            return self.payload
+        async def read(self, limit):
+            return json.dumps(self.payload).encode()[:limit]
 
     class FakeSession:
         def __init__(self, **_kwargs):
@@ -172,6 +175,11 @@ async def test_fetch_agent_card_accepts_public_non_redirect(monkeypatch):
 
     class FakeResponse:
         status = 200
+        content_length = None
+        content = None
+
+        def __init__(self):
+            self.content = self
 
         async def __aenter__(self):
             return self
@@ -179,8 +187,8 @@ async def test_fetch_agent_card_accepts_public_non_redirect(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def json(self):
-            return MOCK_AGENT_CARD
+        async def read(self, limit):
+            return json.dumps(MOCK_AGENT_CARD).encode()[:limit]
 
     class FakeSession:
         def __init__(self, **_kwargs):
@@ -202,3 +210,39 @@ async def test_fetch_agent_card_accepts_public_non_redirect(monkeypatch):
 
     assert error is None
     assert card["name"] == MOCK_AGENT_CARD["name"]
+
+
+async def test_fetch_agent_card_rejects_oversized_content_length(monkeypatch):
+    async def fake_guarded_connector(_url):
+        return object()
+
+    class FakeResponse:
+        status = 200
+        content_length = utils._MAX_AGENT_CARD_BYTES + 1
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, *_args, **_kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(utils, "_guarded_connector_for_url", fake_guarded_connector)
+    monkeypatch.setattr(utils.aiohttp, "ClientSession", FakeSession)
+
+    card, error = await utils.fetch_agent_card("https://example.com/.well-known/agent.json")
+
+    assert card is None
+    assert "byte limit" in error

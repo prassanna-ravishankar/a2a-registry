@@ -7,16 +7,28 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
 
+MAX_AGENT_NAME_CHARS = 300
+MAX_AGENT_DESCRIPTION_CHARS = 32_768
+MAX_AGENT_AUTHOR_CHARS = 300
+MAX_AGENT_VERSION_CHARS = 100
+MAX_SKILLS_PER_AGENT = 200
+MAX_SKILL_ID_CHARS = 200
+MAX_SKILL_NAME_CHARS = 300
+MAX_SKILL_DESCRIPTION_CHARS = 4_096
+MAX_SKILL_TAGS = 100
+MAX_SKILL_EXAMPLES = 50
+MAX_MODES = 50
+
 
 class Skill(BaseModel):
     """A2A Protocol Skill definition"""
-    id: str
-    name: str
-    description: str
-    tags: list[str] = Field(default_factory=list)
-    examples: Optional[list[str]] = Field(default_factory=list)
-    inputModes: Optional[list[str]] = Field(default_factory=list, alias="inputModes")  # noqa: N815
-    outputModes: Optional[list[str]] = Field(default_factory=list, alias="outputModes")  # noqa: N815
+    id: str = Field(max_length=MAX_SKILL_ID_CHARS)
+    name: str = Field(max_length=MAX_SKILL_NAME_CHARS)
+    description: str = Field(max_length=MAX_SKILL_DESCRIPTION_CHARS)
+    tags: list[str] = Field(default_factory=list, max_length=MAX_SKILL_TAGS)
+    examples: Optional[list[str]] = Field(default_factory=list, max_length=MAX_SKILL_EXAMPLES)
+    inputModes: Optional[list[str]] = Field(default_factory=list, alias="inputModes", max_length=MAX_MODES)  # noqa: N815
+    outputModes: Optional[list[str]] = Field(default_factory=list, alias="outputModes", max_length=MAX_MODES)  # noqa: N815
 
     model_config = {"populate_by_name": True}
 
@@ -33,19 +45,19 @@ class Capabilities(BaseModel):
 
 class Provider(BaseModel):
     """Agent provider information"""
-    organization: Optional[str] = None
+    organization: Optional[str] = Field(default=None, max_length=MAX_AGENT_AUTHOR_CHARS)
     url: Optional[HttpUrl] = None
 
 
 class AgentBase(BaseModel):
     """Base agent model with A2A Protocol fields"""
-    protocolVersion: str = Field(alias="protocolVersion")  # noqa: N815
-    name: str
-    description: str
-    author: str
+    protocolVersion: str = Field(alias="protocolVersion", max_length=MAX_AGENT_VERSION_CHARS)  # noqa: N815
+    name: str = Field(max_length=MAX_AGENT_NAME_CHARS)
+    description: str = Field(max_length=MAX_AGENT_DESCRIPTION_CHARS)
+    author: str = Field(max_length=MAX_AGENT_AUTHOR_CHARS)
     wellKnownURI: HttpUrl = Field(alias="wellKnownURI")  # noqa: N815
     url: HttpUrl
-    version: str
+    version: str = Field(max_length=MAX_AGENT_VERSION_CHARS)
 
     provider: Optional[Provider] = None
     documentationUrl: Optional[HttpUrl] = Field(None, alias="documentationUrl")  # noqa: N815
@@ -55,9 +67,9 @@ class AgentBase(BaseModel):
     securitySchemes: Optional[dict] = Field(None, alias="securitySchemes")  # noqa: N815
 
     capabilities: Capabilities
-    defaultInputModes: list[str] = Field(alias="defaultInputModes")  # noqa: N815
-    defaultOutputModes: list[str] = Field(alias="defaultOutputModes")  # noqa: N815
-    skills: list[Skill]
+    defaultInputModes: list[str] = Field(alias="defaultInputModes", max_length=MAX_MODES)  # noqa: N815
+    defaultOutputModes: list[str] = Field(alias="defaultOutputModes", max_length=MAX_MODES)  # noqa: N815
+    skills: list[Skill] = Field(max_length=MAX_SKILLS_PER_AGENT)
 
     # Conformance flag (NULL/True = standard, False = non-standard)
     conformance: Optional[bool] = None
@@ -83,7 +95,7 @@ class AgentRegister(BaseModel):
     wellKnownURI: HttpUrl = Field(alias="wellKnownURI")  # noqa: N815
 
     # Optional overrides (if not in agent card)
-    author: Optional[str] = None
+    author: Optional[str] = Field(default=None, max_length=MAX_AGENT_AUTHOR_CHARS)
 
     model_config = {"populate_by_name": True}
 

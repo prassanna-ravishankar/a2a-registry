@@ -1,5 +1,6 @@
 """Unit tests for app/validators.py"""
 
+from app.models import MAX_AGENT_DESCRIPTION_CHARS, MAX_SKILLS_PER_AGENT
 from app.validators import _normalise_fields, validate_agent_card, validate_well_known_uri
 
 # ---------------------------------------------------------------------------
@@ -193,6 +194,34 @@ def test_validate_agent_card_accepts_full_valid_card():
     }
     errors = validate_agent_card(card)
     assert len(errors) == 0
+
+
+def test_validate_agent_card_rejects_oversized_description():
+    card = {
+        "name": "Test",
+        "description": "x" * (MAX_AGENT_DESCRIPTION_CHARS + 1),
+        "url": "https://example.com",
+        "version": "1.0.0",
+    }
+
+    errors = validate_agent_card(card)
+
+    assert any("description" in error and "maximum" in error for error in errors)
+
+
+def test_validate_agent_card_rejects_too_many_skills():
+    skill = {"id": "x", "name": "x", "description": "x"}
+    card = {
+        "name": "Test",
+        "description": "Test",
+        "url": "https://example.com",
+        "version": "1.0.0",
+        "skills": [skill] * (MAX_SKILLS_PER_AGENT + 1),
+    }
+
+    errors = validate_agent_card(card)
+
+    assert any("skills" in error and "maximum" in error for error in errors)
 
 
 # ---------------------------------------------------------------------------

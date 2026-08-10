@@ -2,6 +2,7 @@
 
 import asyncio
 import ipaddress
+import json
 import logging
 import socket
 from typing import Any, Optional, Tuple
@@ -38,6 +39,7 @@ _BLOCKED_HOSTS = frozenset({
 _BLOCKED_SUFFIXES = (".internal", ".local", ".svc", ".cluster.local")
 _CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
 _MAX_AGENT_CARD_REDIRECTS = 3
+_MAX_AGENT_CARD_BYTES = 1_048_576
 
 
 def _is_private_address(address: str) -> bool:
@@ -179,8 +181,17 @@ async def _get_guarded_json(url: str, *, user_agent: str) -> Tuple[Optional[dict
                 if response.status != 200:
                     return None, f"Agent card endpoint returned HTTP {response.status}"
 
+                if (
+                    response.content_length is not None
+                    and response.content_length > _MAX_AGENT_CARD_BYTES
+                ):
+                    return None, f"Agent card exceeds {_MAX_AGENT_CARD_BYTES} byte limit"
+
                 try:
-                    return await response.json(), None
+                    payload = await response.content.read(_MAX_AGENT_CARD_BYTES + 1)
+                    if len(payload) > _MAX_AGENT_CARD_BYTES:
+                        return None, f"Agent card exceeds {_MAX_AGENT_CARD_BYTES} byte limit"
+                    return json.loads(payload), None
                 except Exception as e:
                     return None, f"Invalid JSON in agent card: {e}"
 
