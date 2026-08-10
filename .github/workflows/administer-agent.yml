@@ -48,12 +48,12 @@ jobs:
       AGENT_ID: ${{ inputs.agent_id }}
       WELL_KNOWN_URI: ${{ inputs.well_known_uri }}
     steps:
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/get-gke-credentials@v2
+      - uses: google-github-actions/get-gke-credentials@v3
         with:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_REGION }}
@@ -99,22 +99,30 @@ jobs:
 
           if [[ "$OPERATOR_ACTION" == "refresh-card" ]]; then
             request_body="$(jq --null-input --arg uri "$WELL_KNOWN_URI" '{wellKnownURI: $uri}')"
-            curl --fail-with-body --silent --show-error --retry 2 \
+            http_status="$(curl --silent --show-error --retry 2 \
               --request PUT \
               --header "Content-Type: application/json" \
               --header "X-Admin-Key: $ADMIN_API_KEY" \
               --data "$request_body" \
-              "$API_BASE_URL/agents/$AGENT_ID" > "$RUNNER_TEMP/operator-response.json"
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/agents/$AGENT_ID")"
           else
-            curl --fail-with-body --silent --show-error --retry 2 \
+            http_status="$(curl --silent --show-error --retry 2 \
               --request PATCH \
               --header "Content-Type: application/json" \
               --header "X-Admin-Key: $ADMIN_API_KEY" \
               --data '{"notes": null}' \
-              "$API_BASE_URL/agents/$AGENT_ID/notes" > "$RUNNER_TEMP/operator-response.json"
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/agents/$AGENT_ID/notes")"
           fi
 
           jq . "$RUNNER_TEMP/operator-response.json"
+          if [[ ! "$http_status" =~ ^2[0-9][0-9]$ ]]; then
+            echo "Registry API returned HTTP $http_status" >&2
+            exit 1
+          fi
 
       - name: Verify public record
         shell: bash
