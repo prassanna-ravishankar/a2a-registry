@@ -14,6 +14,7 @@ import pytest
 
 import worker
 from app.agent_card import agent_create_from_card
+from app.models import Skill
 from app.repositories import AgentRepository
 from app.smoke_test import CATEGORY_NOTES
 
@@ -36,6 +37,17 @@ def _stored_agent(**overrides):
         provider=None,
         security=[],
         securitySchemes={},
+        documentationUrl=None,
+        iconUrl=None,
+        supportsAuthenticatedExtendedCard=None,
+        capabilities={
+            "streaming": False,
+            "pushNotifications": False,
+            "stateTransitionHistory": False,
+        },
+        defaultInputModes=["text/plain"],
+        defaultOutputModes=["text/plain"],
+        skills=[],
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -87,6 +99,21 @@ def test_registration_model_preserves_auth_declarations():
 
     assert agent.security == [{"apiKey": []}]
     assert agent.securitySchemes["apiKey"]["name"] == "x-api-key"
+
+
+def test_registration_model_normalises_v1_security_and_extended_card():
+    card = _live_card_v1(
+        securityRequirements=[{"apiKey": []}],
+        securitySchemes={"apiKey": {"type": "apiKey", "in": "header"}},
+        capabilities={"streaming": False, "extendedAgentCard": True},
+    )
+
+    agent = agent_create_from_card(
+        card, "https://example.com/.well-known/agent-card.json"
+    )
+
+    assert agent.security == [{"apiKey": []}]
+    assert agent.supportsAuthenticatedExtendedCard is True
 
 
 # ── refresh_agent_metadata ──────────────────────────────────────────────────
@@ -159,6 +186,18 @@ async def test_refresh_noop_when_card_matches_stored():
     repo.update_card_metadata.assert_not_awaited()
 
 
+def test_comparable_handles_model_objects_nested_in_lists():
+    skill_model = Skill(
+        id="onboarding",
+        name="Get started",
+        description="Register an account.",
+        tags=["onboarding"],
+    )
+    skill_dict = skill_model.model_dump(mode="json", exclude_none=True)
+
+    assert worker._comparable([skill_model]) == worker._comparable([skill_dict])
+
+
 async def test_refresh_normalises_snake_case_card():
     """Cards using snake_case field names (SDK style) still refresh correctly."""
     stored = _stored_agent()
@@ -229,18 +268,59 @@ async def test_refresh_present_field_extraction_never_synthesises_version():
     assert fields["name"] == "inferGONKA"
 
 
-async def test_refresh_preserves_unrelated_fields_via_scoped_patch():
-    """A metadata drift must not touch fields outside the refresh whitelist."""
-    stored = _stored_agent()
+async def test_refresh_updates_explicit_card_fields_via_scoped_patch():
+    """Strict-valid, explicitly present Agent Card fields stay current."""
+    stored = _stored_agent(
+        documentationUrl="https://old.example/docs",
+        iconUrl="https://old.example/icon.png",
+        skills=[{"id": "old"}],
+    )
+    repo = _metadata_repo()
+    card = _live_card(
+        documentationUrl="https://new.example/docs",
+        iconUrl="https://new.example/icon.png",
+        capabilities={"streaming": True, "extendedAgentCard": True},
+        defaultInputModes=["application/json"],
+        defaultOutputModes=["application/json"],
+        skills=[
+            {
+                "id": "onboarding",
+                "name": "Get started",
+                "description": "Register an account.",
+                "tags": ["onboarding"],
+            }
+        ],
+    )
+
+    await worker.refresh_agent_metadata(stored, card, repo)
+
+    _, fields = repo.update_card_metadata.await_args.args
+    assert fields["documentationUrl"] == "https://new.example/docs"
+    assert fields["iconUrl"] == "https://new.example/icon.png"
+    assert fields["supportsAuthenticatedExtendedCard"] is True
+    assert fields["capabilities"]["streaming"] is True
+    assert "extendedAgentCard" not in fields["capabilities"]
+    assert fields["defaultInputModes"] == ["application/json"]
+    assert fields["defaultOutputModes"] == ["application/json"]
+    assert fields["skills"][0]["id"] == "onboarding"
+
+
+async def test_refresh_absent_optional_card_fields_preserve_stored_values():
+    stored = _stored_agent(
+        documentationUrl="https://existing.example/docs",
+        iconUrl="https://existing.example/icon.png",
+        supportsAuthenticatedExtendedCard=True,
+    )
     repo = _metadata_repo()
 
     await worker.refresh_agent_metadata(stored, _live_card(), repo)
 
     _, fields = repo.update_card_metadata.await_args.args
-    for protected in ("iconUrl", "supportsAuthenticatedExtendedCard", "capabilities", "skills"):
-        assert protected not in fields
-    # And the repo whitelist itself rejects non-re-derived fields.
-    assert "icon_url" not in AgentRepository._WORKER_REFRESHABLE_COLUMNS.values()
+    assert not {
+        "documentationUrl",
+        "iconUrl",
+        "supportsAuthenticatedExtendedCard",
+    } & fields.keys()
 
 
 async def test_refresh_updates_provider_and_security_when_declared():
@@ -426,6 +506,22 @@ async def test_system_note_tracks_transition_between_failure_categories():
     repo.update_maintainer_notes.assert_awaited_once_with(stored.id, CATEGORY_NOTES["401"])
 
 
+async def test_legacy_system_note_updates_to_current_category_wording():
+    legacy_note = (
+        "Agent's gRPC/protobuf response includes a field not defined in the A2A "
+        "schema. Align response with the latest A2A spec."
+    )
+    stored = _stored_agent(maintainer_notes=legacy_note)
+    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+
+    changed = await worker.refresh_recovery_notes(stored, "PARSE", repo)
+
+    assert changed is True
+    repo.update_maintainer_notes.assert_awaited_once_with(
+        stored.id, CATEGORY_NOTES["PARSE"]
+    )
+
+
 async def test_system_note_noop_when_failure_category_matches():
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
     repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
@@ -475,9 +571,8 @@ async def test_update_card_metadata_writes_only_whitelisted_columns():
     sql = db.execute.await_args.args[0]
     assert "name = $1" in sql and "version = $2" in sql and "protocol_version = $3" in sql
     assert "updated_at = NOW()" in sql
-    # Columns the worker must never write must be absent from the statement.
-    for forbidden in ("capabilities", "skills", "icon_url",
-                      "supports_authenticated_extended_card", "well_known_uri"):
+    # Registry-owned columns remain outside the worker patch surface.
+    for forbidden in ("well_known_uri", "author", "license", "pricing", "contact"):
         assert forbidden not in sql
     # Values are bound positionally; the id is the last parameter.
     assert db.execute.await_args.args[-1] == "abc"
@@ -489,7 +584,7 @@ async def test_update_card_metadata_rejects_unknown_field():
     repo = AgentRepository(db)
 
     with pytest.raises(ValueError, match="not worker-refreshable"):
-        await repo.update_card_metadata("abc", {"capabilities": {"evil": 1}})
+        await repo.update_card_metadata("abc", {"license": "MIT"})
 
     db.execute.assert_not_awaited()
 
@@ -515,6 +610,35 @@ async def test_update_card_metadata_serialises_auth_json_fields():
     assert json.loads(provider) == {"organization": "Cog Depot"}
     assert json.loads(security) == [{"apiKey": []}]
     assert json.loads(schemes) == {"apiKey": {"type": "apiKey"}}
+    assert agent_id == "abc"
+
+
+async def test_update_card_metadata_serialises_display_card_fields():
+    db = SimpleNamespace(execute=AsyncMock(return_value="UPDATE 1"))
+    repo = AgentRepository(db)
+
+    written = await repo.update_card_metadata(
+        "abc",
+        {
+            "documentationUrl": "https://example.com/docs",
+            "capabilities": {"streaming": True},
+            "defaultInputModes": ["application/json"],
+            "skills": [{"id": "onboarding"}],
+        },
+    )
+
+    assert written is True
+    sql, documentation_url, capabilities, input_modes, skills, agent_id = (
+        db.execute.await_args.args
+    )
+    assert "documentation_url = $1" in sql
+    assert "capabilities = $2" in sql
+    assert "default_input_modes = $3" in sql
+    assert "skills = $4" in sql
+    assert documentation_url == "https://example.com/docs"
+    assert json.loads(capabilities) == {"streaming": True}
+    assert json.loads(input_modes) == ["application/json"]
+    assert json.loads(skills) == [{"id": "onboarding"}]
     assert agent_id == "abc"
 
 

@@ -87,6 +87,19 @@ def _normalise_fields(card: dict[str, Any]) -> dict[str, Any]:
         if snake in result and camel not in result:
             result[camel] = result.pop(snake)
 
+    # v1.0 renamed the top-level security requirements collection.
+    if "securityRequirements" in result and "security" not in result:
+        result["security"] = result["securityRequirements"]
+
+    # v1.0 moved this declaration under capabilities.extendedAgentCard.
+    capabilities = result.get("capabilities")
+    if (
+        "supportsAuthenticatedExtendedCard" not in result
+        and isinstance(capabilities, dict)
+        and isinstance(capabilities.get("extendedAgentCard"), bool)
+    ):
+        result["supportsAuthenticatedExtendedCard"] = capabilities["extendedAgentCard"]
+
     # v1.0 compat: extract url and protocolVersion from interfaces[]
     if "url" not in result:
         for key in ("interfaces", "supportedInterfaces"):

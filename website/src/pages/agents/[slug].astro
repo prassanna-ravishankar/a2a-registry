@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import AgentPageClient from '@/components/AgentPageClient.jsx';
-import { safeExternalUrl } from '@/lib/utils';
+import { agentProvider, formatVersion, safeExternalUrl } from '@/lib/utils';
 
 export const prerender = true;
 
@@ -58,7 +58,8 @@ export async function getStaticPaths() {
 
 const { agent } = Astro.props;
 
-const provider = agent.author || agent.provider?.organization || 'Unknown';
+const provider = agentProvider(agent);
+const displayVersion = formatVersion(agent.version);
 const title = `${agent.name} - A2A Protocol Agent | ${provider}`;
 
 // Strip common inline Markdown so agents with **bold** / [link](url) /
@@ -178,7 +179,7 @@ const jsonLd = [
 
         <h2 class="mt-4 font-mono text-2xl font-semibold text-zinc-100">{agent.name}</h2>
         <p class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-          {agent.version && <><span>v{agent.version}</span><span class="text-zinc-700">•</span></>}
+          {displayVersion && <><span>{displayVersion}</span><span class="text-zinc-700">•</span></>}
           <span>{provider}</span>
           {agent.license && <><span class="text-zinc-700">•</span><span>{agent.license}</span></>}
         </p>

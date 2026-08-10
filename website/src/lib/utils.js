@@ -19,3 +19,19 @@ export function safeExternalUrl(value) {
 
   return null
 }
+
+export function agentProvider(agent) {
+  const provider = agent?.provider?.organization?.trim()
+  if (provider) return provider
+
+  const author = agent?.author?.trim()
+  if (author && author.toLowerCase() !== "unknown") return author
+
+  return "Unknown"
+}
+
+export function formatVersion(value) {
+  const version = String(value ?? "").trim()
+  if (!version) return null
+  return /^v/i.test(version) ? version : `v${version}`
+}

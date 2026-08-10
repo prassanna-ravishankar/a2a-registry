@@ -5,7 +5,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import aiohttp
 from pydantic import HttpUrl, TypeAdapter
@@ -14,6 +14,7 @@ from app.agent_card import extract_agent_url, extract_protocol_version
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
+from app.models import Capabilities
 from app.repositories import AgentRepository, HealthCheckRepository
 from app.smoke_test import CATEGORY_NOTES, TASK_PROBE_USER_AGENT, smoke_test
 from app.validators import _normalise_fields, validate_agent_card
@@ -33,10 +34,9 @@ configure_logging(json_logs=True)
 logger = get_logger(__name__)
 
 
-# Displayed card fields the worker keeps in sync with the live card, mapped to
-# how each is read out of a normalised card dict. Excludes wellKnownURI (only
-# the admin PUT changes discovery URLs). Provider and authentication declarations
-# are safe to refresh because they come directly from the same strict-valid card.
+# Agent Card fields the worker keeps in sync with the live card. Excludes
+# wellKnownURI (only the admin PUT changes discovery URLs) and registry-owned
+# extensions such as author/contact/license/pricing.
 _REFRESHED_FIELDS = (
     "name",
     "version",
@@ -46,12 +46,26 @@ _REFRESHED_FIELDS = (
     "provider",
     "security",
     "securitySchemes",
+    "documentationUrl",
+    "iconUrl",
+    "supportsAuthenticatedExtendedCard",
+    "capabilities",
+    "defaultInputModes",
+    "defaultOutputModes",
+    "skills",
 )
+
+# Superseded registry-authored wording remains recognizable so a copy update
+# cannot turn yesterday's system note into a permanently protected "human" note.
+_LEGACY_SYSTEM_AUTHORED_NOTES = frozenset({
+    "Agent's gRPC/protobuf response includes a field not defined in the A2A schema. "
+    "Align response with the latest A2A spec.",
+})
 
 # System-generated maintainer notes the worker is allowed to keep aligned with
 # task-probe categories. Anything not authored by the registry itself (i.e. a
 # human-written note) is left untouched.
-_SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values())
+_SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values()) | _LEGACY_SYSTEM_AUTHORED_NOTES
 
 # Coerce candidate URLs the same way the stored record does on read (the `url`
 # column round-trips through AgentBase.url: HttpUrl). Without this, a card URL
@@ -129,7 +143,7 @@ def _present_card_fields(raw_card: dict, normalised: dict) -> dict:
     interfaces[0].url/protocolVersion to top level). A field absent from the raw
     card is omitted entirely — never written with a default.
     """
-    fields: dict[str, str] = {}
+    fields: dict[str, Any] = {}
 
     if _raw_has(raw_card, "name"):
         fields["name"] = normalised["name"]
@@ -168,13 +182,57 @@ def _present_card_fields(raw_card: dict, normalised: dict) -> dict:
     if isinstance(normalised.get("securitySchemes"), dict):
         fields["securitySchemes"] = normalised["securitySchemes"]
 
+    for raw_keys, field in (
+        (("documentationUrl", "documentation_url"), "documentationUrl"),
+        (("iconUrl", "icon_url"), "iconUrl"),
+    ):
+        if _raw_has(raw_card, *raw_keys) and _raw_str(normalised.get(field)):
+            fields[field] = _canonical_url(normalised[field])
+
+    capabilities = raw_card.get("capabilities")
+    if isinstance(capabilities, dict):
+        fields["capabilities"] = Capabilities.model_validate(
+            normalised["capabilities"]
+        ).model_dump(mode="json", exclude_none=True)
+    if isinstance(normalised.get("supportsAuthenticatedExtendedCard"), bool) and (
+        "supportsAuthenticatedExtendedCard" in raw_card
+        or "supports_authenticated_extended_card" in raw_card
+        or (
+            isinstance(capabilities, dict)
+            and isinstance(capabilities.get("extendedAgentCard"), bool)
+        )
+    ):
+        fields["supportsAuthenticatedExtendedCard"] = normalised[
+            "supportsAuthenticatedExtendedCard"
+        ]
+
+    for raw_keys, field in (
+        (("defaultInputModes", "default_input_modes"), "defaultInputModes"),
+        (("defaultOutputModes", "default_output_modes"), "defaultOutputModes"),
+        (("skills",), "skills"),
+    ):
+        if any(key in raw_card for key in raw_keys) and isinstance(
+            normalised.get(field), list
+        ):
+            fields[field] = normalised[field]
+
     return fields
+
+
+def _jsonable(value):
+    """Recursively convert model-backed JSON values to plain Python values."""
+    if hasattr(value, "model_dump"):
+        value = value.model_dump(mode="json", exclude_none=True)
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    return value
 
 
 def _comparable(value):
     """Return a stable representation for comparing model-backed JSON fields."""
-    if hasattr(value, "model_dump"):
-        value = value.model_dump(mode="json", exclude_none=True)
+    value = _jsonable(value)
     if isinstance(value, (dict, list)):
         return json.dumps(value, sort_keys=True, separators=(",", ":"))
     return str(value)
@@ -188,17 +246,16 @@ async def refresh_agent_metadata(
     conformance_errors: Optional[list] = None,
 ) -> bool:
     """Re-sync displayed card metadata (name/version/url/protocolVersion/
-    description/provider/security declarations) from the live card when it has
-    drifted.
+    description and other explicit Agent Card declarations) from the live card
+    when they have drifted.
 
     Safety invariants (data-integrity, see PR #154 review):
     - Only refreshes from a STRICT-valid card. If the live card has any
       conformance errors, we skip — a degraded-but-parseable card must not
       overwrite good stored data. Pass the strict-validation result in via
       `conformance_errors`; when omitted we compute it here.
-    - Writes only the explicit refresh whitelist via a column-scoped patch,
-      never the full record. Capabilities/skills/icon and other fields remain
-      untouched.
+    - Writes only the explicit Agent Card whitelist via a column-scoped patch,
+      never registry-owned fields or the full record.
     - Never writes a missing/empty card field over a stored value (see
       _present_card_fields) and never changes wellKnownURI.
 
@@ -348,19 +405,32 @@ async def check_agent_health(
             except Exception as conf_err:
                 bound_logger.warning("conformance_check_failed", error=str(conf_err))
 
-            # Refresh the displayed card metadata (name/version/url/protocolVersion/
-            # description) from the live card. Only from a strict-valid card, and
-            # only the displayed columns — never the full record — so a degraded
-            # card can't overwrite good data with defaults or NULL out fields the
-            # worker can't re-derive (capabilities/skills/security/icon). See #153
-            # and the PR #154 review. If conformance validation above raised,
-            # strict_errors stays None and refresh_agent_metadata re-validates.
+            # Refresh explicit Agent Card metadata from the live card. Only from
+            # a strict-valid card, and only the whitelisted card columns — never
+            # the full record — so degraded/partial cards cannot overwrite good
+            # stored data or registry-owned fields. See #153/#158/#166 and the
+            # PR #154 review. If validation above raised, strict_errors stays None
+            # and refresh_agent_metadata re-validates.
             try:
                 await refresh_agent_metadata(
                     agent, card_data, agent_repo, conformance_errors=strict_errors,
                 )
             except Exception as refresh_err:
                 bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))
+
+            # Reconcile system-note wording every health cycle as well as after
+            # task probes. This updates renamed category guidance promptly while
+            # preserving the last measured category and all human-authored notes.
+            task_conformance = getattr(agent, "task_conformance", None)
+            if task_conformance:
+                try:
+                    await refresh_recovery_notes(
+                        agent,
+                        task_conformance.category,
+                        agent_repo,
+                    )
+                except Exception as note_err:
+                    bound_logger.warning("system_notes_refresh_failed", error=str(note_err))
 
     except asyncio.TimeoutError:
         response_time_ms = int((time.time() - start_time) * 1000)

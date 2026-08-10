@@ -41,7 +41,7 @@ CATEGORY_NOTES = {
     "BAD_RESPONSE": "Agent responds but the response shape is missing required A2A fields. Standard A2A SDK clients cannot parse the response. Update your response format to match the A2A spec.",
     "BAD_JSON": "Agent endpoint does not return valid JSON for `message/send` requests. Ensure the endpoint returns a proper JSON-RPC response.",
     "METHOD": "Agent does not implement the `message/send` JSON-RPC method. Add support for this method per the A2A spec.",
-    "PARSE": "Agent's gRPC/protobuf response includes a field not defined in the A2A schema. Align response with the latest A2A spec.",
+    "PARSE": "The official A2A SDK could not parse the `message/send` response because its result does not match the declared protocol schema. For A2A v1.0, return a `SendMessageResponse` containing `task` or `message`, rather than an unwrapped Task object.",
     "AUTH_BACKEND": "Agent endpoint reachable but returns an internal authentication error from a downstream LLM provider (invalid API key on the agent's side). The agent operator needs to fix their backend credentials.",
     "INTERNAL": "Agent endpoint reachable but returns an A2A `InternalError` when handling `message/send`. Check server-side error logs.",
     "TIMEOUT": "Agent endpoint did not respond within the smoke-test timeout. Could be transient; will be re-checked by the health worker.",
