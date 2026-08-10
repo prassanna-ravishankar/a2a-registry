@@ -4,12 +4,20 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - '.github/workflows/administer-agent.yml'
       - '.github/workflows/pr-ci.yml'
 
 permissions:
   contents: read
 
 jobs:
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: raven-actions/actionlint@v2
+
   backend:
     name: Backend tests and lint
     runs-on: ubuntu-latest
