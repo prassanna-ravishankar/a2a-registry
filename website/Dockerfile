@@ -1,7 +1,7 @@
 # Multi-stage build for A2A Registry frontend
 
 # Stage 1: Build the application
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -22,6 +22,7 @@ ARG PUBLIC_POSTHOG_HOST
 ENV PUBLIC_API_URL=${PUBLIC_API_URL} \
     PUBLIC_POSTHOG_KEY=${PUBLIC_POSTHOG_KEY} \
     PUBLIC_POSTHOG_HOST=${PUBLIC_POSTHOG_HOST} \
+    ASTRO_TELEMETRY_DISABLED=1 \
     ASTRO_OUT_DIR=dist
 
 # Build the Astro site; outputs to ./dist inside the image

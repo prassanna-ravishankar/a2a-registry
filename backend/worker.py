@@ -2,6 +2,7 @@
 """Health check worker - background service to monitor agent health"""
 
 import asyncio
+import json
 import time
 from pathlib import Path
 from typing import Optional
@@ -32,19 +33,24 @@ configure_logging(json_logs=True)
 logger = get_logger(__name__)
 
 
-# Displayed card fields the worker keeps in sync with the live card. If any of
-# these drifts from what we have stored, we re-fetch the full record. Excludes
-# wellKnownURI (the worker never changes an agent's discovery URL — only the PUT
-# endpoint does that, with collision checks).
 # Displayed card fields the worker keeps in sync with the live card, mapped to
 # how each is read out of a normalised card dict. Excludes wellKnownURI (only
-# the admin PUT changes discovery URLs) and everything the worker can't safely
-# re-derive from a card fetch (capabilities/skills/security/icon/auth flags).
-_REFRESHED_FIELDS = ("name", "version", "url", "protocolVersion", "description")
+# the admin PUT changes discovery URLs). Provider and authentication declarations
+# are safe to refresh because they come directly from the same strict-valid card.
+_REFRESHED_FIELDS = (
+    "name",
+    "version",
+    "url",
+    "protocolVersion",
+    "description",
+    "provider",
+    "security",
+    "securitySchemes",
+)
 
-# System-generated maintainer notes the worker is allowed to overwrite once an
-# agent's task probe flips back to WORKING. Anything not authored by the
-# registry itself (i.e. a human-written note) is left untouched.
+# System-generated maintainer notes the worker is allowed to keep aligned with
+# task-probe categories. Anything not authored by the registry itself (i.e. a
+# human-written note) is left untouched.
 _SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values())
 
 # Coerce candidate URLs the same way the stored record does on read (the `url`
@@ -114,7 +120,7 @@ def _raw_has_protocol_version(raw_card: dict) -> bool:
     return iface is not None and _raw_str(iface.get("protocolVersion"))
 
 
-def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
+def _present_card_fields(raw_card: dict, normalised: dict) -> dict:
     """The displayed fields actually present (non-empty) in the live card.
 
     Presence is decided from `raw_card` (so injected defaults never count);
@@ -152,7 +158,26 @@ def _present_card_fields(raw_card: dict, normalised: dict) -> dict[str, str]:
         if isinstance(protocol_version, str) and protocol_version not in ("", "unknown"):
             fields["protocolVersion"] = protocol_version
 
+    # These optional structures are authoritative when explicitly present on a
+    # strict-valid card. Absence is not treated as a deletion: that preserves a
+    # previously stored declaration if an agent temporarily serves a partial card.
+    if isinstance(normalised.get("provider"), dict):
+        fields["provider"] = normalised["provider"]
+    if isinstance(normalised.get("security"), list):
+        fields["security"] = normalised["security"]
+    if isinstance(normalised.get("securitySchemes"), dict):
+        fields["securitySchemes"] = normalised["securitySchemes"]
+
     return fields
+
+
+def _comparable(value):
+    """Return a stable representation for comparing model-backed JSON fields."""
+    if hasattr(value, "model_dump"):
+        value = value.model_dump(mode="json", exclude_none=True)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, sort_keys=True, separators=(",", ":"))
+    return str(value)
 
 
 async def refresh_agent_metadata(
@@ -163,16 +188,17 @@ async def refresh_agent_metadata(
     conformance_errors: Optional[list] = None,
 ) -> bool:
     """Re-sync displayed card metadata (name/version/url/protocolVersion/
-    description) from the live card when it has drifted.
+    description/provider/security declarations) from the live card when it has
+    drifted.
 
     Safety invariants (data-integrity, see PR #154 review):
     - Only refreshes from a STRICT-valid card. If the live card has any
       conformance errors, we skip — a degraded-but-parseable card must not
       overwrite good stored data. Pass the strict-validation result in via
       `conformance_errors`; when omitted we compute it here.
-    - Writes ONLY the five displayed fields via a column-scoped patch, never the
-      full record, so provider/capabilities/skills/icon/security/auth metadata
-      the worker can't re-derive are always preserved.
+    - Writes only the explicit refresh whitelist via a column-scoped patch,
+      never the full record. Capabilities/skills/icon and other fields remain
+      untouched.
     - Never writes a missing/empty card field over a stored value (see
       _present_card_fields) and never changes wellKnownURI.
 
@@ -193,7 +219,7 @@ async def refresh_agent_metadata(
     changed = {
         field: value
         for field, value in present.items()
-        if str(getattr(stored, field, None)) != str(value)
+        if _comparable(getattr(stored, field, None)) != _comparable(value)
     }
     if not changed:
         return False
@@ -211,27 +237,26 @@ async def refresh_agent_metadata(
 
 
 async def refresh_recovery_notes(stored, category: str, agent_repo: AgentRepository) -> bool:
-    """Clear stale system-generated failure notes once an agent recovers.
+    """Keep system-generated notes aligned with the latest task-probe category.
 
-    When a probe flips to WORKING but the stored maintainer_notes is an old
-    system-authored failure note (e.g. a "404 Not Found" or "host down" message
-    from a previous probe), refresh it to the WORKING note so the displayed
-    state stops contradicting the live health/task status (#150, #153).
+    When a probe category changes but maintainer_notes still contains an old
+    system-authored category note, replace it with the current category's note
+    so displayed guidance cannot contradict task_conformance (#150, #153, #158).
 
     Human-authored notes are never touched. Returns True if notes were changed.
     """
-    if category != "WORKING":
+    desired_note = CATEGORY_NOTES.get(category)
+    if desired_note is None:
         return False
     current = (stored.maintainer_notes or "").strip()
     # Only overwrite notes the registry itself wrote. Empty notes need no change;
     # human notes must be preserved.
     if not current or current not in _SYSTEM_AUTHORED_NOTES:
         return False
-    working_note = CATEGORY_NOTES["WORKING"]
-    if current == working_note:
+    if current == desired_note:
         return False
-    await agent_repo.update_maintainer_notes(stored.id, working_note)
-    logger.info("recovery_notes_refreshed", agent_id=stored.id)
+    await agent_repo.update_maintainer_notes(stored.id, desired_note)
+    logger.info("system_notes_refreshed", agent_id=stored.id, category=category)
     return True
 
 
@@ -405,8 +430,7 @@ async def probe_one_task(agent, agent_repo: AgentRepository) -> str:
             user_agent=TASK_PROBE_USER_AGENT,
         )
         await agent_repo.update_task_conformance(agent.id, category, response_ms)
-        # If the agent recovered, drop any stale system-authored failure note so
-        # the displayed state stops contradicting the live result (#150, #153).
+        # Keep any system-authored category note aligned with the live result.
         try:
             await refresh_recovery_notes(agent, category, agent_repo)
         except Exception as note_err:
@@ -426,18 +450,18 @@ async def run_task_probes(agent_repo: AgentRepository, agents) -> int:
     Smaller batches than the GET health cycle (probes are slower and hit a
     real endpoint, not just an agent-card JSON file).
     """
-    BATCH = 10
-    PAUSE_S = 2
+    batch_size = 10
+    pause_s = 2
 
     total = 0
     batch: list = []
     for agent in agents:
         batch.append(probe_one_task(agent, agent_repo))
-        if len(batch) >= BATCH:
+        if len(batch) >= batch_size:
             await asyncio.gather(*batch, return_exceptions=True)
             total += len(batch)
             batch = []
-            await asyncio.sleep(PAUSE_S)
+            await asyncio.sleep(pause_s)
     if batch:
         await asyncio.gather(*batch, return_exceptions=True)
         total += len(batch)

@@ -6,12 +6,14 @@ url/protocolVersion), so a renamed or version-bumped agent stayed frozen at its
 registration values forever.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 import worker
+from app.agent_card import agent_create_from_card
 from app.repositories import AgentRepository
 from app.smoke_test import CATEGORY_NOTES
 
@@ -31,6 +33,9 @@ def _stored_agent(**overrides):
         author="Gonka",
         wellKnownURI="https://a2a.gogonka.com/.well-known/agent.json",
         maintainer_notes=None,
+        provider=None,
+        security=[],
+        securitySchemes={},
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -68,6 +73,20 @@ def _live_card_v1(iface_url="https://new.example/messages", iface_proto="1.0", *
     }
     card.update(overrides)
     return card
+
+
+def test_registration_model_preserves_auth_declarations():
+    card = _live_card(
+        security=[{"apiKey": []}],
+        securitySchemes={"apiKey": {"type": "apiKey", "in": "header", "name": "x-api-key"}},
+    )
+
+    agent = agent_create_from_card(
+        card, "https://example.com/.well-known/agent-card.json"
+    )
+
+    assert agent.security == [{"apiKey": []}]
+    assert agent.securitySchemes["apiKey"]["name"] == "x-api-key"
 
 
 # ── refresh_agent_metadata ──────────────────────────────────────────────────
@@ -210,22 +229,52 @@ async def test_refresh_present_field_extraction_never_synthesises_version():
     assert fields["name"] == "inferGONKA"
 
 
-async def test_refresh_preserves_security_icon_auth_via_scoped_patch():
-    """BLOCKING #2: a name/version drift must not NULL out security/icon/auth
-    fields. The worker writes via the column-scoped patch, whose whitelist
-    excludes those columns entirely — so they can never be touched here."""
+async def test_refresh_preserves_unrelated_fields_via_scoped_patch():
+    """A metadata drift must not touch fields outside the refresh whitelist."""
     stored = _stored_agent()
     repo = _metadata_repo()
 
     await worker.refresh_agent_metadata(stored, _live_card(), repo)
 
     _, fields = repo.update_card_metadata.await_args.args
-    for protected in ("securitySchemes", "security", "iconUrl",
-                      "supportsAuthenticatedExtendedCard", "capabilities", "skills", "provider"):
+    for protected in ("iconUrl", "supportsAuthenticatedExtendedCard", "capabilities", "skills"):
         assert protected not in fields
-    # And the repo whitelist itself rejects them.
-    assert "security_schemes" not in AgentRepository._WORKER_REFRESHABLE_COLUMNS.values()
+    # And the repo whitelist itself rejects non-re-derived fields.
     assert "icon_url" not in AgentRepository._WORKER_REFRESHABLE_COLUMNS.values()
+
+
+async def test_refresh_updates_provider_and_security_when_declared():
+    stored = _stored_agent()
+    repo = _metadata_repo()
+    card = _live_card(
+        provider={"organization": "Cog Depot", "url": "https://cogdepot.com"},
+        security=[{"apiKey": []}],
+        securitySchemes={
+            "apiKey": {"type": "apiKey", "in": "header", "name": "x-api-key"}
+        },
+    )
+
+    changed = await worker.refresh_agent_metadata(stored, card, repo)
+
+    assert changed is True
+    _, fields = repo.update_card_metadata.await_args.args
+    assert fields["provider"]["organization"] == "Cog Depot"
+    assert fields["security"] == [{"apiKey": []}]
+    assert fields["securitySchemes"]["apiKey"]["name"] == "x-api-key"
+
+
+async def test_refresh_absent_auth_fields_do_not_clear_stored_values():
+    stored = _stored_agent(
+        provider={"organization": "Existing"},
+        security=[{"oauth": []}],
+        securitySchemes={"oauth": {"type": "oauth2"}},
+    )
+    repo = _metadata_repo()
+
+    await worker.refresh_agent_metadata(stored, _live_card(), repo)
+
+    _, fields = repo.update_card_metadata.await_args.args
+    assert not {"provider", "security", "securitySchemes"} & fields.keys()
 
 
 async def test_refresh_skips_non_conformant_card():
@@ -367,8 +416,17 @@ async def test_recovery_preserves_human_authored_notes():
     repo.update_maintainer_notes.assert_not_awaited()
 
 
-async def test_recovery_noop_when_not_working():
-    """A still-failing probe leaves notes alone (they may carry the failure reason)."""
+async def test_system_note_tracks_transition_between_failure_categories():
+    stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
+    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+
+    changed = await worker.refresh_recovery_notes(stored, "401", repo)
+
+    assert changed is True
+    repo.update_maintainer_notes.assert_awaited_once_with(stored.id, CATEGORY_NOTES["401"])
+
+
+async def test_system_note_noop_when_failure_category_matches():
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
     repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
 
@@ -418,9 +476,8 @@ async def test_update_card_metadata_writes_only_whitelisted_columns():
     assert "name = $1" in sql and "version = $2" in sql and "protocol_version = $3" in sql
     assert "updated_at = NOW()" in sql
     # Columns the worker must never write must be absent from the statement.
-    for forbidden in ("capabilities", "skills", "security", "security_schemes",
-                      "icon_url", "supports_authenticated_extended_card",
-                      "provider", "well_known_uri"):
+    for forbidden in ("capabilities", "skills", "icon_url",
+                      "supports_authenticated_extended_card", "well_known_uri"):
         assert forbidden not in sql
     # Values are bound positionally; the id is the last parameter.
     assert db.execute.await_args.args[-1] == "abc"
@@ -432,9 +489,33 @@ async def test_update_card_metadata_rejects_unknown_field():
     repo = AgentRepository(db)
 
     with pytest.raises(ValueError, match="not worker-refreshable"):
-        await repo.update_card_metadata("abc", {"securitySchemes": {"evil": 1}})
+        await repo.update_card_metadata("abc", {"capabilities": {"evil": 1}})
 
     db.execute.assert_not_awaited()
+
+
+async def test_update_card_metadata_serialises_auth_json_fields():
+    db = SimpleNamespace(execute=AsyncMock(return_value="UPDATE 1"))
+    repo = AgentRepository(db)
+
+    written = await repo.update_card_metadata(
+        "abc",
+        {
+            "provider": {"organization": "Cog Depot"},
+            "security": [{"apiKey": []}],
+            "securitySchemes": {"apiKey": {"type": "apiKey"}},
+        },
+    )
+
+    assert written is True
+    sql, provider, security, schemes, agent_id = db.execute.await_args.args
+    assert "provider = $1" in sql
+    assert "security_requirements = $2" in sql
+    assert "security_schemes = $3" in sql
+    assert json.loads(provider) == {"organization": "Cog Depot"}
+    assert json.loads(security) == [{"apiKey": []}]
+    assert json.loads(schemes) == {"apiKey": {"type": "apiKey"}}
+    assert agent_id == "abc"
 
 
 async def test_update_card_metadata_noop_on_empty():
