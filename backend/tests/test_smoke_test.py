@@ -113,6 +113,12 @@ def test_every_category_has_a_note():
         assert CATEGORY_NOTES[cat]
 
 
+def test_parse_note_explains_v1_response_envelope():
+    assert "SendMessageResponse" in CATEGORY_NOTES["PARSE"]
+    assert "task" in CATEGORY_NOTES["PARSE"]
+    assert "message" in CATEGORY_NOTES["PARSE"]
+
+
 # --- smoke_test() timing regression ----------------------------------------
 #
 # smoke_test() once started its timer with time.monotonic() but measured the

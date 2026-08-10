@@ -362,3 +362,17 @@ def test_normalise_v1_defaults_description_and_version():
     result = _normalise_fields(card)
     assert result["description"] == ""
     assert result["version"] == "1.0.0"
+
+
+def test_normalise_v1_security_and_extended_card_fields():
+    card = {
+        "name": "V1 Agent",
+        "url": "https://example.com/a2a",
+        "securityRequirements": [{"apiKey": []}],
+        "capabilities": {"streaming": False, "extendedAgentCard": True},
+    }
+
+    result = _normalise_fields(card)
+
+    assert result["security"] == [{"apiKey": []}]
+    assert result["supportsAuthenticatedExtendedCard"] is True

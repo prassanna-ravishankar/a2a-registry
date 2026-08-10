@@ -75,8 +75,11 @@ def agent_create_from_card(
             provider=agent_card.get("provider"),
             documentationUrl=agent_card.get("documentationUrl"),
             iconUrl=agent_card.get("iconUrl"),
-            supportsAuthenticatedExtendedCard=agent_card.get("supportsAuthenticatedExtendedCard"),
-            security=agent_card.get("security"),
+            supportsAuthenticatedExtendedCard=agent_card.get(
+                "supportsAuthenticatedExtendedCard",
+                capabilities.get("extendedAgentCard"),
+            ),
+            security=agent_card.get("security", agent_card.get("securityRequirements")),
             securitySchemes=agent_card.get("securitySchemes"),
             capabilities=capabilities,
             defaultInputModes=agent_card.get("defaultInputModes", ["text/plain"]),

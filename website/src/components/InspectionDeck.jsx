@@ -4,7 +4,7 @@ import { X, Globe, FileText, Zap, Flag, Copy, Check, ArrowUpRight, ChevronLeft, 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { safeExternalUrl } from '@/lib/utils';
+import { agentProvider, formatVersion, safeExternalUrl } from '@/lib/utils';
 import Terminal from './Terminal';
 import HealthBadge from './HealthBadge';
 import { api } from '@/lib/api';
@@ -135,9 +135,9 @@ const AgentHero = ({ agent, mobile }) => (
             {agent.name}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-            <span>v{agent.version}</span>
+            {formatVersion(agent.version) && <span>{formatVersion(agent.version)}</span>}
             <span className="text-zinc-700">•</span>
-            <span>{agent.author || agent.provider?.organization || 'Unknown'}</span>
+            <span>{agentProvider(agent)}</span>
             {agent.protocolVersion && (
                 <>
                     <span className="text-zinc-700">•</span>
@@ -214,11 +214,11 @@ const AgentSections = ({ agent, mobile, onOpenReport }) => {
                     <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Provider</dt>
-                            <dd className="mt-1 text-zinc-200">{agent.author || agent.provider?.organization || 'Unknown'}</dd>
+                            <dd className="mt-1 text-zinc-200">{agentProvider(agent)}</dd>
                         </div>
                         <div>
                             <dt className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">License</dt>
-                            <dd className="mt-1 text-zinc-200">{agent.license || 'MIT'}</dd>
+                            <dd className="mt-1 text-zinc-200">{agent.license || 'Not declared'}</dd>
                         </div>
                     </dl>
                     {agent.wellKnownURI && (

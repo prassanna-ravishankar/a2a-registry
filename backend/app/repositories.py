@@ -344,9 +344,24 @@ class AgentRepository:
         "provider": "provider",
         "security": "security_requirements",
         "securitySchemes": "security_schemes",
+        "documentationUrl": "documentation_url",
+        "iconUrl": "icon_url",
+        "supportsAuthenticatedExtendedCard": "supports_authenticated_extended_card",
+        "capabilities": "capabilities",
+        "defaultInputModes": "default_input_modes",
+        "defaultOutputModes": "default_output_modes",
+        "skills": "skills",
     }
 
-    _WORKER_JSON_FIELDS = {"provider", "security", "securitySchemes"}
+    _WORKER_JSON_FIELDS = {
+        "provider",
+        "security",
+        "securitySchemes",
+        "capabilities",
+        "defaultInputModes",
+        "defaultOutputModes",
+        "skills",
+    }
 
     async def update_card_metadata(self, agent_id: UUID, fields: dict) -> bool:
         """Patch only the supplied displayed-metadata columns, preserving all others.

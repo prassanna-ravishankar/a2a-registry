@@ -3,9 +3,11 @@ import { ArrowUpRight, ShieldCheck, ShieldAlert, Radio, CheckCircle2, AlertTrian
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import HealthBadge from './HealthBadge';
+import { agentProvider, formatVersion } from '@/lib/utils';
 
 const AgentCard = ({ agent, isSelected, onClick }) => {
-    const provider = agent.author || agent.provider?.organization || 'Unknown';
+    const provider = agentProvider(agent);
+    const version = formatVersion(agent.version);
     const topTags = agent.skills.flatMap((skill) => skill.tags || []).slice(0, 3);
     const notes = agent.maintainer_notes || '';
     // Prefer the structured task_conformance signal — it's kept current by the
@@ -77,7 +79,7 @@ const AgentCard = ({ agent, isSelected, onClick }) => {
                         {agent.name}
                     </h3>
                     <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                        <span>v{agent.version}</span>
+                        {version && <span>{version}</span>}
                         <span className="text-zinc-700">•</span>
                         <span className="truncate">{provider}</span>
                     </div>
