@@ -9,6 +9,16 @@ Falls back to manual validation if the SDK is not available.
 
 from typing import Any
 
+from .models import (
+    MAX_AGENT_DESCRIPTION_CHARS,
+    MAX_AGENT_NAME_CHARS,
+    MAX_AGENT_VERSION_CHARS,
+    MAX_SKILL_DESCRIPTION_CHARS,
+    MAX_SKILL_ID_CHARS,
+    MAX_SKILL_NAME_CHARS,
+    MAX_SKILLS_PER_AGENT,
+)
+
 # a2a-sdk 1.0 uses protobuf types instead of pydantic, so AgentCard.model_validate()
 # is no longer available. We use manual validation exclusively.
 _SDK_AVAILABLE = False
@@ -128,6 +138,42 @@ def _check_non_empty_strings(card: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _check_content_bounds(card: dict[str, Any]) -> list[str]:
+    """Reject oversized third-party text before it reaches storage or MCP."""
+    errors: list[str] = []
+    limits = {
+        "name": MAX_AGENT_NAME_CHARS,
+        "description": MAX_AGENT_DESCRIPTION_CHARS,
+        "version": MAX_AGENT_VERSION_CHARS,
+        "protocolVersion": MAX_AGENT_VERSION_CHARS,
+    }
+    for field, limit in limits.items():
+        value = card.get(field)
+        if isinstance(value, str) and len(value) > limit:
+            errors.append(f"Field '{field}' exceeds maximum length of {limit} characters.")
+
+    skills = card.get("skills")
+    if not isinstance(skills, list):
+        return errors
+    if len(skills) > MAX_SKILLS_PER_AGENT:
+        errors.append(f"Field 'skills' exceeds maximum of {MAX_SKILLS_PER_AGENT} entries.")
+    skill_limits = {
+        "id": MAX_SKILL_ID_CHARS,
+        "name": MAX_SKILL_NAME_CHARS,
+        "description": MAX_SKILL_DESCRIPTION_CHARS,
+    }
+    for index, skill in enumerate(skills[:MAX_SKILLS_PER_AGENT]):
+        if not isinstance(skill, dict):
+            continue
+        for field, limit in skill_limits.items():
+            value = skill.get(field)
+            if isinstance(value, str) and len(value) > limit:
+                errors.append(
+                    f"Skill at index {index}: '{field}' exceeds maximum length of {limit} characters."
+                )
+    return errors
+
+
 def _check_url_scheme(card: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     for field in ("url", "documentationUrl"):
@@ -175,6 +221,7 @@ def _validate_manual(card_data: dict[str, Any], strict: bool) -> list[str]:  # p
             errors.append(f"Required field is missing: '{field}'.")
 
     errors.extend(_check_non_empty_strings(card_data))
+    errors.extend(_check_content_bounds(card_data))
     errors.extend(_check_url_scheme(card_data))
 
     if "version" in card_data:
