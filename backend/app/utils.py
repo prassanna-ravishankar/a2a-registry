@@ -40,6 +40,7 @@ _BLOCKED_SUFFIXES = (".internal", ".local", ".svc", ".cluster.local")
 _CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
 _MAX_AGENT_CARD_REDIRECTS = 3
 _MAX_AGENT_CARD_BYTES = 1_048_576
+_AGENT_CARD_CHUNK_BYTES = 65_536
 
 
 def _is_private_address(address: str) -> bool:
@@ -161,6 +162,16 @@ def _redirect_url(current_url: str, location: str | None) -> str:
     return next_url
 
 
+async def _read_bounded_body(content: Any, max_bytes: int) -> bytes | None:
+    """Read a streamed response to EOF without allowing it to exceed max_bytes."""
+    payload = bytearray()
+    async for chunk in content.iter_chunked(_AGENT_CARD_CHUNK_BYTES):
+        payload.extend(chunk)
+        if len(payload) > max_bytes:
+            return None
+    return bytes(payload)
+
+
 async def _get_guarded_json(url: str, *, user_agent: str) -> Tuple[Optional[dict[str, Any]], Optional[str]]:
     current_url = url
     for _redirect_count in range(_MAX_AGENT_CARD_REDIRECTS + 1):
@@ -188,8 +199,11 @@ async def _get_guarded_json(url: str, *, user_agent: str) -> Tuple[Optional[dict
                     return None, f"Agent card exceeds {_MAX_AGENT_CARD_BYTES} byte limit"
 
                 try:
-                    payload = await response.content.read(_MAX_AGENT_CARD_BYTES + 1)
-                    if len(payload) > _MAX_AGENT_CARD_BYTES:
+                    payload = await _read_bounded_body(
+                        response.content,
+                        _MAX_AGENT_CARD_BYTES,
+                    )
+                    if payload is None:
                         return None, f"Agent card exceeds {_MAX_AGENT_CARD_BYTES} byte limit"
                     return json.loads(payload), None
                 except Exception as e:

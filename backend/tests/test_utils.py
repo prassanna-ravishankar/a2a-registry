@@ -87,8 +87,8 @@ async def test_fetch_agent_card_follows_public_redirect_with_each_hop_guarded(mo
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def read(self, limit):
-            return json.dumps(self.payload).encode()[:limit]
+        async def iter_chunked(self, _chunk_size):
+            yield json.dumps(self.payload).encode()
 
     class FakeSession:
         def __init__(self, **_kwargs):
@@ -187,8 +187,8 @@ async def test_fetch_agent_card_accepts_public_non_redirect(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        async def read(self, limit):
-            return json.dumps(MOCK_AGENT_CARD).encode()[:limit]
+        async def iter_chunked(self, _chunk_size):
+            yield json.dumps(MOCK_AGENT_CARD).encode()
 
     class FakeSession:
         def __init__(self, **_kwargs):
@@ -246,3 +246,62 @@ async def test_fetch_agent_card_rejects_oversized_content_length(monkeypatch):
 
     assert card is None
     assert "byte limit" in error
+
+
+async def test_fetch_agent_card_reads_chunked_body_to_eof(monkeypatch):
+    """A stream read may produce partial chunks before the complete JSON body."""
+    payload = json.dumps(MOCK_AGENT_CARD).encode()
+    split_at = len(payload) // 2
+
+    async def fake_guarded_connector(_url):
+        return object()
+
+    class FakeResponse:
+        status = 200
+        content_length = len(payload)
+        content = None
+
+        def __init__(self):
+            self.content = self
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def iter_chunked(self, _chunk_size):
+            yield payload[:split_at]
+            yield payload[split_at:]
+
+    class FakeSession:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def get(self, *_args, **_kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(utils, "_guarded_connector_for_url", fake_guarded_connector)
+    monkeypatch.setattr(utils.aiohttp, "ClientSession", FakeSession)
+
+    card, error = await utils.fetch_agent_card(
+        "https://example.com/.well-known/agent.json"
+    )
+
+    assert error is None
+    assert card["name"] == MOCK_AGENT_CARD["name"]
+
+
+async def test_bounded_body_rejects_chunked_payload_over_limit():
+    class FakeContent:
+        async def iter_chunked(self, _chunk_size):
+            yield b"1234"
+            yield b"5678"
+
+    assert await utils._read_bounded_body(FakeContent(), 7) is None
