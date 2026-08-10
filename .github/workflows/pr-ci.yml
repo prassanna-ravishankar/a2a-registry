@@ -4,8 +4,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
-      - '.github/workflows/administer-agent.yml'
-      - '.github/workflows/pr-ci.yml'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
