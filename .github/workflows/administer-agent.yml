@@ -1,0 +1,125 @@
+name: Administer Registry Agent
+
+run-name: "${{ inputs.action }}: ${{ inputs.agent_id }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Registry operation to perform
+        required: true
+        type: choice
+        options:
+          - refresh-card
+          - clear-maintainer-notes
+      agent_id:
+        description: Agent UUID
+        required: true
+        type: string
+      well_known_uri:
+        description: HTTPS Agent Card URL (required for refresh-card)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "administer-agent-${{ inputs.agent_id }}"
+  cancel-in-progress: false
+
+env:
+  API_BASE_URL: https://a2aregistry.org/api
+  GKE_CLUSTER: clusterkit
+  GKE_REGION: us-central1
+
+jobs:
+  administer:
+    name: Administer agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+      url: https://a2aregistry.org
+    env:
+      OPERATOR_ACTION: ${{ inputs.action }}
+      AGENT_ID: ${{ inputs.agent_id }}
+      WELL_KNOWN_URI: ${{ inputs.well_known_uri }}
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$AGENT_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+            echo "agent_id must be a UUID" >&2
+            exit 1
+          fi
+
+          if [[ "$OPERATOR_ACTION" == "refresh-card" ]]; then
+            if [[ "$WELL_KNOWN_URI" != https://* ]] || [[ "$WELL_KNOWN_URI" =~ [[:space:]] ]]; then
+              echo "refresh-card requires an HTTPS Agent Card URL without whitespace" >&2
+              exit 1
+            fi
+          elif [[ "$OPERATOR_ACTION" != "clear-maintainer-notes" ]]; then
+            echo "Unsupported action" >&2
+            exit 1
+          fi
+
+      - name: Load admin credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          admin_api_key="$(kubectl get secret a2aregistry-secrets \
+            --namespace a2aregistry \
+            --output jsonpath='{.data.ADMIN_API_KEY}' | base64 --decode)"
+          if [[ -z "$admin_api_key" ]]; then
+            echo "ADMIN_API_KEY is missing from the production secret" >&2
+            exit 1
+          fi
+          echo "::add-mask::$admin_api_key"
+          echo "ADMIN_API_KEY=$admin_api_key" >> "$GITHUB_ENV"
+
+      - name: Apply operation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$OPERATOR_ACTION" == "refresh-card" ]]; then
+            request_body="$(jq --null-input --arg uri "$WELL_KNOWN_URI" '{wellKnownURI: $uri}')"
+            curl --fail-with-body --silent --show-error --retry 2 \
+              --request PUT \
+              --header "Content-Type: application/json" \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
+              --data "$request_body" \
+              "$API_BASE_URL/agents/$AGENT_ID" > "$RUNNER_TEMP/operator-response.json"
+          else
+            curl --fail-with-body --silent --show-error --retry 2 \
+              --request PATCH \
+              --header "Content-Type: application/json" \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
+              --data '{"notes": null}' \
+              "$API_BASE_URL/agents/$AGENT_ID/notes" > "$RUNNER_TEMP/operator-response.json"
+          fi
+
+          jq . "$RUNNER_TEMP/operator-response.json"
+
+      - name: Verify public record
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            "$API_BASE_URL/agents/$AGENT_ID" |
+            jq '{id, name, wellKnownURI, maintainer_notes, updated_at}'
