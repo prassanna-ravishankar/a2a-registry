@@ -226,4 +226,14 @@ async def list_skills(limit: int = 50) -> list[dict]:
         """,
         _bounded_limit(limit, 200),
     )
-    return [{"skill": row["skill_id"], "agent_count": row["agent_count"]} for row in rows]
+    return [
+        {
+            "_meta": {
+                "content_trust": "untrusted_third_party",
+                "warning": UNTRUSTED_CONTENT_NOTICE,
+            },
+            "skill": _untrusted_text(row["skill_id"], 200),
+            "agent_count": row["agent_count"],
+        }
+        for row in rows
+    ]
