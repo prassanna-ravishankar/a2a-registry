@@ -78,3 +78,13 @@ uv build
 GKE Autopilot, namespace `a2aregistry`, 1 replica each (api, worker, frontend).
 Resources are right-sized for a personal project — see `helm/a2aregistry/values-prod.yaml`.
 Health check interval: 1800s (30 min).
+
+## Agent Card Security Audit
+
+Run `/audit-agent-cards` periodically and after any poisoning or prompt-injection report. The skill is defined in `.claude/skills/audit-agent-cards/SKILL.md`; its default command is:
+
+```bash
+uv run scripts/audit_agent_cards.py --output /tmp/a2a-agent-card-audit.json
+```
+
+The audit is read-only and redacts card-authored prose by default. Findings are heuristic leads for human review—never automatically hide, edit, or delete an agent from a scan result.
