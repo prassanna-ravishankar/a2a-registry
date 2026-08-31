@@ -88,3 +88,9 @@ uv run scripts/audit_agent_cards.py --output /tmp/a2a-agent-card-audit.json
 ```
 
 The audit is read-only and redacts card-authored prose by default. Findings are heuristic leads for human review—never automatically hide, edit, or delete an agent from a scan result.
+
+The skill requires two layers: the fast deterministic scan above and an isolated multilingual semantic review of every current card. Preview semantic coverage before authorizing its bounded model cost:
+
+```bash
+uv run scripts/semantic_review_agent_cards.py --output /tmp/a2a-agent-card-semantic-review.json
+```
