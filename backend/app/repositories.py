@@ -320,6 +320,26 @@ class AgentRepository:
         agents = [self._row_to_agent_public(row) for row in rows]
         return agents, total
 
+    async def list_agents_for_health_checks(self) -> tuple[list[AgentInDB], list[UUID]]:
+        """Load active agents while isolating malformed legacy records.
+
+        Agent cards are untrusted data. A record that no longer validates must
+        not abort health checks for every other agent. The invalid IDs are
+        returned for structured logging; validation errors are deliberately not
+        returned because they can contain attacker-controlled card content.
+        """
+        rows = await self.db.fetch(
+            "SELECT * FROM agents WHERE hidden = false ORDER BY created_at DESC"
+        )
+        agents: list[AgentInDB] = []
+        invalid_ids: list[UUID] = []
+        for row in rows:
+            try:
+                agents.append(self._row_to_agent(row))
+            except Exception:
+                invalid_ids.append(row["id"])
+        return agents, invalid_ids
+
     async def update_conformance(
         self, agent_id: UUID, conformance: Optional[bool], errors: Optional[list[str]] = None
     ) -> None:

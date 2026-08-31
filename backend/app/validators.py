@@ -289,14 +289,7 @@ def _validate_skills(skills: list[dict[str, Any]]) -> list[str]:
                 if not isinstance(skill[field], str) or not skill[field].strip():
                     errors.append(f"Skill at index {i}: '{field}' must be a non-empty string.")
 
-        if "tags" in skill:
-            tags = skill["tags"]
-            if not isinstance(tags, list):
-                errors.append(f"Skill at index {i}: 'tags' must be an array.")
-            elif not all(isinstance(tag, str) for tag in tags):
-                errors.append(f"Skill at index {i}: all tags must be strings.")
-
-        for field in ("inputModes", "outputModes"):
+        for field in ("tags", "examples", "inputModes", "outputModes"):
             if field in skill:
                 value = skill[field]
                 if not isinstance(value, list):

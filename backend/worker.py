@@ -550,7 +550,13 @@ async def health_check_cycle():
 
     # Get all active agents
     try:
-        agents, total = await agent_repo.list_agents(limit=10000)
+        agents, invalid_agent_ids = await agent_repo.list_agents_for_health_checks()
+        total = len(agents) + len(invalid_agent_ids)
+        for invalid_agent_id in invalid_agent_ids:
+            logger.warning(
+                "health_check_agent_skipped_invalid_record",
+                agent_id=invalid_agent_id,
+            )
 
         # Identify agents that have failed every check in the last 24h (dead agents)
         # Only re-check these once a day instead of every cycle
@@ -569,8 +575,14 @@ async def health_check_cycle():
             dead_agent_ids = {row["agent_id"] for row in rows}
 
         check_agents = [a for a in agents if a.id not in dead_agent_ids]
-        skipped = total - len(check_agents)
-        logger.info("health_check_cycle_agents", total=total, checking=len(check_agents), skipped_dead=skipped)
+        skipped_dead = len(agents) - len(check_agents)
+        logger.info(
+            "health_check_cycle_agents",
+            total=total,
+            checking=len(check_agents),
+            skipped_dead=skipped_dead,
+            skipped_invalid=len(invalid_agent_ids),
+        )
 
         # Create shared session for all requests
         async with aiohttp.ClientSession() as session:

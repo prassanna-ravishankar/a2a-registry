@@ -8,7 +8,7 @@ registration values forever.
 
 import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -184,6 +184,43 @@ async def test_refresh_noop_when_card_matches_stored():
 
     assert changed is False
     repo.update_card_metadata.assert_not_awaited()
+
+
+async def test_refresh_rejects_object_valued_skill_examples():
+    stored = _stored_agent()
+    repo = _metadata_repo()
+    card = _live_card(
+        skills=[{
+            "id": "probe",
+            "name": "Probe",
+            "description": "Probe an endpoint",
+            "examples": [{"name": "not a valid A2A example"}],
+        }]
+    )
+
+    changed = await worker.refresh_agent_metadata(stored, card, repo)
+
+    assert changed is False
+    repo.update_card_metadata.assert_not_awaited()
+
+
+async def test_health_loader_isolates_malformed_legacy_rows():
+    good_id = "95e89fba-1765-4c16-a8c5-0a239dbfd29e"
+    bad_id = "c6d8a87e-f439-4a4e-a42c-6cbb9037207e"
+    good_agent = _stored_agent(id=good_id)
+    fake_db = SimpleNamespace(
+        fetch=AsyncMock(return_value=[{"id": good_id}, {"id": bad_id}])
+    )
+    repo = AgentRepository(fake_db)
+    repo._row_to_agent = Mock(side_effect=[good_agent, ValueError("untrusted payload")])
+
+    agents, invalid_ids = await repo.list_agents_for_health_checks()
+
+    assert agents == [good_agent]
+    assert invalid_ids == [bad_id]
+    fake_db.fetch.assert_awaited_once_with(
+        "SELECT * FROM agents WHERE hidden = false ORDER BY created_at DESC"
+    )
 
 
 def test_comparable_handles_model_objects_nested_in_lists():
