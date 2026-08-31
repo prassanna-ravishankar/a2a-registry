@@ -65,6 +65,18 @@ def _format_skill(skill) -> dict:
     }
 
 
+def _format_skill_count(skill_id, count, *, id_key: str) -> dict:
+    """Format aggregate skill data without elevating registry-owned content."""
+    return {
+        "_meta": {
+            "content_trust": "untrusted_third_party",
+            "warning": UNTRUSTED_CONTENT_NOTICE,
+        },
+        id_key: _untrusted_text(skill_id, 200),
+        "count" if id_key == "id" else "agent_count": count,
+    }
+
+
 def _format_capabilities(capabilities) -> dict:
     raw = capabilities.model_dump(mode="json") if hasattr(capabilities, "model_dump") else {}
     # Return the defined boolean signals, not arbitrary extension payloads.
@@ -195,7 +207,12 @@ async def get_registry_stats() -> dict:
     """Get registry-wide statistics: total agents, health %, trending skills, etc."""
     repo = StatsRepository(db)
     stats = await repo.get_registry_stats()
-    return stats.model_dump()
+    result = stats.model_dump()
+    result["trending_skills"] = [
+        _format_skill_count(skill.get("id"), skill.get("count"), id_key="id")
+        for skill in result.get("trending_skills", [])
+    ]
+    return result
 
 
 @mcp.tool
@@ -226,4 +243,7 @@ async def list_skills(limit: int = 50) -> list[dict]:
         """,
         _bounded_limit(limit, 200),
     )
-    return [{"skill": row["skill_id"], "agent_count": row["agent_count"]} for row in rows]
+    return [
+        _format_skill_count(row["skill_id"], row["agent_count"], id_key="skill")
+        for row in rows
+    ]
