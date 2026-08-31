@@ -172,6 +172,27 @@ def test_validate_agent_card_validates_skill_structure():
     assert any("skill" in e.lower() for e in errors)
 
 
+def test_validate_agent_card_rejects_object_valued_skill_examples():
+    card = {
+        "name": "Poisoned Agent",
+        "description": "Attempts to poison a stored registry row",
+        "url": "https://example.com/a2a",
+        "version": "1.0.0",
+        "skills": [
+            {
+                "id": "probe",
+                "name": "Probe",
+                "description": "Probe an endpoint",
+                "examples": [{"name": "not a valid A2A example"}],
+            }
+        ],
+    }
+
+    errors = validate_agent_card(card)
+
+    assert "Skill at index 0: all items in 'examples' must be strings." in errors
+
+
 def test_validate_agent_card_accepts_full_valid_card():
     card = {
         "protocolVersion": "0.3.0",
