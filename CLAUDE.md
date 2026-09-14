@@ -62,6 +62,8 @@ uv build
 - Agent registration: `POST /api/agents/register` with `{"wellKnownURI": "..."}` — backend fetches the agent card automatically
 - Conformance: `true` = strict A2A spec compliant, `false` = non-conformant, `null` = not yet checked. Worker updates on each health check cycle.
 - Trust evidence is rendered as four independent observations: card fetched, schema conformant, reachable, and task verified. A failed conformance check is an amber caveat, not a reason to hide later evidence.
+- Frontend visual authority is the ledger/register system in `website/src/styles/global.css`: warm paper and its true dark inverse, hairline rules, square corners, no shadows, green only for evidence/links, and amber only for caveats. Prefer dense rows and datasheets over dashboard cards.
+- IBM Plex Sans is for prose and labels; IBM Plex Mono with tabular figures is for identifiers, URLs, versions, timestamps, JSON, and uptime. Tables become labeled rows below 760px and filters stack below 520px. Preserve the tokenized dark theme, visible focus outlines, and reduced-motion rules.
 - `conformance IS NOT TRUE` = non-standard (includes null/unvalidated)
 - MCP server (`backend/app/mcp_server.py`) is mounted at `/mcp/` via `mcp.http_app(stateless_http=True)` — created fresh per lifespan to avoid SessionManager reuse issues in tests
 - No `agents/` directory — the old "Git as database" model was replaced by the live API + PostgreSQL backend

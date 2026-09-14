@@ -4,6 +4,8 @@
 @tailwind utilities;
 
 :root {
+  --sans: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
   --paper: #f6f5f1;
   --paper-raised: #fbfaf7;
   --ink: #141414;
@@ -39,7 +41,7 @@
 * { box-sizing: border-box; border-color: var(--rule); }
 html { color-scheme: light; }
 html.dark { color-scheme: dark; }
-body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
 a { color: var(--green); }
 button, input, select, textarea { font: inherit; border-radius: 0; }
 :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
@@ -158,6 +160,9 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; } }
 
 .submit-page { max-width: 880px; }
+.submit-page { width: min(100% - 2rem, 55rem); margin: 0 auto; }
+.record-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem 0; border-bottom: 1px solid var(--ink); font: .75rem var(--mono); }
+.kicker { color: var(--muted); font-size: .75rem; }
 .submit-header { max-width: 720px; margin: 5rem 0 3rem; }
 .submit-header h1 { font-size: clamp(2rem, 6vw, 4.25rem); letter-spacing: -.045em; line-height: 1; margin: .5rem 0 1.25rem; }
 .submit-header > p:last-child { max-width: 660px; color: var(--muted); font-size: 1.05rem; }
@@ -169,7 +174,7 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .dark .submit-flow button { color: #0e0e0e; }
 .submit-flow button:disabled { cursor: wait; opacity: .55; }
 .submit-inspector > p, .submit-caveat { color: var(--muted); font-size: .8rem; }
-.submit-error, .submit-caveat { border-left: 3px solid var(--amber); padding-left: 1rem; }
+.submit-error, .submit-caveat { border-top: 1px solid var(--amber); padding-top: .75rem; }
 .submit-error { color: var(--amber); margin-top: 1.5rem; }
 .submit-preview { border-top: 1px solid var(--rule); margin-top: 3rem; padding-top: 1.5rem; }
 .submit-preview__head { align-items: start; display: flex; justify-content: space-between; gap: 2rem; }
@@ -183,4 +188,9 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
   .submit-input-row input { border-right: 1px solid var(--rule); }
   .submit-preview__head { display: block; }
   .submit-preview__head .evidence-ladder { margin-top: 1rem; }
+}
+@media (max-width: 520px) {
+  .registry-filters { grid-template-columns: 1fr; }
+  .registry-filters label, .registry-filters label:nth-child(odd), .registry-filters label:nth-child(even) { padding: .8rem 0; border-left: 0; }
+  .registry-search { grid-column: auto; }
 }

@@ -4,7 +4,7 @@ import RegistryTable from '@/components/RegistryTable.jsx';
 import { loadRegistry, loadRegistryStats } from '@/lib/registryBuild';
 
 const [registry, stats] = await Promise.all([loadRegistry(), loadRegistryStats()]);
-const initialAgents = registry.agents.slice(0, 200);
+const initialAgents = registry.agents;
 const sweep = new Date(stats.generated_at);
 const sweepLabel = sweep.toLocaleString('en-GB', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') + ' UTC';
 const title = 'A2A Registry — evidence for live A2A agents';
@@ -16,7 +16,7 @@ const jsonLd = [
 ];
 ---
 <BaseLayout title={title} description={description} jsonLd={jsonLd} bodyClass="ledger-page">
-  <!-- THESIS: Evidence is the product; refuse the dashboard-card directory. OWN-WORLD: warm paper, ink, hairlines, ledger rows, one evidence green. STORY: scan the register, inspect one canonical record, integrate with known caveats. FIRST VIEWPORT: document masthead, thesis, URL-driven search, and the first evidence rows. FORM: ship register, assigned direction 7, seed 3716de9b. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md -->
+  <!-- THESIS: Evidence is the product; refuse the dashboard-card directory. OWN-WORLD: warm paper, ink, hairlines, ledger rows, one evidence green. STORY: scan the register, inspect one canonical record, integrate with known caveats. FIRST VIEWPORT: document masthead, thesis, URL-driven search, and the first evidence rows. FORM: ship register, assigned direction 7, seed 3716de9b. -->
   <main class="ledger-shell">
     <header class="document-header">
       <div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>{stats.total_agents} agents</span><span>·</span><span>{stats.healthy_agents} reachable</span><span>·</span><time datetime={stats.generated_at} title={sweep.toISOString()}>sweep {sweepLabel}</time></div>

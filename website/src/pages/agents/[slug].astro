@@ -29,9 +29,10 @@ const snippets = {
 };
 const description = String(agent.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 160);
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://a2aregistry.org').toString();
+const ogImage = new URL(`/agents/${agent.id}/og.svg`, Astro.site ?? 'https://a2aregistry.org').toString();
 const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: agent.name, description, applicationCategory: 'DeveloperApplication', operatingSystem: 'Any', url: canonical, author: { '@type': 'Organization', name: provider } }, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'A2A Registry', item: 'https://a2aregistry.org/' }, { '@type': 'ListItem', position: 2, name: agent.name, item: canonical }] }];
 ---
-<BaseLayout title={`${agent.name} — A2A Registry`} description={description} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
+<BaseLayout title={`${agent.name} — A2A Registry`} description={description} ogImage={ogImage} ogImageAlt={`${agent.name} evidence record`} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
   <main class="ledger-shell agent-sheet">
     <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav><a href="/">Back to register</a><a href="/submit">Submit an agent</a></nav></header>
     <section class="agent-heading">
