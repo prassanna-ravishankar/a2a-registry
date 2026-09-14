@@ -2,7 +2,7 @@ import React from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import AgentCard from './AgentCard';
+import AgentRow from './AgentRow';
 
 const AgentGrid = ({
     agents,
@@ -78,13 +78,19 @@ const AgentGrid = ({
                     </p>
                 </div>
 
-                <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="agent-table" role="table" aria-label="Registered A2A agents">
+                <div className="agent-table__head" role="row">
+                    <span>Name / provider</span>
+                    <span>Protocol</span>
+                    <span>Uptime</span>
+                    <span>Evidence</span>
+                    <span>Last checked</span>
+                    <span aria-hidden="true" />
+                </div>
                 {agents.map((agent) => (
-                    <AgentCard
+                    <AgentRow
                         key={agent.id}
                         agent={agent}
-                        isSelected={selectedAgent?.name === agent.name}
-                        onClick={onAgentSelect}
                     />
                 ))}
                 </div>
