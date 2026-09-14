@@ -113,6 +113,17 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .maintainer-note { padding: 1.5rem 0; border-bottom: 1px solid var(--amber); color: var(--amber); }
 .maintainer-note p { margin: .35rem 0 0; }
 .terminal-shell { height: 28rem; margin-top: 1.5rem; }
+.agent-terminal { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--rule); font: .75rem/1.5 var(--mono); }
+.agent-terminal__header, .agent-terminal__input { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .9rem; border-bottom: 1px solid var(--rule); color: var(--muted); }
+.agent-terminal__logs { flex: 1; overflow: auto; padding: 1rem; }
+.agent-terminal__line { display: grid; grid-template-columns: 5.5rem 1.5rem minmax(0, 1fr); gap: .5rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.agent-terminal__line > span:first-child { color: var(--muted); }
+.terminal-log--response, .terminal-log--success { color: var(--green); }
+.terminal-log--system, .terminal-log--error { color: var(--amber); }
+.agent-terminal__input { border-top: 1px solid var(--rule); border-bottom: 0; }
+.agent-terminal__field { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
+.agent-terminal__input button { border: 0; background: transparent; color: var(--green); cursor: pointer; }
+.theme-toggle { position: fixed; right: .75rem; bottom: .75rem; z-index: 20; border: 1px solid var(--rule); background: var(--paper); color: var(--green); font: .7rem var(--mono); padding: .45rem .6rem; cursor: pointer; }
 .record-footer { display: flex; justify-content: space-between; gap: 2rem; padding: 2rem 0 5rem; color: var(--muted); font-size: .75rem; }
 .report-form { display: grid; gap: 1rem; width: min(100%, 34rem); }
 .report-form label { display: grid; gap: .35rem; }
@@ -145,3 +156,31 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; } }
+
+.submit-page { max-width: 880px; }
+.submit-header { max-width: 720px; margin: 5rem 0 3rem; }
+.submit-header h1 { font-size: clamp(2rem, 6vw, 4.25rem); letter-spacing: -.045em; line-height: 1; margin: .5rem 0 1.25rem; }
+.submit-header > p:last-child { max-width: 660px; color: var(--muted); font-size: 1.05rem; }
+.submit-inspector { border-top: 1px solid var(--rule); padding-top: 1.5rem; }
+.submit-inspector label { display: block; color: var(--muted); font-size: .75rem; margin-bottom: .5rem; }
+.submit-input-row { display: grid; grid-template-columns: 1fr auto; }
+.submit-input-row input { min-width: 0; border: 1px solid var(--rule); border-right: 0; background: transparent; color: var(--ink); font: .875rem var(--mono); padding: .9rem; }
+.submit-flow button { border: 1px solid var(--green); background: var(--green); color: var(--paper); cursor: pointer; font: 600 .8rem var(--sans); padding: .8rem 1.2rem; }
+.dark .submit-flow button { color: #0e0e0e; }
+.submit-flow button:disabled { cursor: wait; opacity: .55; }
+.submit-inspector > p, .submit-caveat { color: var(--muted); font-size: .8rem; }
+.submit-error, .submit-caveat { border-left: 3px solid var(--amber); padding-left: 1rem; }
+.submit-error { color: var(--amber); margin-top: 1.5rem; }
+.submit-preview { border-top: 1px solid var(--rule); margin-top: 3rem; padding-top: 1.5rem; }
+.submit-preview__head { align-items: start; display: flex; justify-content: space-between; gap: 2rem; }
+.submit-preview__head span { color: var(--muted); font-size: .75rem; }
+.submit-preview__head h2 { font-size: 2rem; margin: .25rem 0; }
+.submit-preview__head p { color: var(--muted); margin: 0; }
+.submit-preview .datasheet { margin: 2rem 0; }
+@media (max-width: 640px) {
+  .submit-header { margin: 3rem 0 2rem; }
+  .submit-input-row { grid-template-columns: 1fr; gap: .5rem; }
+  .submit-input-row input { border-right: 1px solid var(--rule); }
+  .submit-preview__head { display: block; }
+  .submit-preview__head .evidence-ladder { margin-top: 1rem; }
+}

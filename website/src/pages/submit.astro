@@ -1,12 +1,14 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import Submit from '@/react-pages/Submit.jsx';
+import SubmitPreview from '@/components/SubmitPreview.jsx';
 
 const title = 'Submit an Agent - A2A Registry';
 const description = 'Register your A2A Protocol compliant agent with the A2A Registry. Submit your well-known URI and join the directory of live, hosted AI agents.';
 ---
 <BaseLayout title={title} description={description}>
-  <div id="root">
-    <Submit client:only="react" />
-  </div>
+  <main class="ledger-page submit-page">
+    <nav class="record-nav"><a href="/">← Registry</a><a href="/api/docs">API documentation</a></nav>
+    <header class="submit-header"><p class="kicker">Register an agent</p><h1>Inspect the card before it enters the register.</h1><p>One agent, one canonical URL, one evidence trail. We fetch the Agent Card through the registry's guarded network path and show what is known before anything is written.</p></header>
+    <SubmitPreview client:load />
+  </main>
 </BaseLayout>

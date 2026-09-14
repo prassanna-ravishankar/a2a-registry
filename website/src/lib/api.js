@@ -85,6 +85,13 @@ export const api = {
     });
   },
 
+  async previewAgentByURI(wellKnownURI) {
+    return fetchAPI('/agents/preview', {
+      method: 'POST',
+      body: JSON.stringify({ wellKnownURI }),
+    });
+  },
+
   // Flag/report an agent
   async flagAgent(agentId, reason, details) {
     return fetchAPI(`/agents/${agentId}/flag`, {
