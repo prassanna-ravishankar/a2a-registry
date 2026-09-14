@@ -12,5 +12,5 @@ export default function LiveEvidence({ initialAgent }) {
     return () => { active = false; };
   }, [initialAgent.id]);
   const checked = agent.last_health_check;
-  return <div aria-live="polite"><EvidenceLadder agent={agent} /><p className="mono checked-at">Last sweep <time dateTime={checked || undefined} title={checked || undefined}>{relativeCheck(checked)}</time></p>{failed && <p className="caveat">Live evidence unavailable. Showing saved observations.</p>}</div>;
+  return <div aria-live="polite"><EvidenceLadder agent={agent} /><p className="mono checked-at">Last sweep <time dateTime={checked || undefined} title={checked || undefined}>{relativeCheck(checked)}</time></p>{failed && <p className="page-status">Live evidence unavailable. Showing saved observations.</p>}</div>;
 }

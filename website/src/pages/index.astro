@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ThemeToggle from '@/components/ThemeToggle.jsx';
 import RegistryTable from '@/components/RegistryTable.jsx';
 import { rowAgent, lastSweep } from '@/lib/registryView';
 import { loadRegistry, loadRegistryStats } from '@/lib/registryBuild';
@@ -21,7 +22,7 @@ const jsonLd = [
   <main class="ledger-shell">
     <header class="document-header">
       <div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span id="registry-count">{registry.agents.length} agents</span><span>·</span><span id="registry-healthy">{registry.agents.filter((agent) => agent.is_healthy === true).length} reachable</span><span>·</span><time id="registry-sweep" datetime={sweepAt || undefined} title={sweepAt || undefined}>sweep {sweepLabel}</time></div>
-      <nav aria-label="Primary"><a href="/submit">Submit an agent</a><a href="/api/docs">API</a><a href="/mcp/">MCP</a><a href="https://github.com/prassanna-ravishankar/a2a-registry">Source</a></nav>
+      <nav aria-label="Primary"><a href="/submit">Submit an agent</a><a href="/api/docs">API</a><a href="/mcp/">MCP</a><a href="https://github.com/prassanna-ravishankar/a2a-registry">Source</a><ThemeToggle client:load /></nav>
     </header>
     <section class="registry-intro"><h1>Register of independently operated A2A agents. Evidence is observed, not endorsed.</h1></section>
     <RegistryTable client:load initialAgents={initialAgents} initialTotal={registry.total} />

@@ -1,6 +1,5 @@
 ---
 import '@/styles/global.css';
-import ThemeToggle from '@/components/ThemeToggle.jsx';
 
 export interface Props {
   title: string;
@@ -112,7 +111,6 @@ const ogImageType = ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
   </head>
   <body class={bodyClass}>
     <slot />
-    <ThemeToggle client:load />
 
     <script>
       import '@/scripts/posthog';

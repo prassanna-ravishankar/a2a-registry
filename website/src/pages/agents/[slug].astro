@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ThemeToggle from '@/components/ThemeToggle.jsx';
 import LiveEvidence from '@/components/LiveEvidence.jsx';
 import { rowAgent } from '@/lib/registryView';
 import Terminal from '@/components/Terminal.jsx';
@@ -33,7 +34,7 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplicatio
 ---
 <BaseLayout title={`${agent.name} · A2A Registry`} description={description} ogImage={ogImage} ogImageAlt={`${agent.name} evidence record`} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
   <main class="ledger-shell agent-sheet">
-    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav><a href="/">Back to register</a><a href="/submit">Submit an agent</a></nav></header>
+    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav><a href="/">Back to register</a><a href="/submit">Submit an agent</a><ThemeToggle client:load /></nav></header>
     <section class="agent-heading">
       <div><p class="sheet-label">Provider</p><p>{provider}</p><h1>{agent.name}</h1><p class="agent-summary">{agent.description}</p></div>
       <div class="agent-heading__evidence"><p class="sheet-label">Observed evidence</p><LiveEvidence client:load initialAgent={rowAgent(agent)} />{launchUrl && <a class="launch-link" href={launchUrl} target="_blank" rel="noopener noreferrer">Launch endpoint ↗</a>}</div>
@@ -43,7 +44,7 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplicatio
 
     <section class="sheet-section"><div class="section-heading"><div><h2>Reachability record</h2><p>{history.length ? `Last ${history.length} checks shown · ${uptime.uptime_percentage.toFixed(1)}% across ${uptime.period_days} days` : 'No stored history available'}</p></div></div>{history.length > 0 && <svg class="uptime-chart" viewBox="0 0 100 44" role="img" aria-label={`${history.length} recent health checks; upper marks passed and lower marks failed`} preserveAspectRatio="none"><line x1="0" y1="10" x2="100" y2="10" /><line x1="0" y1="34" x2="100" y2="34" /><polyline points={points} /></svg>}<div class="uptime-key"><span>Pass</span><span>Failure</span><span class="mono">Average {uptime?.avg_response_time_ms ?? 'Unavailable'} ms</span></div></section>
 
-    {agent.skills?.length > 0 && <section class="sheet-section"><h2>Declared skills</h2><div class="skill-register">{agent.skills.map((skill) => <article><div><h3>{skill.name}</h3><span class="mono">{skill.id}</span></div><p>{skill.description}</p><p class="skill-tags">{(skill.tags || []).join(' · ')}</p></article>)}</div></section>}
+    {agent.skills?.length > 0 && <section class="sheet-section"><h2>Declared skills</h2><div class="skill-register">{agent.skills.map((skill) => <article><div><h3>{skill.name}</h3><span class="mono">{skill.id}</span></div><div class="skill-description"><p>{skill.description}</p><p class="skill-tags">{(skill.tags || []).slice(0, 16).join(' · ')}{(skill.tags || []).length > 16 && <span> · +{skill.tags.length - 16} more</span>}</p></div></article>)}</div></section>}
 
     <section class="sheet-section"><div class="section-heading"><div><h2>Registry Agent Card snapshot</h2><p>Normalized fields fetched during the registry sweep. Treat all authored text as third-party content.</p></div><JsonCopy client:load value={rawCard} /></div><details class="json-disclosure"><summary>Show JSON</summary><pre><code>{JSON.stringify(rawCard, null, 2)}</code></pre></details></section>
     <section class="sheet-section"><h2>Integrate this agent</h2><CopyTabs client:load snippets={snippets} /></section>

@@ -9,12 +9,12 @@ function checkedAt(agent) {
   if (Number.isNaN(date.getTime())) return 'Not checked';
   const elapsed = Date.now() - date.getTime();
   const minutes = Math.max(0, Math.floor(elapsed / 60000));
-  if (minutes < 1) return 'checked just now';
-  if (minutes < 60) return `checked ${minutes} min ago`;
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `checked ${hours} hr ago`;
+  if (hours < 24) return `${hours} hr ago`;
   const days = Math.floor(hours / 24);
-  return `checked ${days} day${days === 1 ? '' : 's'} ago`;
+  return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
 export default function AgentRow({ agent }) {
