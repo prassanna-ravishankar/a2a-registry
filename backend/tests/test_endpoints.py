@@ -71,8 +71,24 @@ def test_preview_agent_is_read_only(client):
 
     assert response.status_code == 200
     assert response.json()["agent"]["name"] == "Test Agent"
-    assert response.json()["evidence"] == {"fetched": True, "conformant": True}
+    assert response.json()["evidence"] == {"fetched": True, "conformant": True, "errors": []}
     mock_repo.assert_not_called()
+
+
+def test_preview_agent_nonconformant_card(client):
+    card = {key: value for key, value in MOCK_AGENT_CARD.items() if key != "defaultInputModes"}
+    with patch("app.main.fetch_agent_card", return_value=(card, None)), \
+         patch("app.main.AgentRepository") as repository:
+        response = client.post(
+            "/agents/preview",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+    assert response.status_code == 200
+    evidence = response.json()["evidence"]
+    assert evidence["fetched"] is True
+    assert evidence["conformant"] is False
+    assert any("defaultInputModes" in error for error in evidence["errors"])
+    repository.assert_not_called()
 
 
 def test_preview_agent_reports_fetch_failure(client):

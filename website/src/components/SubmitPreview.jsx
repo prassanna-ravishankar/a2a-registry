@@ -13,7 +13,7 @@ export default function SubmitPreview() {
     setState('previewing'); setError(''); setPreview(null);
     try {
       const result = await api.previewAgentByURI(uri);
-      setPreview({ ...result.agent, id: `preview:${uri}`, conformance: result.evidence.conformant });
+      setPreview({ ...result.agent, id: `preview:${uri}`, conformance: result.evidence.conformant, conformance_errors: result.evidence.errors || [] });
       setState('ready');
     } catch (problem) {
       setError(problem.message || 'The Agent Card could not be inspected.');
@@ -45,6 +45,7 @@ export default function SubmitPreview() {
     {preview && <section className="submit-preview" aria-live="polite">
       <div className="submit-preview__head"><div><span>Preview</span><h2>{preview.name}</h2><p>{preview.provider?.organization || preview.author || 'Provider not declared'}</p></div><EvidenceLadder agent={preview} /></div>
       <dl className="datasheet"><div><dt>Canonical URL</dt><dd><code>{preview.wellKnownURI}</code></dd></div><div><dt>Protocol version</dt><dd><code>{preview.protocolVersion}</code></dd></div><div><dt>Endpoint</dt><dd><code>{preview.url}</code></dd></div><div><dt>Skills declared</dt><dd><code>{preview.skills?.length || 0}</code></dd></div></dl>
+      <ul className="caveat">{preview.conformance_errors.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
       <p className="submit-caveat">Reachability and task verification are established by the registration probe and subsequent health sweeps.</p>
       <button type="button" onClick={register} disabled={state === 'registering'}>{state === 'registering' ? 'Registering and probing…' : 'Register this agent'}</button>
     </section>}
