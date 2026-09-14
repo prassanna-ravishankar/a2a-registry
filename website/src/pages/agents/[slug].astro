@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import EvidenceLadder from '@/components/EvidenceLadder.jsx';
+import LiveEvidence from '@/components/LiveEvidence.jsx';
+import { rowAgent } from '@/lib/registryView';
 import Terminal from '@/components/Terminal.jsx';
 import { CopyTabs, JsonCopy, ReportAgent } from '@/components/AgentTools.jsx';
 import { agentProvider, safeExternalUrl } from '@/lib/utils';
@@ -17,8 +18,6 @@ const { agent } = Astro.props;
 const uptime = await loadAgentUptime(agent.id);
 const provider = agentProvider(agent);
 const launchUrl = safeExternalUrl(agent.url);
-const checkedAt = agent.last_health_check || agent.task_conformance?.checked_at;
-const checkedLabel = checkedAt ? new Date(checkedAt).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) + ' UTC' : 'Not checked';
 const history = [...(uptime?.history || [])].reverse();
 const points = history.map((check, index) => `${history.length < 2 ? 0 : (index / (history.length - 1)) * 100},${check.success ? 10 : 34}`).join(' ');
 const rawCard = Object.fromEntries(Object.entries(agent).filter(([key]) => !['uptime_percentage', 'avg_response_time_ms', 'last_health_check', 'is_healthy', 'status_notes', 'task_conformance', 'created_at', 'updated_at', 'hidden', 'flag_count', 'maintainer_notes'].includes(key)));
@@ -29,20 +28,20 @@ const snippets = {
 };
 const description = String(agent.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 160);
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://a2aregistry.org').toString();
-const ogImage = new URL(`/agents/${agent.id}/og.svg`, Astro.site ?? 'https://a2aregistry.org').toString();
+const ogImage = 'https://a2aregistry.org/og-image.png';
 const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: agent.name, description, applicationCategory: 'DeveloperApplication', operatingSystem: 'Any', url: canonical, author: { '@type': 'Organization', name: provider } }, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'A2A Registry', item: 'https://a2aregistry.org/' }, { '@type': 'ListItem', position: 2, name: agent.name, item: canonical }] }];
 ---
-<BaseLayout title={`${agent.name} — A2A Registry`} description={description} ogImage={ogImage} ogImageAlt={`${agent.name} evidence record`} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
+<BaseLayout title={`${agent.name} · A2A Registry`} description={description} ogImage={ogImage} ogImageAlt={`${agent.name} evidence record`} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
   <main class="ledger-shell agent-sheet">
     <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav><a href="/">Back to register</a><a href="/submit">Submit an agent</a></nav></header>
     <section class="agent-heading">
       <div><p class="sheet-label">Provider</p><p>{provider}</p><h1>{agent.name}</h1><p class="agent-summary">{agent.description}</p></div>
-      <div class="agent-heading__evidence"><p class="sheet-label">Observed evidence</p><EvidenceLadder agent={agent} /><p class="mono checked-at">Last sweep {checkedLabel}</p>{launchUrl && <a class="launch-link" href={launchUrl} target="_blank" rel="noopener noreferrer">Launch endpoint ↗</a>}</div>
+      <div class="agent-heading__evidence"><p class="sheet-label">Observed evidence</p><LiveEvidence client:load initialAgent={rowAgent(agent)} />{launchUrl && <a class="launch-link" href={launchUrl} target="_blank" rel="noopener noreferrer">Launch endpoint ↗</a>}</div>
     </section>
 
     <section class="sheet-section"><h2>Agent datasheet</h2><dl class="datasheet"><div><dt>Agent ID</dt><dd>{agent.id}</dd></div><div><dt>Canonical card</dt><dd><a href={agent.wellKnownURI}>{agent.wellKnownURI}</a></dd></div><div><dt>Endpoint</dt><dd>{agent.url}</dd></div><div><dt>Protocol version</dt><dd>{agent.protocolVersion || 'Not declared'}</dd></div><div><dt>Agent version</dt><dd>{agent.version || 'Not declared'}</dd></div><div><dt>Streaming</dt><dd>{agent.capabilities?.streaming ? 'Supported' : 'Not declared'}</dd></div><div><dt>Input modes</dt><dd>{(agent.defaultInputModes || []).join(', ') || 'Not declared'}</dd></div><div><dt>Output modes</dt><dd>{(agent.defaultOutputModes || []).join(', ') || 'Not declared'}</dd></div></dl></section>
 
-    <section class="sheet-section"><div class="section-heading"><div><h2>Reachability record</h2><p>{history.length ? `Last ${history.length} checks shown · ${uptime.uptime_percentage.toFixed(1)}% across ${uptime.period_days} days` : 'No stored history available'}</p></div></div>{history.length > 0 && <svg class="uptime-chart" viewBox="0 0 100 44" role="img" aria-label={`${history.length} recent health checks; upper marks passed and lower marks failed`} preserveAspectRatio="none"><line x1="0" y1="10" x2="100" y2="10" /><line x1="0" y1="34" x2="100" y2="34" /><polyline points={points} /></svg>}<div class="uptime-key"><span>Pass</span><span>Failure</span><span class="mono">Average {uptime?.avg_response_time_ms ?? '—'} ms</span></div></section>
+    <section class="sheet-section"><div class="section-heading"><div><h2>Reachability record</h2><p>{history.length ? `Last ${history.length} checks shown · ${uptime.uptime_percentage.toFixed(1)}% across ${uptime.period_days} days` : 'No stored history available'}</p></div></div>{history.length > 0 && <svg class="uptime-chart" viewBox="0 0 100 44" role="img" aria-label={`${history.length} recent health checks; upper marks passed and lower marks failed`} preserveAspectRatio="none"><line x1="0" y1="10" x2="100" y2="10" /><line x1="0" y1="34" x2="100" y2="34" /><polyline points={points} /></svg>}<div class="uptime-key"><span>Pass</span><span>Failure</span><span class="mono">Average {uptime?.avg_response_time_ms ?? 'Unavailable'} ms</span></div></section>
 
     {agent.skills?.length > 0 && <section class="sheet-section"><h2>Declared skills</h2><div class="skill-register">{agent.skills.map((skill) => <article><div><h3>{skill.name}</h3><span class="mono">{skill.id}</span></div><p>{skill.description}</p><p class="skill-tags">{(skill.tags || []).join(' · ')}</p></article>)}</div></section>}
 

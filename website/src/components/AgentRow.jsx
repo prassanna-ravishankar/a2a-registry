@@ -1,5 +1,4 @@
 import React from 'react';
-import { ArrowUpRight } from 'lucide-react';
 import EvidenceLadder from './EvidenceLadder';
 import { agentProvider } from '@/lib/utils';
 
@@ -22,7 +21,7 @@ export default function AgentRow({ agent }) {
   const lastChecked = agent.last_health_check || agent.task_conformance?.checked_at;
   const uptime = Number.isFinite(Number(agent.uptime_percentage))
     ? `${Number(agent.uptime_percentage).toFixed(1)}%`
-    : '—';
+    : 'Unavailable';
 
   return (
     <a className="agent-row" href={`/agents/${encodeURIComponent(agent.id)}`}>
@@ -32,7 +31,7 @@ export default function AgentRow({ agent }) {
       </span>
       <span className="agent-row__datum agent-row__protocol">
         <span className="agent-row__mobile-label">Protocol</span>
-        {agent.protocolVersion || '—'}
+        {agent.protocolVersion || 'Unavailable'}
       </span>
       <span className="agent-row__datum">
         <span className="agent-row__mobile-label">Uptime</span>
@@ -43,7 +42,7 @@ export default function AgentRow({ agent }) {
         <span className="agent-row__mobile-label">Last checked</span>
         <time dateTime={lastChecked || undefined} title={lastChecked ? new Date(lastChecked).toLocaleString() : undefined}>{checkedAt(agent)}</time>
       </span>
-      <ArrowUpRight className="agent-row__arrow" aria-hidden="true" />
+      <span className="agent-row__arrow" aria-hidden="true">↗</span>
     </a>
   );
 }

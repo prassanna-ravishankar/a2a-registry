@@ -19,7 +19,7 @@ const {
   description,
   canonical,
   ogImage = 'https://a2aregistry.org/og-image.png',
-  ogImageAlt = 'A2A Registry — evidence for live A2A agents',
+  ogImageAlt = 'A2A Registry · evidence for live A2A agents',
   ogType = 'website',
   noindex = false,
   jsonLd = [],
@@ -111,7 +111,6 @@ const ogImageType = ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
     <slot name="head" />
   </head>
   <body class={bodyClass}>
-    <!-- impeccable:ledger-world evidence is the interface; warm paper and its true dark inverse use sharp rules, tabular values, and one evidence green -->
     <slot />
     <ThemeToggle client:load />
 
