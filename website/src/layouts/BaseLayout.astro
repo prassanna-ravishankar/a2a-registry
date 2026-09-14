@@ -35,6 +35,7 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://pypi.org" />
     <link rel="dns-prefetch" href="https://github.com" />
     <link rel="dns-prefetch" href="https://modal.com" />
@@ -73,24 +74,30 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <meta property="twitter:image" content={ogImage} />
     <meta property="twitter:image:alt" content="A2A Registry - Community-driven directory of live AI agents" />
 
-    <meta name="theme-color" content="#7C3AED" />
+    <meta name="theme-color" content="#f6f5f1" />
     <meta name="application-name" content="A2A Registry" />
-    <meta name="msapplication-TileColor" content="#7C3AED" />
+    <meta name="msapplication-TileColor" content="#f6f5f1" />
 
     <style is:inline>
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: monospace;
+        font-family: 'IBM Plex Sans', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        background-color: #000;
-        color: #e4e4e7;
+        background-color: #f6f5f1;
+        color: #141414;
       }
       #root, .astro-root { min-height: 100vh; }
-      .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
+
+    <script is:inline>
+      try {
+        const saved = localStorage.getItem('a2a-theme');
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', dark);
+      } catch {}
+    </script>
 
     {jsonLd.map((block) => (
       <script type="application/ld+json" set:html={JSON.stringify(block).replace(/</g, '\\u003c')} />
@@ -99,6 +106,7 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <slot name="head" />
   </head>
   <body class={bodyClass}>
+    <!-- impeccable:ledger-world evidence is the interface; warm paper and its true dark inverse use sharp rules, tabular values, and one evidence green -->
     <slot />
 
     <script>
