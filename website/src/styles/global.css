@@ -52,9 +52,8 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .document-title, .document-header nav { display: flex; flex-wrap: wrap; gap: .35rem .65rem; align-items: center; }
 .document-title a { color: var(--ink); text-decoration: none; font-weight: 600; }
 .document-header nav { justify-content: flex-end; gap: 1.25rem; }
-.registry-intro { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .6fr); gap: 4rem; align-items: end; padding: clamp(3rem, 8vw, 7rem) 0 3rem; border-bottom: 1px solid var(--ink); }
-.registry-intro h1 { margin: 0; max-width: 14ch; font-size: clamp(2.7rem, 7vw, 6rem); line-height: .94; letter-spacing: -.035em; font-weight: 500; }
-.registry-intro p { margin: 0; max-width: 38rem; color: var(--muted); font-size: 1rem; line-height: 1.65; }
+.registry-intro { padding: 1rem 0; border-bottom: 1px solid var(--ink); }
+.registry-intro h1 { margin: 0; color: var(--muted); font-size: .875rem; line-height: 1.6; font-weight: 400; }
 .registry-filters { display: grid; grid-template-columns: minmax(16rem, 2fr) repeat(3, minmax(9rem, .65fr)); border-bottom: 1px solid var(--ink); }
 .registry-filters label { display: grid; gap: .45rem; padding: 1rem; border-right: 1px solid var(--rule); color: var(--muted); font-size: .75rem; }
 .registry-filters label:first-child { padding-left: 0; }
@@ -139,7 +138,6 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
   .ledger-shell { width: min(100% - 1.25rem, 88rem); }
   .document-header { display: grid; gap: 1rem; }
   .document-header nav { justify-content: flex-start; }
-  .registry-intro { grid-template-columns: 1fr; gap: 2rem; padding: 3.5rem 0 2rem; }
   .agent-heading { grid-template-columns: 1fr; gap: 2.5rem; padding: 3.5rem 0; }
   .datasheet div { grid-template-columns: 1fr; padding: .75rem 0; }
   .datasheet dt, .datasheet dd { padding: .15rem 0; }
