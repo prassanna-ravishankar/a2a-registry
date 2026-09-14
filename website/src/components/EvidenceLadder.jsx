@@ -3,7 +3,10 @@ import { trustLevel, TRUST_LEVELS } from '@/lib/trust';
 
 export default function EvidenceLadder({ agent, compact = false, className = '' }) {
   const trust = trustLevel(agent);
-  const detail = TRUST_LEVELS.map((item, index) => `${item.label}: ${trust.evidence[index] ? 'yes' : 'no'}`).join(', ');
+  const detail = TRUST_LEVELS.map((item, index) => {
+    if (index === 1) return `${item.label}: ${agent?.conformance === false ? 'failed' : agent?.conformance === true ? 'yes' : 'not checked'}`;
+    return `${item.label}: ${trust.evidence[index] ? 'yes' : 'not observed'}`;
+  }).join(', ');
 
   return (
     <span

@@ -11,13 +11,13 @@ export function CopyTabs({ snippets }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
-  return <div className="copy-tabs"><div className="copy-tabs__bar" role="tablist">{entries.map(([key]) => <button key={key} type="button" role="tab" aria-selected={active === key} onClick={() => setActive(key)}>{key}</button>)}<button className="copy-action" type="button" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button></div><pre><code>{value}</code></pre></div>;
+  return <div className="copy-tabs"><div className="copy-tabs__bar">{entries.map(([key]) => <button key={key} type="button" aria-pressed={active === key} onClick={() => setActive(key)}>{key}</button>)}<button className="copy-action" type="button" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button></div><pre><code>{value}</code></pre><span className="sr-only" aria-live="polite">{copied ? 'Snippet copied' : ''}</span></div>;
 }
 
 export function JsonCopy({ value }) {
   const json = useMemo(() => JSON.stringify(value, null, 2), [value]);
   const [copied, setCopied] = useState(false);
-  return <button type="button" className="text-action" onClick={async () => { await navigator.clipboard.writeText(json); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied JSON' : 'Copy JSON'}</button>;
+  return <><button type="button" className="text-action" onClick={async () => { await navigator.clipboard.writeText(json); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied JSON' : 'Copy JSON'}</button><span className="sr-only" aria-live="polite">{copied ? 'JSON copied' : ''}</span></>;
 }
 
 export function ReportAgent({ agentId }) {
