@@ -22,10 +22,10 @@ const jsonLd = [
   <main class="ledger-shell">
     <header class="document-header">
       <div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span id="registry-count">{registry.agents.length} agents</span><span>·</span><span id="registry-healthy">{registry.agents.filter((agent) => agent.is_healthy === true).length} reachable</span><span>·</span><time id="registry-sweep" datetime={sweepAt || undefined} title={sweepAt || undefined}>sweep {sweepLabel}</time></div>
-      <nav aria-label="Primary"><a href="/submit">Submit an agent</a><a href="/api/docs">API</a><a href="/mcp/">MCP</a><a href="https://github.com/prassanna-ravishankar/a2a-registry">Source</a><ThemeToggle client:load /></nav>
+      <nav aria-label="Primary"><a href="/submit">Submit an agent</a><a href="/api/docs">API</a><a href="/mcp/">MCP</a><a href="https://github.com/prassanna-ravishankar/a2a-registry">Source</a><a href="https://github.com/prassanna-ravishankar/a2a-registry/issues">Feedback</a><ThemeToggle client:load /></nav>
     </header>
     <section class="registry-intro"><h1>Register of independently operated A2A agents. Evidence is observed, not endorsed.</h1></section>
     <RegistryTable client:load initialAgents={initialAgents} initialTotal={registry.total} />
-    <footer class="ledger-footer"><span>Evidence refreshes every 30 minutes.</span><span>Third-party endpoints may change after inspection.</span></footer>
+    <footer class="ledger-footer"><span>Third-party endpoints may change after inspection.</span></footer>
   </main>
 </BaseLayout>

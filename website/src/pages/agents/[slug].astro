@@ -20,7 +20,6 @@ const uptime = await loadAgentUptime(agent.id);
 const provider = agentProvider(agent);
 const launchUrl = safeExternalUrl(agent.url);
 const history = [...(uptime?.history || [])].reverse();
-const points = history.map((check, index) => `${history.length < 2 ? 0 : (index / (history.length - 1)) * 100},${check.success ? 10 : 34}`).join(' ');
 const rawCard = Object.fromEntries(Object.entries(agent).filter(([key]) => !['uptime_percentage', 'avg_response_time_ms', 'last_health_check', 'is_healthy', 'status_notes', 'task_conformance', 'created_at', 'updated_at', 'hidden', 'flag_count', 'maintainer_notes'].includes(key)));
 const snippets = {
   curl: `curl -s https://a2aregistry.org/api/agents/${agent.id}`,
@@ -42,7 +41,7 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplicatio
 
     <section class="sheet-section"><h2>Agent datasheet</h2><dl class="datasheet"><div><dt>Agent ID</dt><dd>{agent.id}</dd></div><div><dt>Canonical card</dt><dd><a href={agent.wellKnownURI}>{agent.wellKnownURI}</a></dd></div><div><dt>Endpoint</dt><dd>{agent.url}</dd></div><div><dt>Protocol version</dt><dd>{agent.protocolVersion || 'Not declared'}</dd></div><div><dt>Agent version</dt><dd>{agent.version || 'Not declared'}</dd></div><div><dt>Streaming</dt><dd>{agent.capabilities?.streaming ? 'Supported' : 'Not declared'}</dd></div><div><dt>Input modes</dt><dd>{(agent.defaultInputModes || []).join(', ') || 'Not declared'}</dd></div><div><dt>Output modes</dt><dd>{(agent.defaultOutputModes || []).join(', ') || 'Not declared'}</dd></div></dl></section>
 
-    <section class="sheet-section"><div class="section-heading"><div><h2>Reachability record</h2><p>{history.length ? `Last ${history.length} checks shown · ${uptime.uptime_percentage.toFixed(1)}% across ${uptime.period_days} days` : 'No stored history available'}</p></div></div>{history.length > 0 && <svg class="uptime-chart" viewBox="0 0 100 44" role="img" aria-label={`${history.length} recent health checks; upper marks passed and lower marks failed`} preserveAspectRatio="none"><line x1="0" y1="10" x2="100" y2="10" /><line x1="0" y1="34" x2="100" y2="34" /><polyline points={points} /></svg>}<div class="uptime-key"><span>Pass</span><span>Failure</span><span class="mono">Average {uptime?.avg_response_time_ms ?? 'Unavailable'} ms</span></div></section>
+    <section class="sheet-section"><div class="section-heading"><div><h2>Reachability record</h2><p>{history.length ? `Last ${history.length} checks shown · ${uptime.uptime_percentage.toFixed(1)}% across ${uptime.period_days} days` : 'No stored history available'}</p></div></div>{history.length > 0 && <svg class="uptime-chart" viewBox="0 0 100 44" role="img" aria-label={`${history.length} recent health checks; upper marks passed and lower marks failed`} preserveAspectRatio="none"><line x1="0" y1="10" x2="100" y2="10" /><line x1="0" y1="34" x2="100" y2="34" />{history.map((check, index) => <rect class={check.success ? "check-pass" : "check-fail"} x={index * 100 / history.length} y={check.success ? 5 : 29} width={100 / history.length * .65} height="10"><title>{check.checked_at}: {check.success ? 'passed' : 'failed'}</title></rect>)}</svg>}<div class="uptime-key"><span>Pass</span><span>Failure</span><span class="mono">Average {uptime?.avg_response_time_ms ?? 'Unavailable'} ms</span></div></section>
 
     {agent.skills?.length > 0 && <section class="sheet-section"><h2>Declared skills</h2><div class="skill-register">{agent.skills.map((skill) => <article><div><h3>{skill.name}</h3><span class="mono">{skill.id}</span></div><div class="skill-description"><p>{skill.description}</p><p class="skill-tags">{(skill.tags || []).slice(0, 16).join(' · ')}{(skill.tags || []).length > 16 && <span> · +{skill.tags.length - 16} more</span>}</p></div></article>)}</div></section>}
 
@@ -50,6 +49,6 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplicatio
     <section class="sheet-section"><h2>Integrate this agent</h2><CopyTabs client:load snippets={snippets} /></section>
     {agent.maintainer_notes && <aside class="maintainer-note"><p class="sheet-label">Maintainer note</p><p>{agent.maintainer_notes}</p></aside>}
     <section class="sheet-section"><h2>Test message</h2><p class="section-copy">Messages are sent to this independently operated agent through the registry proxy. Do not include secrets or personal data.</p><div class="terminal-shell"><Terminal client:visible agent={agent} autoFocusInput={false} /></div></section>
-    <footer class="record-footer"><ReportAgent client:load agentId={agent.id} /><span>Evidence is observational and is not an endorsement.</span></footer>
+    <footer class="record-footer"><div class="record-footer__actions"><ReportAgent client:load agentId={agent.id} /><a href="https://github.com/prassanna-ravishankar/a2a-registry/issues">Feedback</a></div><span>Evidence is observational and is not an endorsement.</span></footer>
   </main>
 </BaseLayout>

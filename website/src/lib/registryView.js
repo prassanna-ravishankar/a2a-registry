@@ -15,5 +15,6 @@ export function relativeCheck(value) {
   if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes} min ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)} hr ago`;
-  return `${Math.floor(minutes / 1440)} days ago`;
+  const days = Math.floor(minutes / 1440);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
 }

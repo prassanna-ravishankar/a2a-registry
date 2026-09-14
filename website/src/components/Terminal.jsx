@@ -21,9 +21,8 @@ const Terminal = ({ agent, autoFocusInput = true }) => {
         const newContextId = crypto.randomUUID();
         setContextId(newContextId);
         setSystemLogs([
-            { type: 'system', content: `INITIALIZING CONNECTION TO ${agent.name.toUpperCase()}...`, timestamp: now },
-            { type: 'system', content: `PROTOCOL: A2A v${agent.protocolVersion || agent.version || '0.3'}`, timestamp: now },
-            { type: 'success', content: 'PROXY READY. TYPE YOUR MESSAGE OR ASK A QUESTION.', timestamp: now },
+            { type: 'system', content: `Connected to ${agent.name} through the registry proxy.`, timestamp: now },
+            { type: 'system', content: `Protocol A2A v${agent.protocolVersion || agent.version || '0.3'}`, timestamp: now },
         ]);
         setReady(true);
     }, [agent]);
@@ -60,7 +59,7 @@ const Terminal = ({ agent, autoFocusInput = true }) => {
             console.error('Chat proxy error:', err);
             setMessages(prev => [
                 ...prev,
-                { type: 'error', content: `ERROR: ${err.message}`, timestamp: new Date() },
+                { type: 'error', content: `Error: ${err.message}`, timestamp: new Date() },
             ]);
         } finally {
             setIsLoading(false);
@@ -117,7 +116,7 @@ const Terminal = ({ agent, autoFocusInput = true }) => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     className="agent-terminal__field"
-                    placeholder={error ? "CONNECTION UNAVAILABLE" : ready ? "ENTER MESSAGE..." : "CONNECTING..."}
+                    placeholder="Type a message"
                     autoFocus={autoFocusInput}
                     disabled={!ready || isLoading}
                 />
