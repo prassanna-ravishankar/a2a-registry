@@ -59,6 +59,50 @@ def _make_agent_public(**overrides):
 # ============================================================================
 
 
+def test_preview_agent_is_read_only(client):
+    """Preview returns normalized evidence without touching the repository."""
+    with patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.AgentRepository") as mock_repo:
+        response = client.post(
+            "/agents/preview",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["agent"]["name"] == "Test Agent"
+    assert response.json()["evidence"] == {"fetched": True, "conformant": True, "errors": []}
+    mock_repo.assert_not_called()
+
+
+def test_preview_agent_nonconformant_card(client):
+    card = {key: value for key, value in MOCK_AGENT_CARD.items() if key != "defaultInputModes"}
+    with patch("app.main.fetch_agent_card", return_value=(card, None)), \
+         patch("app.main.AgentRepository") as repository:
+        response = client.post(
+            "/agents/preview",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+    assert response.status_code == 200
+    evidence = response.json()["evidence"]
+    assert evidence["fetched"] is True
+    assert evidence["conformant"] is False
+    assert any("defaultInputModes" in error for error in evidence["errors"])
+    repository.assert_not_called()
+
+
+def test_preview_agent_reports_fetch_failure(client):
+    with patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(None, "Connection refused")):
+        response = client.post(
+            "/agents/preview",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+
+    assert response.status_code == 400
+    assert "Connection refused" in response.json()["detail"]
+
+
 def test_register_agent_success(client):
     """Successful registration fetches card and creates agent."""
     mock_public = _make_agent_public()

@@ -39,7 +39,7 @@ from .models import (
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .smoke_test import rejection_message, should_reject, smoke_test
 from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
-from .validators import validate_well_known_uri
+from .validators import validate_agent_card, validate_well_known_uri
 
 limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
 
@@ -134,6 +134,31 @@ async def health_check():
 # ============================================================================
 # Agent Endpoints
 # ============================================================================
+
+
+@router.post("/agents/preview")
+@limiter.limit("30/hour")
+async def preview_agent(registration: AgentRegister, request: Request):
+    """Fetch and validate an Agent Card without registering it."""
+    well_known_uri = str(registration.wellKnownURI)
+    uri_errors = validate_well_known_uri(well_known_uri)
+    if uri_errors:
+        raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+
+    agent_card, error = await fetch_agent_card(well_known_uri)
+    if error:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
+    if agent_card is None:
+        raise HTTPException(status_code=500, detail="Internal error: agent card fetch returned no data")
+
+    agent = _agent_create_from_card(
+        agent_card, well_known_uri, author_override=registration.author,
+    )
+    conformance_errors = validate_agent_card(agent_card, strict=True)
+    return {
+        "agent": agent.model_dump(mode="json", by_alias=True),
+        "evidence": {"fetched": True, "conformant": not conformance_errors, "errors": conformance_errors},
+    }
 
 
 @router.post("/agents/register", response_model=AgentPublic, status_code=201)

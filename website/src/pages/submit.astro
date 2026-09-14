@@ -1,12 +1,15 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import Submit from '@/react-pages/Submit.jsx';
+import ThemeToggle from '@/components/ThemeToggle.jsx';
+import SubmitPreview from '@/components/SubmitPreview.jsx';
 
-const title = 'Submit an Agent - A2A Registry';
-const description = 'Register your A2A Protocol compliant agent with the A2A Registry. Submit your well-known URI and join the directory of live, hosted AI agents.';
+const title = 'Submit an agent · A2A Registry';
+const description = "Inspect an Agent Card's evidence before registering it with the A2A Registry.";
 ---
 <BaseLayout title={title} description={description}>
-  <div id="root">
-    <Submit client:only="react" />
-  </div>
+  <main class="ledger-shell">
+    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>SUBMIT</span></div><nav aria-label="Primary"><a href="/">Back to register</a><a href="/api/docs">API</a><ThemeToggle client:load /></nav></header>
+    <section class="registry-intro"><h1>Paste the canonical Agent Card URL. The card is fetched read-only and its evidence is shown before anything is registered.</h1></section>
+    <SubmitPreview client:load />
+  </main>
 </BaseLayout>

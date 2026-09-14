@@ -1,5 +1,3 @@
-import { sampleRegistry } from './sampleRegistry';
-
 const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'https://a2aregistry.org/api';
 
 class ApiError extends Error {
@@ -87,6 +85,13 @@ export const api = {
     });
   },
 
+  async previewAgentByURI(wellKnownURI) {
+    return fetchAPI('/agents/preview', {
+      method: 'POST',
+      body: JSON.stringify({ wellKnownURI }),
+    });
+  },
+
   // Flag/report an agent
   async flagAgent(agentId, reason, details) {
     return fetchAPI(`/agents/${agentId}/flag`, {
@@ -103,18 +108,8 @@ export const api = {
   },
 };
 
-// Fallback: fetch from static registry.json (backward compatibility)
 export async function fetchStaticRegistry() {
-  const response = await fetch('/registry.json');
-  const contentType = response.headers.get('content-type') || '';
-
-  if (!response.ok || !contentType.includes('application/json')) {
-    return sampleRegistry;
-  }
-
-  try {
-    return await response.json();
-  } catch {
-    return sampleRegistry;
-  }
+  const response = await fetch('/registry-snapshot.json');
+  if (!response.ok) throw new ApiError('Registry snapshot unavailable', response.status);
+  return response.json();
 }

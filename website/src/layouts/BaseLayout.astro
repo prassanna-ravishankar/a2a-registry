@@ -6,6 +6,7 @@ export interface Props {
   description: string;
   canonical?: string;
   ogImage?: string;
+  ogImageAlt?: string;
   ogType?: 'website' | 'article' | 'profile';
   noindex?: boolean;
   jsonLd?: unknown[];
@@ -17,6 +18,7 @@ const {
   description,
   canonical,
   ogImage = 'https://a2aregistry.org/og-image.png',
+  ogImageAlt = 'A2A Registry · evidence for live A2A agents',
   ogType = 'website',
   noindex = false,
   jsonLd = [],
@@ -25,6 +27,7 @@ const {
 
 const siteOrigin = Astro.site?.origin ?? 'https://a2aregistry.org';
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toString();
+const ogImageType = ogImage.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -35,6 +38,8 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
     <link rel="dns-prefetch" href="https://pypi.org" />
     <link rel="dns-prefetch" href="https://github.com" />
     <link rel="dns-prefetch" href="https://modal.com" />
@@ -60,8 +65,8 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
-    <meta property="og:image:alt" content="A2A Registry - Community-driven directory of live AI agents" />
-    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta property="og:image:type" content={ogImageType} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="A2A Registry" />
@@ -71,26 +76,33 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteOrigin).toStri
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:image" content={ogImage} />
-    <meta property="twitter:image:alt" content="A2A Registry - Community-driven directory of live AI agents" />
+    <meta property="twitter:image:alt" content={ogImageAlt} />
 
-    <meta name="theme-color" content="#7C3AED" />
+    <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0e0e" media="(prefers-color-scheme: dark)" />
     <meta name="application-name" content="A2A Registry" />
-    <meta name="msapplication-TileColor" content="#7C3AED" />
+    <meta name="msapplication-TileColor" content="#f6f5f1" />
 
     <style is:inline>
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: monospace;
+        font-family: 'IBM Plex Sans', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        background-color: #000;
-        color: #e4e4e7;
+        background-color: var(--paper, #f6f5f1);
+        color: var(--ink, #141414);
       }
       #root, .astro-root { min-height: 100vh; }
-      .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
+
+    <script is:inline>
+      try {
+        const saved = localStorage.getItem('a2a-theme');
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', dark);
+      } catch {}
+    </script>
 
     {jsonLd.map((block) => (
       <script type="application/ld+json" set:html={JSON.stringify(block).replace(/</g, '\\u003c')} />
