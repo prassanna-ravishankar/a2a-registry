@@ -9,6 +9,12 @@ on:
       - '.github/workflows/publish.yml'
     tags:
       - 'v*'  # Trigger on version tags like v0.1.0
+  # Agent records change in the backend without a repository push, while the
+  # public registry snapshot and per-agent pages are prerendered at build time.
+  # Rebuild hourly so healthy registered agents do not remain absent from the
+  # human/static site indefinitely.
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
