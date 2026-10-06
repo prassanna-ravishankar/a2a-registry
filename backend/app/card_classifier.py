@@ -226,11 +226,17 @@ def _probability(value: Any) -> float:
     return p
 
 
-async def classify_card(document: dict[str, Any], client: Optional[AsyncTypeSafeClient] = None) -> CardVerdict:
+async def classify_card(
+    document: dict[str, Any],
+    client: Optional[AsyncTypeSafeClient] = None,
+    *,
+    deadline: Optional[float] = None,
+) -> CardVerdict:
     """Score a document. Raises CardClassifierError on any failure or malformed answer.
 
-    The whole classification shares one deadline; if any window fails, the
-    others are cancelled.
+    Each request has the client timeout; `deadline` additionally bounds the
+    whole card, queueing included, for callers with a person waiting. If any
+    window fails, the others are cancelled.
     """
     windows = card_windows(document)
     if not windows:
@@ -242,7 +248,7 @@ async def classify_card(document: dict[str, Any], client: Optional[AsyncTypeSafe
             async with _inflight:
                 return await jev.system_one(window, _questions(), model=settings.jev_model)
 
-        async with asyncio.timeout(settings.jev_deadline_seconds):
+        async with asyncio.timeout(deadline):
             async with asyncio.TaskGroup() as group:
                 tasks = [group.create_task(ask(window)) for window in windows]
         responses = [task.result() for task in tasks]
@@ -303,7 +309,9 @@ class ReviewWrite:
     expect_sha: Optional[str]
 
 
-async def assess(state: dict, document: dict[str, Any], *, may_grandfather: bool) -> Optional[ReviewWrite]:
+async def assess(
+    state: dict, document: dict[str, Any], *, may_grandfather: bool, deadline: Optional[float] = None,
+) -> Optional[ReviewWrite]:
     """Classify `document` unless it is exactly what was last scored.
 
     `state` holds the agent's current review_status, jev_card_sha256 and
@@ -317,7 +325,7 @@ async def assess(state: dict, document: dict[str, Any], *, may_grandfather: bool
     if scored_sha == sha and current != "unscored":
         return None
     try:
-        verdict: Optional[CardVerdict] = await classify_card(document)
+        verdict: Optional[CardVerdict] = await classify_card(document, deadline=deadline)
     except CardClassifierError:
         verdict = None
     status = next_review_status(

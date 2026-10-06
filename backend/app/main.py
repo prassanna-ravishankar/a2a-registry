@@ -79,7 +79,12 @@ async def _create_reviewed(agent_repo: AgentRepository, agent_data: AgentCreate,
     Fails closed: if Jev cannot classify, the agent is stored as unscored and
     held until the worker scores it.
     """
-    review = await assess({}, review_document(card_record(agent_data), live_card), may_grandfather=False)
+    review = await assess(
+        {},
+        review_document(card_record(agent_data), live_card),
+        may_grandfather=False,
+        deadline=settings.jev_deadline_seconds,
+    )
     if review.verdict is None:
         logger.warning("card_classification_failed", well_known_uri=str(agent_data.wellKnownURI))
     created = await agent_repo.create(agent_data, review=review)
@@ -491,7 +496,12 @@ async def update_agent(
     # Classify the new content first, then write it and its review in one
     # guarded statement, so changed content is never public unscored.
     state = await agent_repo.get_review_state(agent_id) or {}
-    review = await assess(state, review_document(card_record(agent_data), agent_card), may_grandfather=False)
+    review = await assess(
+        state,
+        review_document(card_record(agent_data), agent_card),
+        may_grandfather=False,
+        deadline=settings.jev_deadline_seconds,
+    )
     review_status = review.status if review else state.get("review_status")
     try:
         updated = await agent_repo.update(agent_id, agent_data, review=review)

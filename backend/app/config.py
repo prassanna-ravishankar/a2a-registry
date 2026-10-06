@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     jev_model: str = "jev-1.13.0"
     jev_threshold: float = 0.6
     jev_timeout_seconds: float = 20.0  # per Jev request
-    jev_deadline_seconds: float = 45.0  # whole card, including queueing
+    jev_deadline_seconds: float = 45.0  # whole card at registration/PUT, including queueing
 
     # Logging
     log_json: bool = True
