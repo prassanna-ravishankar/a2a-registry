@@ -139,11 +139,30 @@ def card_record(agent: AgentBase) -> dict[str, Any]:
     return agent.model_dump(mode="json", include=set(CARD_RECORD_FIELDS))
 
 
+# JWS members of an Agent Card signature that are regenerated on every fetch.
+# They are opaque base64, carry no readable text, and would otherwise change
+# the fingerprint, and force a re-score, on every cycle.
+_VOLATILE_SIGNATURE_MEMBERS = frozenset({"protected", "signature"})
+
+
+def _stable_card(card: dict[str, Any]) -> dict[str, Any]:
+    signatures = card.get("signatures")
+    if not isinstance(signatures, list):
+        return card
+    return {
+        **card,
+        "signatures": [
+            {k: v for k, v in sig.items() if k not in _VOLATILE_SIGNATURE_MEMBERS} if isinstance(sig, dict) else sig
+            for sig in signatures
+        ],
+    }
+
+
 def review_document(record: dict[str, Any], live_card: dict[str, Any]) -> dict[str, Any]:
     """Everything a caller can read about an agent: the record the registry
     publishes and the live card callers fetch. Both are classified and
     fingerprinted together, so neither can change without a new score."""
-    return {"record": record, "live_card": live_card}
+    return {"record": record, "live_card": _stable_card(live_card)}
 
 
 def _strings(value: Any, path: str = "$") -> Iterator[tuple[str, str]]:

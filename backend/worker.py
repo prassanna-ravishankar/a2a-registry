@@ -15,7 +15,7 @@ from app.card_classifier import assess, card_record, review_document
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
-from app.models import Capabilities
+from app.models import AgentCreate, Capabilities
 from app.repositories import AgentRepository, HealthCheckRepository
 from app.smoke_test import CATEGORY_NOTES, TASK_PROBE_USER_AGENT, smoke_test
 from app.validators import _normalise_fields, validate_agent_card
@@ -239,6 +239,29 @@ def _comparable(value):
     return str(value)
 
 
+def _material_changes(stored, changed: dict) -> tuple[dict, dict]:
+    """Drop phantom changes and return the candidate record in stored form.
+
+    Cards often carry keys our models discard (e.g. provider.location, extra
+    skill fields). Raw comparison then reports the same change every cycle
+    although the stored record would not change. Validating the candidate
+    through the model, as a write would, keeps only fields whose stored form
+    actually differs, and gives a candidate that fingerprints stably.
+    """
+    try:
+        before = card_record(stored)
+    except Exception:
+        before = {}
+    merged = {**before, **{field: _jsonable(value) for field, value in changed.items()}}
+    try:
+        after = card_record(AgentCreate.model_validate(merged))
+    except Exception:
+        # Not representable as a stored record: keep the raw diff and let the
+        # guarded write and classification decide.
+        return changed, merged
+    return {field: value for field, value in changed.items() if after.get(field) != before.get(field)}, after
+
+
 async def refresh_agent_metadata(
     stored,
     card_data: dict,
@@ -293,10 +316,10 @@ async def refresh_agent_metadata(
             for field, value in present.items()
             if _comparable(getattr(stored, field, None)) != _comparable(value)
         }
+    changed, candidate = _material_changes(stored, changed)
 
     review = None
     if classify:
-        candidate = {**card_record(stored), **{field: _jsonable(value) for field, value in changed.items()}}
         # An agent's first score in the worker is flag-only, whether or not the
         # refresh sees changes: provider/skills comparisons can report drift on
         # every cycle for an unchanged card, so "no changes" cannot identify

@@ -735,3 +735,48 @@ async def test_already_scored_published_agent_with_changed_card_is_held():
         await worker.refresh_agent_metadata(stored, _live_card(), repo, conformance_errors=[], classify=True)
 
     assert repo.update_card_metadata.await_args.kwargs["review"].status == "pending"
+
+
+
+async def test_keys_the_model_discards_are_not_a_change_and_fingerprint_stably():
+    """Cards with extra provider/skill keys used to report a change every cycle, re-score,
+    and get held. The candidate is compared and fingerprinted in stored form."""
+    from datetime import datetime, timezone
+
+    from app.card_classifier import CardVerdict
+    from app.models import AgentInDB
+
+    base = _live_card(provider={"organization": "FeedOracle", "url": "https://tooloracle.io/"})
+    created = agent_create_from_card(base, "https://a2a.gogonka.com/.well-known/agent.json")
+    now = datetime.now(timezone.utc)
+    stored = AgentInDB(**created.model_dump(), id="95e89fba-1765-4c16-a8c5-0a239dbfd29e", created_at=now, updated_at=now)
+
+    card = json.loads(json.dumps(base))
+    card["provider"].update({"location": "Herford, Germany", "support_contact": "https://feedoracle.io"})
+    for skill in card.get("skills", []):
+        skill["x-extra"] = "discarded by the Skill model"
+
+    state = {"review_revision": 2}
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(side_effect=lambda _id: (stored, dict(state))),
+        update_card_metadata=AsyncMock(return_value=True),
+    )
+    clean = CardVerdict(score=0.01, signals={}, model="jev-test")
+    with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=clean)) as classify:
+        await worker.refresh_agent_metadata(stored, card, repo, conformance_errors=[], classify=True)
+        first = repo.update_card_metadata.await_args
+        state["jev_card_sha256"] = first.kwargs["review"].sha
+        second = await worker.refresh_agent_metadata(stored, card, repo, conformance_errors=[], classify=True)
+
+    assert first.args[1] == {}, "keys the model discards must not count as a change"
+    assert second is False and classify.await_count == 1, "unchanged content must not be re-scored"
+
+
+def test_regenerated_jws_values_do_not_change_the_fingerprint():
+    from app.card_classifier import card_sha256, review_document
+
+    card = {"name": "x", "signatures": [{"protected": "abc", "signature": "s1", "header": {"kid": "k1"}}]}
+    resigned = {"name": "x", "signatures": [{"protected": "abd", "signature": "s2", "header": {"kid": "k1"}}]}
+    rekeyed = {"name": "x", "signatures": [{"protected": "abd", "signature": "s2", "header": {"kid": "k2"}}]}
+    assert card_sha256(review_document({}, card)) == card_sha256(review_document({}, resigned))
+    assert card_sha256(review_document({}, card)) != card_sha256(review_document({}, rekeyed))
