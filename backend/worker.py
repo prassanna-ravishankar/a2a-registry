@@ -11,6 +11,7 @@ import aiohttp
 from pydantic import HttpUrl, TypeAdapter
 
 from app.agent_card import extract_agent_url, extract_protocol_version
+from app.card_classifier import assess, card_record, review_document
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
@@ -244,6 +245,7 @@ async def refresh_agent_metadata(
     agent_repo: AgentRepository,
     *,
     conformance_errors: Optional[list] = None,
+    classify: bool = False,
 ) -> bool:
     """Re-sync displayed card metadata (name/version/url/protocolVersion/
     description and other explicit Agent Card declarations) from the live card
@@ -258,9 +260,22 @@ async def refresh_agent_metadata(
       never registry-owned fields or the full record.
     - Never writes a missing/empty card field over a stored value (see
       _present_card_fields) and never changes wellKnownURI.
+    - With `classify`, the record as it would read after this refresh, plus
+      the live card, is classified by Jev BEFORE anything is written, and the
+      metadata and its review land in one guarded statement. A degraded card
+      refreshes no metadata but is still classified, because callers read it.
 
     Returns True if an update was written.
     """
+    state: dict = {}
+    if classify:
+        # Diff and classify against a fresh snapshot of the record and its
+        # review state, never the copy loaded at the start of the cycle.
+        snapshot = await agent_repo.get_review_snapshot(stored.id)
+        if snapshot is None:
+            return False
+        stored, state = snapshot
+
     # _normalise_fields returns a new dict (it does not mutate card_data), so
     # card_data stays the RAW live card for presence detection.
     normalised = _normalise_fields(card_data)
@@ -268,21 +283,35 @@ async def refresh_agent_metadata(
     errors = conformance_errors
     if errors is None:
         errors = validate_agent_card(card_data, strict=True)
-    if errors:
-        # Degraded card — refresh nothing. Conformance is recorded separately.
+    changed: dict = {}
+    if not errors:
+        # A degraded card refreshes nothing. Conformance is recorded separately.
+        present = _present_card_fields(card_data, normalised)
+        changed = {
+            field: value
+            for field, value in present.items()
+            if _comparable(getattr(stored, field, None)) != _comparable(value)
+        }
+
+    review = None
+    if classify:
+        candidate = {**card_record(stored), **{field: _jsonable(value) for field, value in changed.items()}}
+        review = await assess(state, review_document(candidate, card_data), may_grandfather=not changed)
+    if not changed and review is None:
         return False
 
-    present = _present_card_fields(card_data, normalised)
-    changed = {
-        field: value
-        for field, value in present.items()
-        if _comparable(getattr(stored, field, None)) != _comparable(value)
-    }
-    if not changed:
-        return False
-
-    written = await agent_repo.update_card_metadata(stored.id, changed)
-    if written:
+    written = await agent_repo.update_card_metadata(
+        stored.id, changed, review=review, expect_revision=state.get("review_revision") if classify else None,
+    )
+    if review is not None:
+        logger.info(
+            "card_review",
+            agent_id=stored.id,
+            review_status=review.status,
+            scored=review.verdict is not None,
+            written=written,
+        )
+    if written and changed and (review is None or review.verdict is not None):
         logger.info(
             "agent_metadata_refreshed",
             agent_id=stored.id,
@@ -413,7 +442,7 @@ async def check_agent_health(
             # and refresh_agent_metadata re-validates.
             try:
                 await refresh_agent_metadata(
-                    agent, card_data, agent_repo, conformance_errors=strict_errors,
+                    agent, card_data, agent_repo, conformance_errors=strict_errors, classify=True,
                 )
             except Exception as refresh_err:
                 bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))

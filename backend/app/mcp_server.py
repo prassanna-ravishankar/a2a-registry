@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastmcp import FastMCP
 
+from .card_classifier import PUBLIC_REVIEW_SQL
 from .database import db
 from .repositories import AgentRepository, StatsRepository
 
@@ -234,13 +235,13 @@ async def list_skills(limit: int = 50) -> list[dict]:
         FROM (
             SELECT jsonb_array_elements(skills) ->> 'id' as skill_id
             FROM agents
-            WHERE hidden = false AND skills != '[]'::jsonb
+            WHERE hidden = false AND {public} AND skills != '[]'::jsonb
         ) s
         WHERE skill_id IS NOT NULL
         GROUP BY skill_id
         ORDER BY agent_count DESC
         LIMIT $1
-        """,
+        """.format(public=PUBLIC_REVIEW_SQL),
         _bounded_limit(limit, 200),
     )
     return [

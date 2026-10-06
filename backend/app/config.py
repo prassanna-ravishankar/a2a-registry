@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     # Admin
     admin_api_key: str = ""
 
+    # Jev (TypeSafe) Agent Card classifier. Pin the model: the threshold was
+    # tuned against this version. A missing key fails closed.
+    jev_api_key: str = ""
+    jev_model: str = "jev-1.13.0"
+    jev_threshold: float = 0.6
+    jev_timeout_seconds: float = 20.0  # per Jev request
+    jev_deadline_seconds: float = 45.0  # whole card at registration/PUT, including queueing
+
     # Logging
     log_json: bool = True
     log_level: str = "INFO"

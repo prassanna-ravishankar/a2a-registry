@@ -5,6 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+from app.card_classifier import CardClassifierError, CardVerdict
 from app.main import _is_private_url
 from app.models import AgentInDB, AgentPublic, Capabilities
 
@@ -303,6 +304,7 @@ def test_update_agent_success(client):
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.update = AsyncMock(return_value=_make_agent_in_db())
+        instance.get_review_state = AsyncMock(return_value={})
 
         response = client.put(
             f"/agents/{MOCK_UUID}",
@@ -436,6 +438,7 @@ def test_update_agent_uses_body_well_known_uri(client):
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.update = AsyncMock(return_value=_make_agent_in_db())
+        instance.get_review_state = AsyncMock(return_value={})
         mock_build.return_value = _make_agent_in_db()
 
         response = client.put(
@@ -464,6 +467,7 @@ def test_update_agent_no_body_refetches_existing(client):
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
         instance.update = AsyncMock(return_value=_make_agent_in_db())
+        instance.get_review_state = AsyncMock(return_value={})
 
         response = client.put(
             f"/agents/{MOCK_UUID}",
@@ -1117,3 +1121,124 @@ def test_parsed_split_host_card_resolves_transport_to_card_url():
     transport = getattr(sdk_client, "_transport", None) or getattr(sdk_client, "transport", None)
     assert transport is not None
     assert transport.url == "https://paki-api.elfresonero.workers.dev/a2a"
+
+
+def _register_with_verdict(client, classify_mock):
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.card_classifier.classify_card", new=classify_mock), \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "ok", 10))):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.update_maintainer_notes = AsyncMock(return_value=True)
+        instance.update_task_conformance = AsyncMock(return_value=None)
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+    return response, instance
+
+
+def test_register_flagged_card_is_inserted_hidden_and_not_returned(client):
+    """A flagged card is created already held, and the response does not echo the agent or the reason."""
+    flagged = AsyncMock(return_value=CardVerdict(score=0.95, signals={"injection": 0.95}, model="jev-test"))
+    response, repo = _register_with_verdict(client, flagged)
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "under_review"
+    assert "injection" not in response.text and "0.95" not in response.text
+    assert repo.create.await_args.kwargs["review"].status == "pending"
+    repo.get_by_id.assert_not_awaited()
+
+
+def test_register_fails_closed_when_jev_errors(client):
+    response, repo = _register_with_verdict(client, AsyncMock(side_effect=CardClassifierError("TimeoutError")))
+
+    assert response.status_code == 202
+    review = repo.create.await_args.kwargs["review"]
+    assert review.status == "unscored" and review.verdict is None
+
+
+def test_register_clean_card_is_published(client):
+    response, repo = _register_with_verdict(client, AsyncMock(return_value=CardVerdict(score=0.05, signals={}, model="jev-test")))
+
+    assert response.status_code == 201
+    assert repo.create.await_args.kwargs["review"].status is None
+
+
+def test_review_endpoints_require_admin(client):
+    agent_id = "550e8400-e29b-41d4-a716-446655440000"
+    assert client.get("/admin/review").status_code == 403
+    body = {"decision": "approve", "card_sha256": "abc"}
+    assert client.post(f"/admin/agents/{agent_id}/review", json=body).status_code == 403
+
+
+def test_review_decision_conflict_when_not_queued(client):
+    agent_id = "550e8400-e29b-41d4-a716-446655440000"
+    with patch("app.main.settings.admin_api_key", "secret"), patch("app.main.AgentRepository") as mock_repo:
+        mock_repo.return_value.decide_review = AsyncMock(return_value=False)
+        response = client.post(
+            f"/admin/agents/{agent_id}/review",
+            json={"decision": "approve", "card_sha256": "abc"},
+            headers={"X-Admin-Key": "secret"},
+        )
+    assert response.status_code == 409
+
+
+def _put_with_verdict(client, classify_mock, update_result):
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=({**MOCK_AGENT_CARD, "name": "Changed"}, None)), \
+         patch("app.card_classifier.classify_card", new=classify_mock), \
+         patch("app.main.settings.admin_api_key", "test-admin-key"):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        instance.get_review_state = AsyncMock(
+            return_value={"review_status": None, "jev_card_sha256": "old", "review_revision": 3}
+        )
+        instance.update = AsyncMock(return_value=update_result)
+        response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "test-admin-key"})
+    return response, instance
+
+
+def test_put_writes_changed_content_and_its_hold_in_one_guarded_update(client):
+    flagged = AsyncMock(return_value=CardVerdict(score=0.9, signals={"injection": 0.9}, model="jev-test"))
+    response, repo = _put_with_verdict(client, flagged, _make_agent_in_db())
+
+    assert response.status_code == 202
+    review = repo.update.await_args.kwargs["review"]
+    assert (review.status, review.expect_revision) == ("pending", 3)
+
+
+def test_put_fails_closed_without_publishing_unscored_content(client):
+    response, repo = _put_with_verdict(client, AsyncMock(side_effect=CardClassifierError("down")), _make_agent_in_db())
+
+    assert response.status_code == 202
+    assert repo.update.await_args.kwargs["review"].status == "unscored"
+
+
+def test_put_reports_conflict_when_agent_changed_during_review(client):
+    clean = AsyncMock(return_value=CardVerdict(score=0.01, signals={}, model="jev-test"))
+    response, _ = _put_with_verdict(client, clean, None)
+
+    assert response.status_code == 409
+
+
+def test_put_with_already_scored_content_writes_nothing(client):
+    """Unchanged content skips the write, so it cannot overwrite a concurrent replacement."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.assess", new=AsyncMock(return_value=None)), \
+         patch("app.main.settings.admin_api_key", "test-admin-key"):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        instance.get_review_state = AsyncMock(return_value={"review_status": "pending", "review_revision": 2})
+        instance.update = AsyncMock()
+        response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "test-admin-key"})
+
+    assert response.status_code == 202
+    instance.update.assert_not_awaited()
