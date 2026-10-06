@@ -10,9 +10,9 @@ from pathlib import Path
 import asyncpg
 import pytest
 
-from app.card_classifier import CardVerdict
+from app.card_classifier import CardVerdict, ReviewWrite
 from app.models import AgentCreate
-from app.repositories import AgentRepository
+from app.repositories import AgentRepository, StatsRepository
 
 DB_URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not DB_URL, reason="TEST_DATABASE_URL not set")
@@ -20,6 +20,10 @@ pytestmark = pytest.mark.skipif(not DB_URL, reason="TEST_DATABASE_URL not set")
 MIGRATIONS = sorted((Path(__file__).parent.parent / "migrations" / "versions").glob("*.sql"))
 FLAGGED = CardVerdict(score=0.95, signals={"injection": 0.95}, model="jev-test")
 CLEAN = CardVerdict(score=0.02, signals={}, model="jev-test")
+
+
+def _review(verdict, sha, status, expect_status=None, expect_sha=None):
+    return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_status=expect_status, expect_sha=expect_sha)
 
 
 class _Db:
@@ -42,17 +46,22 @@ class _Db:
 
 
 @pytest.fixture
-async def repo():
+async def db():
     conn = await asyncpg.connect(DB_URL)
     await conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
     for migration in MIGRATIONS:
         await conn.execute(migration.read_text())
-    yield AgentRepository(_Db(conn))
+    yield _Db(conn)
     await conn.close()
 
 
-def _agent(n: int) -> AgentCreate:
-    return AgentCreate(
+@pytest.fixture
+def repo(db):
+    return AgentRepository(db)
+
+
+def _agent(n: int, **overrides) -> AgentCreate:
+    fields = dict(
         protocolVersion="0.3.0",
         name=f"Unique Review Agent {n}",
         description="Searchable reviewtoken description",
@@ -63,64 +72,114 @@ def _agent(n: int) -> AgentCreate:
         capabilities={"streaming": False, "pushNotifications": False, "stateTransitionHistory": False},
         defaultInputModes=["text/plain"],
         defaultOutputModes=["text/plain"],
-        skills=[],
+        skills=[{"id": f"reviewskill{n}", "name": "s", "description": "d", "tags": ["t"]}],
     )
+    return AgentCreate(**{**fields, **overrides})
 
 
-async def _publicly_visible(repo: AgentRepository, agent_id) -> bool:
+async def _publicly_visible(db, repo: AgentRepository, agent_id) -> bool:
+    """Visibility through get, list, search and stats, which must all agree."""
     by_id = await repo.get_by_id(agent_id) is not None
-    listed, _ = await repo.list_agents(limit=100, offset=0)
+    listed, total = await repo.list_agents(limit=100, offset=0)
     searched, _ = await repo.list_agents(search="reviewtoken", limit=100, offset=0)
-    views = {by_id, agent_id in {a.id for a in listed}, agent_id in {a.id for a in searched}}
-    assert len(views) == 1, "public reads disagree about visibility"
+    stats = await StatsRepository(db).get_registry_stats()
+    name = await db.fetchval("SELECT name FROM agents WHERE id = $1", agent_id)
+    skill = f"reviewskill{name.split()[-1]}"
+    views = {
+        by_id,
+        agent_id in {a.id for a in listed},
+        agent_id in {a.id for a in searched},
+        any(s["id"] == skill for s in stats.trending_skills),
+    }
+    assert len(views) == 1, f"public reads disagree about visibility: {views}"
+    assert stats.total_agents == total
     return views.pop()
 
 
-async def test_pending_agent_is_never_publicly_visible_until_approved(repo):
-    created = await repo.create(_agent(1), review_status="pending")
-    await repo.record_card_review(created.id, FLAGGED, "sha-1", "pending", previous="pending")
+async def test_pending_agent_is_absent_from_every_public_read_until_approved(db, repo):
+    created = await repo.create(_agent(1), review=_review(FLAGGED, "sha-1", "pending"))
 
-    assert not await _publicly_visible(repo, created.id)
-    assert [a["id"] for a in await repo.list_review_queue()] == [created.id]
+    assert not await _publicly_visible(db, repo, created.id)
+    queue = await repo.list_review_queue()
+    assert [(a["id"], a["jev_card_sha256"]) for a in queue] == [(created.id, "sha-1")]
 
-    assert await repo.decide_review(created.id, approve=True)
-    assert await _publicly_visible(repo, created.id)
-    state = await repo.get_review_state(created.id)
-    assert state["review_status"] == "approved" and state["review_approved_sha256"] == "sha-1"
+    assert not await repo.decide_review(created.id, approve=True, card_sha256="some-other-content")
+    assert await repo.decide_review(created.id, approve=True, card_sha256="sha-1")
+    assert await _publicly_visible(db, repo, created.id)
 
 
-async def test_rejected_agent_stays_hidden(repo):
-    created = await repo.create(_agent(2), review_status="pending")
-    await repo.record_card_review(created.id, FLAGGED, "sha-2", "pending", previous="pending")
+async def test_rejected_agent_stays_hidden(db, repo):
+    created = await repo.create(_agent(2), review=_review(FLAGGED, "sha-2", "pending"))
 
-    assert await repo.decide_review(created.id, approve=False)
-    assert not await _publicly_visible(repo, created.id)
+    assert await repo.decide_review(created.id, approve=False, card_sha256="sha-2")
+    assert not await _publicly_visible(db, repo, created.id)
     assert await repo.list_review_queue() == []
 
 
-async def test_unscored_agent_is_hidden_and_cannot_be_approved_blind(repo):
-    created = await repo.create(_agent(3), review_status="unscored")
-    await repo.record_card_review(created.id, None, "sha-3", "unscored", previous="unscored")
+async def test_unscored_agent_is_held_cannot_be_approved_and_is_released_once_scored(db, repo):
+    created = await repo.create(_agent(3), review=_review(None, "sha-3", "unscored"))
 
-    assert not await _publicly_visible(repo, created.id)
-    assert await repo.list_unscored() == [(created.id, "https://agent3.example.com/.well-known/agent.json")]
-    assert not await repo.decide_review(created.id, approve=True)
+    assert not await _publicly_visible(db, repo, created.id)
+    assert not await repo.decide_review(created.id, approve=True, card_sha256="sha-3")
 
-    await repo.record_card_review(created.id, CLEAN, "sha-3", None, previous="unscored")
-    assert await _publicly_visible(repo, created.id)
+    released = await repo.update_card_metadata(
+        created.id, {}, review=_review(CLEAN, "sha-3", None, expect_status="unscored"),
+    )
+    assert released and await _publicly_visible(db, repo, created.id)
 
 
-async def test_flagged_published_agent_stays_visible_until_decided(repo):
+async def test_flagged_published_agent_stays_visible_until_decided(db, repo):
     created = await repo.create(_agent(4))
-    await repo.record_card_review(created.id, FLAGGED, "sha-4", "flagged", previous=None)
+    await repo.update_card_metadata(created.id, {}, review=_review(FLAGGED, "sha-4", "flagged"))
 
-    assert await _publicly_visible(repo, created.id)
+    assert await _publicly_visible(db, repo, created.id)
     assert [a["review_status"] for a in await repo.list_review_queue()] == ["flagged"]
 
 
-async def test_review_never_republishes_an_agent_hidden_for_other_reasons(repo):
-    created = await repo.create(_agent(5))
-    await repo.delete(created.id)  # soft delete / dead-agent auto-hide
+async def test_moderation_never_revives_a_deleted_agent(db, repo):
+    flagged = await repo.create(_agent(5))
+    await repo.update_card_metadata(flagged.id, {}, review=_review(FLAGGED, "sha-5", "flagged"))
+    unscored = await repo.create(_agent(6), review=_review(None, "sha-6", "unscored"))
+    await repo.delete(flagged.id)
+    await repo.delete(unscored.id)
 
-    await repo.record_card_review(created.id, CLEAN, "sha-5", None, previous=None)
-    assert not await _publicly_visible(repo, created.id)
+    await repo.decide_review(flagged.id, approve=True, card_sha256="sha-5")
+    await repo.update_card_metadata(unscored.id, {}, review=_review(CLEAN, "sha-6", None, expect_status="unscored"))
+
+    assert not await _publicly_visible(db, repo, flagged.id)
+    assert not await _publicly_visible(db, repo, unscored.id)
+
+
+async def test_stale_classification_cannot_overwrite_an_admin_rejection(db, repo):
+    created = await repo.create(_agent(7), review=_review(FLAGGED, "sha-7", "pending"))
+    stale = _review(CLEAN, "sha-7b", None, expect_status="pending", expect_sha="sha-7")
+
+    assert await repo.decide_review(created.id, approve=False, card_sha256="sha-7")
+    assert not await repo.update_card_metadata(created.id, {"name": "Swapped"}, review=stale)
+
+    state = await repo.get_review_state(created.id)
+    assert state["review_status"] == "rejected"
+    row = await db.fetchrow("SELECT name, hidden FROM agents WHERE id = $1", created.id)
+    assert row["name"] == "Unique Review Agent 7" and row["hidden"] is False
+
+
+async def test_failed_classification_writes_no_metadata(db, repo):
+    created = await repo.create(_agent(8), review=_review(CLEAN, "sha-8", None))
+
+    written = await repo.update_card_metadata(
+        created.id, {"description": "changed and unscored"}, review=_review(None, "sha-8b", "unscored", expect_sha="sha-8"),
+    )
+
+    assert written
+    row = await db.fetchrow("SELECT description, review_status, jev_card_sha256 FROM agents WHERE id = $1", created.id)
+    assert row["description"] == "Searchable reviewtoken description"
+    assert (row["review_status"], row["jev_card_sha256"]) == ("unscored", "sha-8")
+    assert not await _publicly_visible(db, repo, created.id)
+
+
+async def test_full_update_is_refused_when_review_state_moved(db, repo):
+    created = await repo.create(_agent(9), review=_review(CLEAN, "sha-9", None))
+    stale = _review(CLEAN, "sha-9b", None, expect_sha="not-what-is-stored")
+
+    assert await repo.update(created.id, _agent(9, name="Changed"), review=stale) is None
+    assert (await repo.get_by_id(created.id)).name == "Unique Review Agent 9"

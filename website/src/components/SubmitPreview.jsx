@@ -24,8 +24,13 @@ export default function SubmitPreview() {
   async function register() {
     setState('registering'); setError('');
     try {
-      const agent = await api.registerAgentByURI(uri);
-      window.location.assign(`/agents/${agent.id}`);
+      const result = await api.registerAgentByURI(uri);
+      if (result.status === 'under_review') {
+        setPreview(null);
+        setState('held');
+        return;
+      }
+      window.location.assign(`/agents/${result.id}`);
     } catch (problem) {
       setError(problem.message || 'Registration failed.');
       setState('ready');
@@ -42,6 +47,7 @@ export default function SubmitPreview() {
       <p>Fetching is read-only. Registration happens only after you review the evidence below.</p>
     </form>
     {error && <p className="submit-error" role="alert">{error}</p>}
+    {state === 'held' && <p className="submit-caveat" role="status">Registered. This listing is held for review before it appears in the registry.</p>}
     {preview && <section className="submit-preview" aria-live="polite">
       <div className="submit-preview__head"><div><span>Preview</span><h2>{preview.name}</h2><p>{preview.provider?.organization || preview.author || 'Provider not declared'}</p></div><EvidenceLadder agent={preview} /></div>
       <dl className="datasheet"><div><dt>Canonical URL</dt><dd><code>{preview.wellKnownURI}</code></dd></div><div><dt>Protocol version</dt><dd><code>{preview.protocolVersion}</code></dd></div><div><dt>Endpoint</dt><dd><code>{preview.url}</code></dd></div><div><dt>Skills declared</dt><dd><code>{preview.skills?.length || 0}</code></dd></div></dl>

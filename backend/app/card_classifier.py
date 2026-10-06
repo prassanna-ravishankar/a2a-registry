@@ -22,9 +22,11 @@ from typing import Any, Iterator, Optional
 from typesafe_sdk import AsyncTypeSafeClient, Noul
 
 from .config import settings
+from .models import AgentBase, AgentCreate
 
 WINDOW_CHARS = 3000
-MAX_WINDOWS = 30
+OVERLAP_CHARS = 200
+MAX_WINDOWS = 60
 
 PREAMBLE = (
     "The state is an A2A Agent Card: a JSON document written by an unknown third party describing an AI agent. "
@@ -121,10 +123,26 @@ class CardVerdict:
         return self.score >= settings.jev_threshold
 
 
-def card_sha256(card: dict[str, Any]) -> str:
-    """Stable fingerprint of a card's content, used to re-score only on change."""
-    canonical = json.dumps(card, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+def card_sha256(document: dict[str, Any]) -> str:
+    """Stable fingerprint of the material under review, used to re-score only on change."""
+    canonical = json.dumps(document, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+# Card-derived columns a stored record publishes. Registry-computed conformance is excluded.
+CARD_RECORD_FIELDS = frozenset(AgentCreate.model_fields) - {"conformance", "conformance_errors"}
+
+
+def card_record(agent: AgentBase) -> dict[str, Any]:
+    """The card-derived content a stored or candidate agent record publishes."""
+    return agent.model_dump(mode="json", include=set(CARD_RECORD_FIELDS))
+
+
+def review_document(record: dict[str, Any], live_card: dict[str, Any]) -> dict[str, Any]:
+    """Everything a caller can read about an agent: the record the registry
+    publishes and the live card callers fetch. Both are classified and
+    fingerprinted together, so neither can change without a new score."""
+    return {"record": record, "live_card": live_card}
 
 
 def _strings(value: Any, path: str = "$") -> Iterator[tuple[str, str]]:
@@ -138,27 +156,45 @@ def _strings(value: Any, path: str = "$") -> Iterator[tuple[str, str]]:
         yield path, value
 
 
-def card_windows(card: dict[str, Any]) -> list[str]:
-    """Flatten a card to unique `path: text` lines, chunked into windows.
+def _pieces(path: str, text: str) -> Iterator[str]:
+    """One `path: text` line, or overlapping labelled chunks of a long string.
 
-    Every string in the card is kept, including fields the registry does not
-    store, because that is where injected text hides.
+    Nothing is truncated: text hidden after a long benign prefix still lands in
+    some chunk, and the overlap keeps a phrase split at a boundary readable.
+    """
+    line = f"{path}: {text}"
+    if len(line) <= WINDOW_CHARS:
+        yield line
+        return
+    step = WINDOW_CHARS - OVERLAP_CHARS - len(path) - 40
+    for start in range(0, len(text), step):
+        yield f"{path} (from char {start}): {text[start:start + step + OVERLAP_CHARS]}"
+
+
+def card_windows(document: dict[str, Any]) -> list[str]:
+    """Flatten a document to unique `path: text` lines packed into windows.
+
+    Every string is kept, including card fields the registry does not store,
+    because that is where injected text hides. A document too large to score
+    within MAX_WINDOWS raises, so callers hold it rather than score a prefix.
     """
     seen: set[str] = set()
     windows: list[str] = []
     current = ""
-    for path, text in _strings(card):
+    for path, text in _strings(document):
         if text in seen:
             continue
         seen.add(text)
-        line = f"{path}: {text}"[:WINDOW_CHARS] + "\n"
-        if current and len(current) + len(line) > WINDOW_CHARS:
-            windows.append(current)
-            current = ""
-        current += line
+        for piece in _pieces(path, text):
+            if current and len(current) + len(piece) + 1 > WINDOW_CHARS:
+                windows.append(current)
+                current = ""
+            current += piece + "\n"
     if current:
         windows.append(current)
-    return windows[:MAX_WINDOWS]
+    if len(windows) > MAX_WINDOWS:
+        raise CardClassifierError(f"card too large to classify ({len(windows)} windows)")
+    return windows
 
 
 def _questions() -> dict[str, Noul]:
@@ -183,9 +219,20 @@ def _get_client() -> AsyncTypeSafeClient:
     return _client
 
 
-async def classify_card(card: dict[str, Any], client: Optional[AsyncTypeSafeClient] = None) -> CardVerdict:
-    """Score a raw Agent Card. Raises CardClassifierError on any failure."""
-    windows = card_windows(card)
+def _probability(value: Any) -> float:
+    p = float(value)
+    if not (math.isfinite(p) and 0.0 <= p <= 1.0):
+        raise CardClassifierError("Jev returned an invalid probability")
+    return p
+
+
+async def classify_card(document: dict[str, Any], client: Optional[AsyncTypeSafeClient] = None) -> CardVerdict:
+    """Score a document. Raises CardClassifierError on any failure or malformed answer.
+
+    The whole classification shares one deadline; if any window fails, the
+    others are cancelled.
+    """
+    windows = card_windows(document)
     if not windows:
         return CardVerdict(score=0.0, signals={}, model=settings.jev_model)
     try:
@@ -195,11 +242,14 @@ async def classify_card(card: dict[str, Any], client: Optional[AsyncTypeSafeClie
             async with _inflight:
                 return await jev.system_one(window, _questions(), model=settings.jev_model)
 
-        responses = await asyncio.gather(*(ask(window) for window in windows))
+        async with asyncio.timeout(settings.jev_deadline_seconds):
+            async with asyncio.TaskGroup() as group:
+                tasks = [group.create_task(ask(window)) for window in windows]
+        responses = [task.result() for task in tasks]
         signals = {name: 0.0 for name in QUESTIONS}
         for response in responses:
             for name in QUESTIONS:
-                signals[name] = max(signals[name], float(response.answers[name].noul))
+                signals[name] = max(signals[name], _probability(response.answers[name].noul))
         model = responses[0].model
     except CardClassifierError:
         raise
@@ -209,8 +259,10 @@ async def classify_card(card: dict[str, Any], client: Optional[AsyncTypeSafeClie
     return CardVerdict(score=round(score, 4), signals={k: round(v, 4) for k, v in signals.items()}, model=model)
 
 
-# Statuses under which the registry itself keeps an agent out of public view.
-HIDDEN_STATUSES = frozenset({"unscored", "pending", "rejected"})
+# Review statuses that keep an agent out of public reads. Moderation never
+# writes `hidden`; that column stays owned by deletion and dead-agent cleanup.
+HELD_STATUSES = frozenset({"unscored", "pending", "rejected"})
+PUBLIC_REVIEW_SQL = "(review_status IS NULL OR review_status IN ('flagged', 'approved'))"
 
 
 def next_review_status(
@@ -218,49 +270,61 @@ def next_review_status(
     sha: str,
     *,
     current: Optional[str],
-    scored_sha: Optional[str],
     approved_sha: Optional[str],
-    published: bool,
+    grandfathered: bool,
 ) -> Optional[str]:
     """Decide an agent's review status after a classification attempt.
 
-    `verdict` is None when Jev failed. `published` is False for a registration
-    in progress. An already-published card scored for the first time is only
-    flagged, never hidden, because its operator has done nothing new; any card
-    that is new or has changed since it was last scored is hidden when flagged
-    and held as unscored when Jev fails.
+    `verdict` is None when Jev failed. `grandfathered` is true only for an
+    agent published before classification existed, scored for the first time
+    with its content unchanged: it is flagged rather than held, and a failure
+    leaves it as it was. Anything new or changed is held when flagged and held
+    as unscored when Jev fails.
     """
     if current == "rejected":
         return "rejected"
-    first_score_of_published = published and scored_sha is None
     if verdict is None:
-        return current if first_score_of_published else "unscored"
+        return current if grandfathered else "unscored"
     if current == "approved" and approved_sha == sha:
         return "approved"
     if not verdict.flagged:
         return None
-    return "flagged" if first_score_of_published else "pending"
+    return "flagged" if grandfathered else "pending"
 
 
-async def review_card(agent_repo, agent_id, card: dict[str, Any], *, published: bool = True) -> Optional[str]:
-    """Classify a stored agent's live card when it changed, and persist the outcome."""
-    sha = card_sha256(card)
-    state = await agent_repo.get_review_state(agent_id)
-    if state is None:
+@dataclass(frozen=True)
+class ReviewWrite:
+    """A classification outcome to persist, guarded by the state it was computed from."""
+
+    verdict: Optional[CardVerdict]
+    sha: str
+    status: Optional[str]
+    expect_status: Optional[str]
+    expect_sha: Optional[str]
+
+
+async def assess(state: dict, document: dict[str, Any], *, may_grandfather: bool) -> Optional[ReviewWrite]:
+    """Classify `document` unless it is exactly what was last scored.
+
+    `state` holds the agent's current review_status, jev_card_sha256 and
+    review_approved_sha256 ({} for a registration). Returns None when there is
+    nothing new to record. Never raises for classifier failures: those fail
+    closed through the returned status.
+    """
+    sha = card_sha256(document)
+    current = state.get("review_status")
+    scored_sha = state.get("jev_card_sha256")
+    if scored_sha == sha and current != "unscored":
         return None
-    if state["jev_card_sha256"] == sha and state["review_status"] != "unscored":
-        return state["review_status"]
     try:
-        verdict: Optional[CardVerdict] = await classify_card(card)
+        verdict: Optional[CardVerdict] = await classify_card(document)
     except CardClassifierError:
         verdict = None
     status = next_review_status(
         verdict,
         sha,
-        current=state["review_status"],
-        scored_sha=state["jev_card_sha256"],
-        approved_sha=state["review_approved_sha256"],
-        published=published,
+        current=current,
+        approved_sha=state.get("review_approved_sha256"),
+        grandfathered=may_grandfather and scored_sha is None and current is None,
     )
-    await agent_repo.record_card_review(agent_id, verdict, sha, status, previous=state["review_status"])
-    return status
+    return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_status=current, expect_sha=scored_sha)

@@ -54,8 +54,7 @@ def clean_jev_verdict():
     from app.card_classifier import CardVerdict
 
     verdict = CardVerdict(score=0.01, signals={}, model="jev-test")
-    with patch("app.main.classify_card", new=AsyncMock(return_value=verdict)) as classify, \
-         patch("app.main.review_card", new=AsyncMock(return_value=None)):
+    with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=verdict)) as classify:
         yield classify
 
 

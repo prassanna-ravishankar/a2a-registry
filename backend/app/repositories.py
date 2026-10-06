@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
-from .card_classifier import HIDDEN_STATUSES, CardVerdict
+from .card_classifier import PUBLIC_REVIEW_SQL, ReviewWrite
 from .database import Database
 from .models import (
     AgentCreate,
@@ -26,17 +26,19 @@ class AgentRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    async def create(self, agent: AgentCreate, review_status: Optional[str] = None) -> AgentInDB:
-        """Create a new agent, hidden from the start when its review status says so."""
+    async def create(self, agent: AgentCreate, review: Optional[ReviewWrite] = None) -> AgentInDB:
+        """Create a new agent with its classification in the same INSERT, so a
+        held agent is never publicly readable, not even briefly."""
         query = """
             INSERT INTO agents (
                 protocol_version, name, description, author, well_known_uri,
                 url, version, provider, documentation_url, capabilities,
                 default_input_modes, default_output_modes, skills, conformance,
                 icon_url, supports_authenticated_extended_card, security_requirements, security_schemes,
-                review_status, hidden
+                review_status, jev_score, jev_signals, jev_model, jev_card_sha256, jev_checked_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+                    $19, $20, $21, $22, $23, CASE WHEN $20::real IS NULL THEN NULL ELSE NOW() END)
             RETURNING *
         """
 
@@ -60,11 +62,48 @@ class AgentRepository:
             agent.supportsAuthenticatedExtendedCard,
             json.dumps(agent.security or []),
             json.dumps(agent.securitySchemes or {}),
-            review_status,
-            review_status in HIDDEN_STATUSES,
+            *self._review_values(review),
         )
 
         return self._row_to_agent(row)
+
+    @staticmethod
+    def _review_values(review: Optional[ReviewWrite]) -> tuple:
+        """(review_status, jev_score, jev_signals, jev_model, jev_card_sha256) for a write.
+
+        A failed classification records only the status: the last score and
+        fingerprint stay, so the content is classified again next cycle.
+        """
+        if review is None:
+            return (None, None, None, None, None)
+        if review.verdict is None:
+            return (review.status, None, None, None, None)
+        v = review.verdict
+        return (review.status, v.score, json.dumps(v.signals), v.model, review.sha)
+
+    @staticmethod
+    def _review_assignments(review: ReviewWrite, first: int) -> tuple[str, str, list]:
+        """SET fragment, optimistic WHERE guard and params for persisting a review.
+
+        The guard compares the status and fingerprint the review was computed
+        from, so a concurrent admin decision or classification is never
+        overwritten by a stale result.
+        """
+        status, score, signals, model, sha = AgentRepository._review_values(review)
+        params: list = [status, review.expect_status, review.expect_sha]
+        sets = [f"review_status = ${first}"]
+        guard = (
+            f"review_status IS NOT DISTINCT FROM ${first + 1} "
+            f"AND jev_card_sha256 IS NOT DISTINCT FROM ${first + 2}"
+        )
+        if review.verdict is not None:
+            n = first + 3
+            sets.append(
+                f"jev_score = ${n}, jev_signals = ${n + 1}, jev_model = ${n + 2}, "
+                f"jev_card_sha256 = ${n + 3}, jev_checked_at = NOW()"
+            )
+            params += [score, signals, model, sha]
+        return ", ".join(sets), guard, params
 
     @staticmethod
     def compute_status_notes(
@@ -104,8 +143,9 @@ class AgentRepository:
             notes.append(f"Flagged by {flag_count} users")
         return notes
 
-    async def get_by_id(self, agent_id: UUID) -> Optional[AgentPublic]:
-        """Get agent by ID with health metrics"""
+    async def get_by_id(self, agent_id: UUID, include_held: bool = False) -> Optional[AgentPublic]:
+        """Get agent by ID with health metrics. Agents held for review are
+        excluded unless `include_held` (admin paths only)."""
         query = """
             SELECT
                 a.*,
@@ -151,6 +191,8 @@ class AgentRepository:
             ) ce ON true
             WHERE a.id = $1 AND a.hidden = false
         """
+        if not include_held:
+            query += f" AND {PUBLIC_REVIEW_SQL}"
 
         row = await self.db.fetchrow(query, agent_id)
         if not row:
@@ -214,7 +256,7 @@ class AgentRepository:
         """List agents with filtering and pagination"""
 
         # Build WHERE clauses
-        where_clauses = ["a.hidden = false"]
+        where_clauses = ["a.hidden = false", PUBLIC_REVIEW_SQL]
         params = []
         param_idx = 1
 
@@ -387,14 +429,21 @@ class AgentRepository:
         "skills",
     }
 
-    async def update_card_metadata(self, agent_id: UUID, fields: dict) -> bool:
+    async def update_card_metadata(
+        self, agent_id: UUID, fields: dict, review: Optional[ReviewWrite] = None,
+    ) -> bool:
         """Patch only the supplied displayed-metadata columns, preserving all others.
 
         Used by the health worker to keep name/version/url/protocolVersion/
         description and explicit auth declarations in sync with the live card.
         Unknown keys are rejected to keep the write surface locked to the
-        whitelist. Returns True if a row was updated.
+        whitelist. With `review`, the classification of exactly these new
+        values is written in the same statement under its optimistic guard; a
+        failed classification writes no metadata at all. Returns True if a row
+        was updated.
         """
+        if review is not None and review.verdict is None:
+            fields = {}
         columns = {}
         for key, value in fields.items():
             if key not in self._WORKER_REFRESHABLE_COLUMNS:
@@ -402,7 +451,7 @@ class AgentRepository:
             columns[self._WORKER_REFRESHABLE_COLUMNS[key]] = (
                 json.dumps(value) if key in self._WORKER_JSON_FIELDS else value
             )
-        if not columns:
+        if not columns and review is None:
             return False
 
         set_fragments = []
@@ -410,17 +459,31 @@ class AgentRepository:
         for idx, (column, value) in enumerate(columns.items(), start=1):
             set_fragments.append(f"{column} = ${idx}")
             params.append(value)
-        set_clause = ", ".join(set_fragments)
+        if columns:
+            set_fragments.append("updated_at = NOW()")
+        guard = ""
+        if review is not None:
+            review_set, guard, review_params = self._review_assignments(review, len(params) + 1)
+            set_fragments.append(review_set)
+            params += review_params
+            guard = f" AND {guard}"
         params.append(agent_id)
         result = await self.db.execute(
-            f"UPDATE agents SET {set_clause}, updated_at = NOW() "
-            f"WHERE id = ${len(params)} AND hidden = false",
+            f"UPDATE agents SET {', '.join(set_fragments)} "
+            f"WHERE id = ${len(params)} AND hidden = false{guard}",
             *params,
         )
         return result == "UPDATE 1"
 
-    async def update(self, agent_id: UUID, agent: AgentCreate) -> Optional[AgentInDB]:
-        """Update an existing agent's metadata from a re-fetched agent card"""
+    async def update(
+        self, agent_id: UUID, agent: AgentCreate, review: Optional[ReviewWrite] = None,
+    ) -> Optional[AgentInDB]:
+        """Update an existing agent's metadata from a re-fetched agent card.
+
+        With `review`, the new content's classification is written in the same
+        statement under its optimistic guard. Returns None if the agent is gone
+        or changed since it was classified.
+        """
         query = """
             UPDATE agents SET
                 well_known_uri = $1,
@@ -440,12 +503,16 @@ class AgentRepository:
                 supports_authenticated_extended_card = $15,
                 security_requirements = $16,
                 security_schemes = $17,
-                updated_at = NOW()
-            WHERE id = $18 AND hidden = false
+                updated_at = NOW(){review_set}
+            WHERE id = $18 AND hidden = false{guard}
             RETURNING *
         """
+        review_set, guard, review_params = "", "", []
+        if review is not None:
+            review_set, guard, review_params = self._review_assignments(review, 19)
+            review_set, guard = f", {review_set}", f" AND {guard}"
         row = await self.db.fetchrow(
-            query,
+            query.format(review_set=review_set, guard=guard),
             str(agent.wellKnownURI),
             agent.protocolVersion,
             agent.name,
@@ -464,6 +531,7 @@ class AgentRepository:
             json.dumps(agent.security or []),
             json.dumps(agent.securitySchemes or {}),
             agent_id,
+            *review_params,
         )
         if not row:
             return None
@@ -486,60 +554,14 @@ class AgentRepository:
         )
         return dict(row) if row else None
 
-    async def record_card_review(
-        self,
-        agent_id: UUID,
-        verdict: Optional[CardVerdict],
-        card_sha256: str,
-        status: Optional[str],
-        *,
-        previous: Optional[str],
-    ) -> None:
-        """Persist a classification attempt and move visibility with the review status.
-
-        Visibility only changes when the review status crosses between a hidden
-        and a visible status, so agents hidden for other reasons (deleted, dead)
-        are never re-published here. A failed attempt keeps the last score and
-        card fingerprint so the card is retried.
-        """
-        hide = status in HIDDEN_STATUSES
-        moves = hide != (previous in HIDDEN_STATUSES)
-        if verdict is None:
-            await self.db.execute(
-                """
-                UPDATE agents SET review_status = $2,
-                       hidden = CASE WHEN $3 THEN $4 ELSE hidden END
-                WHERE id = $1
-                """,
-                agent_id, status, moves, hide,
-            )
-            return
-        await self.db.execute(
-            """
-            UPDATE agents SET jev_score = $2, jev_signals = $3, jev_model = $4,
-                   jev_card_sha256 = $5, jev_checked_at = NOW(), review_status = $6,
-                   hidden = CASE WHEN $7 THEN $8 ELSE hidden END
-            WHERE id = $1
-            """,
-            agent_id, verdict.score, json.dumps(verdict.signals), verdict.model,
-            card_sha256, status, moves, hide,
-        )
-
-    async def list_unscored(self) -> list[tuple[UUID, str]]:
-        """Agents held because Jev could not classify them."""
-        rows = await self.db.fetch(
-            "SELECT id, well_known_uri FROM agents WHERE review_status = 'unscored'"
-        )
-        return [(row["id"], row["well_known_uri"]) for row in rows]
-
     async def list_review_queue(self) -> list[dict]:
         """Agents awaiting an admin decision, highest score first."""
         rows = await self.db.fetch(
             """
-            SELECT id, name, author, well_known_uri, hidden, review_status,
-                   jev_score, jev_signals, jev_model, jev_checked_at, created_at
+            SELECT id, name, author, well_known_uri, review_status, jev_score, jev_signals,
+                   jev_model, jev_card_sha256, jev_checked_at, created_at
             FROM agents
-            WHERE review_status IN ('unscored', 'pending', 'flagged')
+            WHERE hidden = false AND review_status IN ('unscored', 'pending', 'flagged')
             ORDER BY jev_score DESC NULLS LAST, created_at
             """
         )
@@ -551,26 +573,24 @@ class AgentRepository:
             for row in rows
         ]
 
-    async def decide_review(self, agent_id: UUID, approve: bool) -> bool:
-        """Admin decision on a queued agent. Approval covers the scored card content only."""
+    async def decide_review(self, agent_id: UUID, approve: bool, card_sha256: str) -> bool:
+        """Admin decision on a scored, queued agent.
+
+        `card_sha256` must match the content the admin reviewed; if the card
+        was re-scored in the meantime the decision is refused. Only the review
+        status changes: `hidden` (deletion, dead agents) is never touched.
+        """
         if approve:
-            result = await self.db.execute(
-                """
-                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256,
-                       hidden = false
-                WHERE id = $1 AND review_status IN ('unscored', 'pending', 'flagged')
-                  AND jev_card_sha256 IS NOT NULL
-                """,
-                agent_id,
-            )
+            query = """
+                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256
+                WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
+            """
         else:
-            result = await self.db.execute(
-                """
-                UPDATE agents SET review_status = 'rejected', hidden = true
-                WHERE id = $1 AND review_status IN ('unscored', 'pending', 'flagged')
-                """,
-                agent_id,
-            )
+            query = """
+                UPDATE agents SET review_status = 'rejected'
+                WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
+            """
+        result = await self.db.execute(query, agent_id, card_sha256)
         return result == "UPDATE 1"
 
     async def update_maintainer_notes(self, agent_id: UUID, notes: str | None) -> bool:
@@ -847,15 +867,15 @@ class StatsRepository:
                 COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') as new_this_month,
                 (SELECT COUNT(DISTINCT skill_id) FROM (
                     SELECT jsonb_array_elements(a2.skills) ->> 'id' as skill_id
-                    FROM agents a2 WHERE a2.hidden = false
+                    FROM agents a2 WHERE a2.hidden = false AND {public}
                 ) _sk) as total_skills,
                 (SELECT COALESCE(AVG(response_time_ms)::int, 0)
                  FROM health_checks
                  WHERE checked_at > NOW() - INTERVAL '24 hours' AND success = true
                 ) as avg_response_time
             FROM agents
-            WHERE hidden = false
-        """)
+            WHERE hidden = false AND {public}
+        """.format(public=PUBLIC_REVIEW_SQL))
 
         total_agents = basic_stats["total_agents"]
         healthy_agents = basic_stats["healthy_agents"]
@@ -873,14 +893,14 @@ class StatsRepository:
             FROM (
                 SELECT jsonb_array_elements(skills) ->> 'id' as skill_id
                 FROM agents
-                WHERE hidden = false
+                WHERE hidden = false AND {public}
                   AND skills != '[]'::jsonb
             ) s
             WHERE skill_id IS NOT NULL
             GROUP BY skill_id
             ORDER BY agent_count DESC
             LIMIT 10
-        """)
+        """.format(public=PUBLIC_REVIEW_SQL))
         trending_skills = [{"id": row["skill_id"], "count": row["agent_count"]} for row in trending_rows]
 
         return RegistryStats(

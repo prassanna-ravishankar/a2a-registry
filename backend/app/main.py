@@ -24,14 +24,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from .agent_card import agent_create_from_card
-from .card_classifier import (
-    HIDDEN_STATUSES,
-    CardClassifierError,
-    card_sha256,
-    classify_card,
-    next_review_status,
-    review_card,
-)
+from .card_classifier import HELD_STATUSES, assess, card_record, review_document
 from .config import settings
 from .database import db
 from .mcp_server import mcp
@@ -80,24 +73,17 @@ def _agent_create_from_card(
 UNDER_REVIEW_MESSAGE = "Registered. This listing is held for review before it appears in the registry."
 
 
-async def _create_reviewed(
-    agent_repo: AgentRepository, agent_data: AgentCreate, live_card: dict[str, Any], review_doc: dict[str, Any],
-):
-    """Classify before inserting so a held agent is never publicly visible, even briefly.
+async def _create_reviewed(agent_repo: AgentRepository, agent_data: AgentCreate, live_card: dict[str, Any]):
+    """Classify the record and live card before inserting, in the same INSERT.
 
     Fails closed: if Jev cannot classify, the agent is stored as unscored and
-    hidden until the worker scores it.
+    held until the worker scores it.
     """
-    sha = card_sha256(live_card)
-    try:
-        verdict = await classify_card(review_doc)
-    except CardClassifierError as exc:
-        logger.warning("card_classification_failed", well_known_uri=str(agent_data.wellKnownURI), error=str(exc))
-        verdict = None
-    status = next_review_status(verdict, sha, current=None, scored_sha=None, approved_sha=None, published=False)
-    created = await agent_repo.create(agent_data, review_status=status)
-    await agent_repo.record_card_review(created.id, verdict, sha, status, previous=status)
-    return created, status
+    review = await assess({}, review_document(card_record(agent_data), live_card), may_grandfather=False)
+    if review.verdict is None:
+        logger.warning("card_classification_failed", well_known_uri=str(agent_data.wellKnownURI))
+    created = await agent_repo.create(agent_data, review=review)
+    return created, review.status
 
 
 def _under_review(agent_id) -> JSONResponse:
@@ -266,10 +252,10 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     # Create agent, then attach smoke-test result as initial maintainer note
     # AND as the first task_conformance datapoint.
     try:
-        created_agent, review_status = await _create_reviewed(agent_repo, agent_data, agent_card, agent_card)
+        created_agent, review_status = await _create_reviewed(agent_repo, agent_data, agent_card)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
         await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
-        if review_status in HIDDEN_STATUSES:
+        if review_status in HELD_STATUSES:
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
@@ -334,16 +320,15 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     live_card, error = await fetch_agent_card(well_known_uri)
     if error or live_card is None:
         raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
-    review_doc = {"submitted": agent.model_dump(mode="json", by_alias=True), "live_card": live_card}
 
     # Create agent, then attach smoke-test result as initial maintainer note
     # AND as the first task_conformance datapoint.
     try:
-        created_agent, review_status = await _create_reviewed(agent_repo, agent, live_card, review_doc)
+        created_agent, review_status = await _create_reviewed(agent_repo, agent, live_card)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
         await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
         logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category, review=review_status)
-        if review_status in HIDDEN_STATUSES:
+        if review_status in HELD_STATUSES:
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
@@ -453,7 +438,7 @@ async def update_agent(
     track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
 
     agent_repo = AgentRepository(db)
-    existing = await agent_repo.get_by_id(agent_id)
+    existing = await agent_repo.get_by_id(agent_id, include_held=True)
     if not existing:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -503,13 +488,22 @@ async def update_agent(
         agent_card, well_known_uri, author_fallback=existing.author,
     )
 
+    # Classify the new content first, then write it and its review in one
+    # guarded statement, so changed content is never public unscored.
+    state = await agent_repo.get_review_state(agent_id) or {}
+    review = await assess(state, review_document(card_record(agent_data), agent_card), may_grandfather=False)
+    review_status = review.status if review else state.get("review_status")
     try:
-        await agent_repo.update(agent_id, agent_data)
-        review_status = await review_card(agent_repo, agent_id, agent_card)
-        if review_status in HIDDEN_STATUSES:
-            return _under_review(agent_id)
-        result = await agent_repo.get_by_id(agent_id)
-        return result
+        updated = await agent_repo.update(agent_id, agent_data, review=review)
+    except Exception as e:
+        logger.error("update_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to update agent")
+    if updated is None:
+        raise HTTPException(status_code=409, detail="Agent changed while it was being reviewed; retry")
+    if review_status in HELD_STATUSES:
+        return _under_review(agent_id)
+    try:
+        return await agent_repo.get_by_id(agent_id)
     except Exception as e:
         logger.error("update_agent_failed", error=str(e), exc_info=e)
         raise HTTPException(status_code=500, detail="Failed to update agent")
@@ -522,7 +516,7 @@ async def delete_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(defau
     track_api_query("DELETE /agents/{id}", agent_id=str(agent_id))
 
     agent_repo = AgentRepository(db)
-    agent = await agent_repo.get_by_id(agent_id)
+    agent = await agent_repo.get_by_id(agent_id, include_held=True)
 
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -826,6 +820,7 @@ async def list_flags(x_admin_key: Optional[str] = Header(default=None), limit: i
 
 class ReviewDecision(BaseModel):
     decision: Literal["approve", "reject"]
+    card_sha256: str  # jev_card_sha256 from the review queue entry being decided
 
 
 @router.get("/admin/review")
@@ -840,13 +835,16 @@ async def list_review_queue(x_admin_key: Optional[str] = Header(default=None)):
 async def decide_review(agent_id: UUID, body: ReviewDecision, x_admin_key: Optional[str] = Header(default=None)):
     """Approve (publish) or reject (keep hidden) a queued agent (admin only).
 
-    Approval covers the scored card content; a later change to the card is
-    classified again.
+    Approval covers the scored content named by `card_sha256`; a later change
+    is classified again. Unscored agents cannot be approved.
     """
     _require_admin(x_admin_key)
-    decided = await AgentRepository(db).decide_review(agent_id, body.decision == "approve")
+    decided = await AgentRepository(db).decide_review(agent_id, body.decision == "approve", body.card_sha256)
     if not decided:
-        raise HTTPException(status_code=409, detail="Agent is not awaiting a decision, or has not been scored yet")
+        raise HTTPException(
+            status_code=409,
+            detail="Agent is not awaiting a decision, is unscored, or its card changed since this review",
+        )
     return {"id": str(agent_id), "review_status": "approved" if body.decision == "approve" else "rejected"}
 
 
