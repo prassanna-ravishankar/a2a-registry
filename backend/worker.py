@@ -262,7 +262,8 @@ async def refresh_agent_metadata(
       _present_card_fields) and never changes wellKnownURI.
     - With `classify`, the record as it would read after this refresh, plus
       the live card, is classified by Jev BEFORE anything is written, and the
-      metadata and its review land in one guarded statement. A degraded card
+      metadata and its review land in one guarded statement. The first score
+      of an already-published agent only flags it. A degraded card
       refreshes no metadata but is still classified, because callers read it.
 
     Returns True if an update was written.
@@ -296,7 +297,11 @@ async def refresh_agent_metadata(
     review = None
     if classify:
         candidate = {**card_record(stored), **{field: _jsonable(value) for field, value in changed.items()}}
-        review = await assess(state, review_document(candidate, card_data), may_grandfather=not changed)
+        # An agent's first score in the worker is flag-only, whether or not the
+        # refresh sees changes: provider/skills comparisons can report drift on
+        # every cycle for an unchanged card, so "no changes" cannot identify
+        # pre-existing content. New registrations and PUTs never take this path.
+        review = await assess(state, review_document(candidate, card_data), may_grandfather=True)
     if not changed and review is None:
         return False
 
