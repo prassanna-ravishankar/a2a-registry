@@ -82,28 +82,33 @@ class AgentRepository:
         return (review.status, v.score, json.dumps(v.signals), v.model, review.sha)
 
     @staticmethod
-    def _review_assignments(review: ReviewWrite, first: int) -> tuple[str, str, list]:
-        """SET fragment, optimistic WHERE guard and params for persisting a review.
+    def _guarded_review(
+        review: Optional[ReviewWrite], expect_revision: Optional[int], first: int,
+    ) -> tuple[list[str], str, list]:
+        """SET fragments, WHERE guard and params for a revision-guarded write.
 
-        The guard compares the status and fingerprint the review was computed
-        from, so a concurrent admin decision or classification is never
-        overwritten by a stale result.
+        Every card-content or review write checks the review_revision of the
+        snapshot it was computed from and bumps it, so a write based on stale
+        content or state is refused instead of overwriting a newer one.
         """
-        status, score, signals, model, sha = AgentRepository._review_values(review)
-        params: list = [status, review.expect_status, review.expect_sha]
-        sets = [f"review_status = ${first}"]
-        guard = (
-            f"review_status IS NOT DISTINCT FROM ${first + 1} "
-            f"AND jev_card_sha256 IS NOT DISTINCT FROM ${first + 2}"
-        )
-        if review.verdict is not None:
-            n = first + 3
-            sets.append(
-                f"jev_score = ${n}, jev_signals = ${n + 1}, jev_model = ${n + 2}, "
-                f"jev_card_sha256 = ${n + 3}, jev_checked_at = NOW()"
-            )
-            params += [score, signals, model, sha]
-        return ", ".join(sets), guard, params
+        revision = review.expect_revision if review is not None else expect_revision
+        if revision is None:
+            return [], "", []
+        sets = ["review_revision = review_revision + 1"]
+        params: list = [revision]
+        guard = f" AND review_revision = ${first}"
+        if review is not None:
+            status, score, signals, model, sha = AgentRepository._review_values(review)
+            n = first + 1
+            sets.append(f"review_status = ${n}")
+            params.append(status)
+            if review.verdict is not None:
+                sets.append(
+                    f"jev_score = ${n + 1}, jev_signals = ${n + 2}, jev_model = ${n + 3}, "
+                    f"jev_card_sha256 = ${n + 4}, jev_checked_at = NOW()"
+                )
+                params += [score, signals, model, sha]
+        return sets, guard, params
 
     @staticmethod
     def compute_status_notes(
@@ -430,17 +435,21 @@ class AgentRepository:
     }
 
     async def update_card_metadata(
-        self, agent_id: UUID, fields: dict, review: Optional[ReviewWrite] = None,
+        self,
+        agent_id: UUID,
+        fields: dict,
+        review: Optional[ReviewWrite] = None,
+        expect_revision: Optional[int] = None,
     ) -> bool:
         """Patch only the supplied displayed-metadata columns, preserving all others.
 
         Used by the health worker to keep name/version/url/protocolVersion/
         description and explicit auth declarations in sync with the live card.
         Unknown keys are rejected to keep the write surface locked to the
-        whitelist. With `review`, the classification of exactly these new
-        values is written in the same statement under its optimistic guard; a
-        failed classification writes no metadata at all. Returns True if a row
-        was updated.
+        whitelist. With `review` (or `expect_revision`), the write is guarded
+        by the snapshot revision and the classification of exactly these new
+        values lands in the same statement; a failed classification writes no
+        metadata at all. Returns True if a row was updated.
         """
         if review is not None and review.verdict is None:
             fields = {}
@@ -461,12 +470,9 @@ class AgentRepository:
             params.append(value)
         if columns:
             set_fragments.append("updated_at = NOW()")
-        guard = ""
-        if review is not None:
-            review_set, guard, review_params = self._review_assignments(review, len(params) + 1)
-            set_fragments.append(review_set)
-            params += review_params
-            guard = f" AND {guard}"
+        review_sets, guard, review_params = self._guarded_review(review, expect_revision, len(params) + 1)
+        set_fragments += review_sets
+        params += review_params
         params.append(agent_id)
         result = await self.db.execute(
             f"UPDATE agents SET {', '.join(set_fragments)} "
@@ -476,13 +482,17 @@ class AgentRepository:
         return result == "UPDATE 1"
 
     async def update(
-        self, agent_id: UUID, agent: AgentCreate, review: Optional[ReviewWrite] = None,
+        self,
+        agent_id: UUID,
+        agent: AgentCreate,
+        review: Optional[ReviewWrite] = None,
+        expect_revision: Optional[int] = None,
     ) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card.
 
-        With `review`, the new content's classification is written in the same
-        statement under its optimistic guard. Returns None if the agent is gone
-        or changed since it was classified.
+        With `review` (or `expect_revision`), the write is guarded by the
+        snapshot revision and the new content's classification lands in the
+        same statement. Returns None if the agent is gone or changed since.
         """
         query = """
             UPDATE agents SET
@@ -507,10 +517,8 @@ class AgentRepository:
             WHERE id = $18 AND hidden = false{guard}
             RETURNING *
         """
-        review_set, guard, review_params = "", "", []
-        if review is not None:
-            review_set, guard, review_params = self._review_assignments(review, 19)
-            review_set, guard = f", {review_set}", f" AND {guard}"
+        review_sets, guard, review_params = self._guarded_review(review, expect_revision, 19)
+        review_set = "".join(f", {fragment}" for fragment in review_sets)
         row = await self.db.fetchrow(
             query.format(review_set=review_set, guard=guard),
             str(agent.wellKnownURI),
@@ -547,12 +555,27 @@ class AgentRepository:
         """Classification and review fields for one agent, hidden or not."""
         row = await self.db.fetchrow(
             """
-            SELECT review_status, jev_card_sha256, review_approved_sha256
+            SELECT review_status, jev_card_sha256, review_approved_sha256, review_revision
             FROM agents WHERE id = $1
             """,
             agent_id,
         )
         return dict(row) if row else None
+
+    async def get_review_snapshot(self, agent_id: UUID) -> Optional[tuple[AgentInDB, dict]]:
+        """The stored record and its review state, read together in one row.
+
+        Review decisions must pair content and state from the same snapshot;
+        its review_revision then guards the write.
+        """
+        row = await self.db.fetchrow("SELECT * FROM agents WHERE id = $1 AND hidden = false", agent_id)
+        if not row:
+            return None
+        state = {
+            key: row[key]
+            for key in ("review_status", "jev_card_sha256", "review_approved_sha256", "review_revision")
+        }
+        return self._row_to_agent(row), state
 
     async def list_review_queue(self) -> list[dict]:
         """Agents awaiting an admin decision, highest score first."""
@@ -582,12 +605,13 @@ class AgentRepository:
         """
         if approve:
             query = """
-                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256
+                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256,
+                       review_revision = review_revision + 1
                 WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
             """
         else:
             query = """
-                UPDATE agents SET review_status = 'rejected'
+                UPDATE agents SET review_status = 'rejected', review_revision = review_revision + 1
                 WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
             """
         result = await self.db.execute(query, agent_id, card_sha256)

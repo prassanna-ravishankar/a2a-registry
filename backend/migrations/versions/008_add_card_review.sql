@@ -13,6 +13,8 @@ ALTER TABLE agents ADD COLUMN jev_card_sha256 TEXT;
 ALTER TABLE agents ADD COLUMN jev_checked_at TIMESTAMPTZ;
 ALTER TABLE agents ADD COLUMN review_status TEXT;
 ALTER TABLE agents ADD COLUMN review_approved_sha256 TEXT;
+-- Optimistic concurrency token: every card-content or review write checks and bumps it.
+ALTER TABLE agents ADD COLUMN review_revision BIGINT NOT NULL DEFAULT 0;
 
 ALTER TABLE agents ADD CONSTRAINT agents_review_status_check
     CHECK (review_status IS NULL OR review_status IN ('unscored', 'pending', 'flagged', 'approved', 'rejected'));

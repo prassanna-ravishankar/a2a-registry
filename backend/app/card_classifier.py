@@ -25,6 +25,7 @@ from .config import settings
 from .models import AgentBase, AgentCreate
 
 WINDOW_CHARS = 3000
+MAX_PATH_CHARS = 1000
 OVERLAP_CHARS = 200
 MAX_WINDOWS = 60
 
@@ -162,6 +163,10 @@ def _pieces(path: str, text: str) -> Iterator[str]:
     Nothing is truncated: text hidden after a long benign prefix still lands in
     some chunk, and the overlap keeps a phrase split at a boundary readable.
     """
+    if len(path) > MAX_PATH_CHARS:
+        # Keys are attacker-controlled too; one this long cannot be labelled
+        # without starving its value, so the card is held instead.
+        raise CardClassifierError("card key path too long to classify")
     line = f"{path}: {text}"
     if len(line) <= WINDOW_CHARS:
         yield line
@@ -238,10 +243,10 @@ async def classify_card(
     whole card, queueing included, for callers with a person waiting. If any
     window fails, the others are cancelled.
     """
-    windows = card_windows(document)
-    if not windows:
-        return CardVerdict(score=0.0, signals={}, model=settings.jev_model)
     try:
+        windows = card_windows(document)
+        if not windows:
+            return CardVerdict(score=0.0, signals={}, model=settings.jev_model)
         jev = client or _get_client()
 
         async def ask(window: str):
@@ -300,13 +305,17 @@ def next_review_status(
 
 @dataclass(frozen=True)
 class ReviewWrite:
-    """A classification outcome to persist, guarded by the state it was computed from."""
+    """A classification outcome to persist.
+
+    `expect_revision` is the agent's review_revision in the snapshot the
+    content and state were read from; the write is refused if any other
+    content or review write happened since.
+    """
 
     verdict: Optional[CardVerdict]
     sha: str
     status: Optional[str]
-    expect_status: Optional[str]
-    expect_sha: Optional[str]
+    expect_revision: int
 
 
 async def assess(
@@ -314,9 +323,9 @@ async def assess(
 ) -> Optional[ReviewWrite]:
     """Classify `document` unless it is exactly what was last scored.
 
-    `state` holds the agent's current review_status, jev_card_sha256 and
-    review_approved_sha256 ({} for a registration). Returns None when there is
-    nothing new to record. Never raises for classifier failures: those fail
+    `state` holds review_status, jev_card_sha256, review_approved_sha256 and
+    review_revision from the same snapshot as the record in `document` ({} for
+    a registration). Returns None when this exact content was already scored. Never raises for classifier failures: those fail
     closed through the returned status.
     """
     sha = card_sha256(document)
@@ -335,4 +344,6 @@ async def assess(
         approved_sha=state.get("review_approved_sha256"),
         grandfathered=may_grandfather and scored_sha is None and current is None,
     )
-    return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_status=current, expect_sha=scored_sha)
+    return ReviewWrite(
+        verdict=verdict, sha=sha, status=status, expect_revision=state.get("review_revision", 0),
+    )

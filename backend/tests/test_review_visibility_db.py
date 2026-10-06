@@ -22,8 +22,8 @@ FLAGGED = CardVerdict(score=0.95, signals={"injection": 0.95}, model="jev-test")
 CLEAN = CardVerdict(score=0.02, signals={}, model="jev-test")
 
 
-def _review(verdict, sha, status, expect_status=None, expect_sha=None):
-    return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_status=expect_status, expect_sha=expect_sha)
+def _review(verdict, sha, status, expect_revision=0):
+    return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_revision=expect_revision)
 
 
 class _Db:
@@ -122,9 +122,7 @@ async def test_unscored_agent_is_held_cannot_be_approved_and_is_released_once_sc
     assert not await _publicly_visible(db, repo, created.id)
     assert not await repo.decide_review(created.id, approve=True, card_sha256="sha-3")
 
-    released = await repo.update_card_metadata(
-        created.id, {}, review=_review(CLEAN, "sha-3", None, expect_status="unscored"),
-    )
+    released = await repo.update_card_metadata(created.id, {}, review=_review(CLEAN, "sha-3", None))
     assert released and await _publicly_visible(db, repo, created.id)
 
 
@@ -144,7 +142,7 @@ async def test_moderation_never_revives_a_deleted_agent(db, repo):
     await repo.delete(unscored.id)
 
     await repo.decide_review(flagged.id, approve=True, card_sha256="sha-5")
-    await repo.update_card_metadata(unscored.id, {}, review=_review(CLEAN, "sha-6", None, expect_status="unscored"))
+    await repo.update_card_metadata(unscored.id, {}, review=_review(CLEAN, "sha-6", None, expect_revision=1))
 
     assert not await _publicly_visible(db, repo, flagged.id)
     assert not await _publicly_visible(db, repo, unscored.id)
@@ -152,7 +150,7 @@ async def test_moderation_never_revives_a_deleted_agent(db, repo):
 
 async def test_stale_classification_cannot_overwrite_an_admin_rejection(db, repo):
     created = await repo.create(_agent(7), review=_review(FLAGGED, "sha-7", "pending"))
-    stale = _review(CLEAN, "sha-7b", None, expect_status="pending", expect_sha="sha-7")
+    stale = _review(CLEAN, "sha-7b", None, expect_revision=0)
 
     assert await repo.decide_review(created.id, approve=False, card_sha256="sha-7")
     assert not await repo.update_card_metadata(created.id, {"name": "Swapped"}, review=stale)
@@ -167,7 +165,7 @@ async def test_failed_classification_writes_no_metadata(db, repo):
     created = await repo.create(_agent(8), review=_review(CLEAN, "sha-8", None))
 
     written = await repo.update_card_metadata(
-        created.id, {"description": "changed and unscored"}, review=_review(None, "sha-8b", "unscored", expect_sha="sha-8"),
+        created.id, {"description": "changed and unscored"}, review=_review(None, "sha-8b", "unscored"),
     )
 
     assert written
@@ -179,7 +177,43 @@ async def test_failed_classification_writes_no_metadata(db, repo):
 
 async def test_full_update_is_refused_when_review_state_moved(db, repo):
     created = await repo.create(_agent(9), review=_review(CLEAN, "sha-9", None))
-    stale = _review(CLEAN, "sha-9b", None, expect_sha="not-what-is-stored")
+    stale = _review(CLEAN, "sha-9b", None, expect_revision=41)
 
     assert await repo.update(created.id, _agent(9, name="Changed"), review=stale) is None
     assert (await repo.get_by_id(created.id)).name == "Unique Review Agent 9"
+
+
+async def test_worker_never_pairs_a_stale_record_with_fresh_review_state(db, repo):
+    """Codex re-review #2: the worker holds clean A from the start of the cycle while a
+    concurrent PUT stores malicious B as pending. The worker must diff and classify the
+    fresh snapshot, so what it publishes is exactly what it scored, never B."""
+    from unittest.mock import AsyncMock, patch
+
+    import worker
+
+    clean_a = _agent(10, description="clean A reviewtoken")
+    created = await repo.create(clean_a, review=_review(CLEAN, "sha-a", None))
+    stale_a = await repo.get_by_id(created.id)
+
+    malicious_b = _agent(10, description="malicious B reviewtoken")
+    assert await repo.update(created.id, malicious_b, review=_review(FLAGGED, "sha-b", "pending")) is not None
+    assert not await _publicly_visible(db, repo, created.id)
+
+    card_a = clean_a.model_dump(mode="json")
+    with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=CLEAN)) as classify:
+        await worker.refresh_agent_metadata(stale_a, card_a, repo, conformance_errors=[], classify=True)
+
+    scored = classify.await_args.args[0]["record"]["description"]
+    row = await db.fetchrow("SELECT description, review_status FROM agents WHERE id = $1", created.id)
+    assert scored == row["description"] == "clean A reviewtoken"
+    if await _publicly_visible(db, repo, created.id):
+        assert (await repo.get_by_id(created.id)).description == "clean A reviewtoken"
+
+
+async def test_stale_snapshot_write_is_refused_after_a_concurrent_put(db, repo):
+    created = await repo.create(_agent(11), review=_review(CLEAN, "sha-11", None))
+    worker_review = _review(CLEAN, "sha-11w", None, expect_revision=0)
+
+    assert await repo.update(created.id, _agent(11, name="Put Wins"), review=_review(FLAGGED, "sha-p", "pending"))
+    assert not await repo.update_card_metadata(created.id, {"name": "Worker Overwrite"}, review=worker_review)
+    assert await db.fetchval("SELECT name FROM agents WHERE id = $1", created.id) == "Put Wins"

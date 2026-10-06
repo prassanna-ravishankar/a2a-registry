@@ -1197,7 +1197,9 @@ def _put_with_verdict(client, classify_mock, update_result):
          patch("app.main.settings.admin_api_key", "test-admin-key"):
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=_make_agent_public())
-        instance.get_review_state = AsyncMock(return_value={"review_status": None, "jev_card_sha256": "old"})
+        instance.get_review_state = AsyncMock(
+            return_value={"review_status": None, "jev_card_sha256": "old", "review_revision": 3}
+        )
         instance.update = AsyncMock(return_value=update_result)
         response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "test-admin-key"})
     return response, instance
@@ -1209,7 +1211,7 @@ def test_put_writes_changed_content_and_its_hold_in_one_guarded_update(client):
 
     assert response.status_code == 202
     review = repo.update.await_args.kwargs["review"]
-    assert (review.status, review.expect_sha) == ("pending", "old")
+    assert (review.status, review.expect_revision) == ("pending", 3)
 
 
 def test_put_fails_closed_without_publishing_unscored_content(client):
@@ -1224,3 +1226,19 @@ def test_put_reports_conflict_when_agent_changed_during_review(client):
     response, _ = _put_with_verdict(client, clean, None)
 
     assert response.status_code == 409
+
+
+def test_put_with_already_scored_content_writes_nothing(client):
+    """Unchanged content skips the write, so it cannot overwrite a concurrent replacement."""
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.assess", new=AsyncMock(return_value=None)), \
+         patch("app.main.settings.admin_api_key", "test-admin-key"):
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        instance.get_review_state = AsyncMock(return_value={"review_status": "pending", "review_revision": 2})
+        instance.update = AsyncMock()
+        response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "test-admin-key"})
+
+    assert response.status_code == 202
+    instance.update.assert_not_awaited()

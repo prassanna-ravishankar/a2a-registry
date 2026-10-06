@@ -267,6 +267,15 @@ async def refresh_agent_metadata(
 
     Returns True if an update was written.
     """
+    state: dict = {}
+    if classify:
+        # Diff and classify against a fresh snapshot of the record and its
+        # review state, never the copy loaded at the start of the cycle.
+        snapshot = await agent_repo.get_review_snapshot(stored.id)
+        if snapshot is None:
+            return False
+        stored, state = snapshot
+
     # _normalise_fields returns a new dict (it does not mutate card_data), so
     # card_data stays the RAW live card for presence detection.
     normalised = _normalise_fields(card_data)
@@ -286,13 +295,14 @@ async def refresh_agent_metadata(
 
     review = None
     if classify:
-        state = await agent_repo.get_review_state(stored.id) or {}
         candidate = {**card_record(stored), **{field: _jsonable(value) for field, value in changed.items()}}
         review = await assess(state, review_document(candidate, card_data), may_grandfather=not changed)
     if not changed and review is None:
         return False
 
-    written = await agent_repo.update_card_metadata(stored.id, changed, review=review)
+    written = await agent_repo.update_card_metadata(
+        stored.id, changed, review=review, expect_revision=state.get("review_revision") if classify else None,
+    )
     if review is not None:
         logger.info(
             "card_review",

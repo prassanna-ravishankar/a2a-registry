@@ -494,7 +494,8 @@ async def update_agent(
     )
 
     # Classify the new content first, then write it and its review in one
-    # guarded statement, so changed content is never public unscored.
+    # statement guarded by the revision read here, so changed content is never
+    # public unscored and a concurrent write is never overwritten.
     state = await agent_repo.get_review_state(agent_id) or {}
     review = await assess(
         state,
@@ -503,6 +504,11 @@ async def update_agent(
         deadline=settings.jev_deadline_seconds,
     )
     review_status = review.status if review else state.get("review_status")
+    if review is None:
+        # Byte-identical to the content already scored: nothing to write.
+        if review_status in HELD_STATUSES:
+            return _under_review(agent_id)
+        return await agent_repo.get_by_id(agent_id)
     try:
         updated = await agent_repo.update(agent_id, agent_data, review=review)
     except Exception as e:

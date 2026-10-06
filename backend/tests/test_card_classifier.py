@@ -61,6 +61,22 @@ def test_card_too_large_to_classify_raises_instead_of_scoring_a_prefix():
         card_windows(card)
 
 
+@pytest.mark.parametrize("key_length", [900, 2500, 2760, 3000, 10_000])
+def test_long_attacker_keys_fail_closed_instead_of_dropping_their_value(key_length):
+    card = {"securitySchemes": {"x" * key_length: {"description": INJECTION + " " + "y" * 5000}}}
+    try:
+        windows = card_windows(card)
+    except CardClassifierError:
+        return
+    assert any(INJECTION in window for window in windows)
+
+
+async def test_classify_wraps_any_windowing_failure():
+    card = {"securitySchemes": {"x" * 5000: {"description": INJECTION * 200}}}
+    with pytest.raises(CardClassifierError):
+        await classify_card(card, client=_jev())
+
+
 def test_windows_deduplicate_repeated_text():
     card = {"skills": [{"description": "same text"} for _ in range(50)]}
     assert "".join(card_windows(card)).count("same text") == 1
@@ -134,18 +150,17 @@ async def test_assess_skips_content_that_was_already_scored():
 
 async def test_assess_retries_unscored_even_when_unchanged():
     doc = {"record": {"name": "x"}, "live_card": {"name": "x"}}
-    state = {"review_status": "unscored", "jev_card_sha256": card_sha256(doc)}
+    state = {"review_status": "unscored", "jev_card_sha256": card_sha256(doc), "review_revision": 4}
     with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=CLEAN)):
         review = await assess(state, doc, may_grandfather=False)
-    assert review.status is None and review.expect_status == "unscored"
+    assert review.status is None and review.expect_revision == 4
 
 
 async def test_assess_holds_changed_content_when_jev_fails():
-    state = {"review_status": None, "jev_card_sha256": "old"}
+    state = {"review_status": None, "jev_card_sha256": "old", "review_revision": 7}
     with patch("app.card_classifier.classify_card", new=AsyncMock(side_effect=CardClassifierError("down"))):
         review = await assess(state, {"record": {"name": "changed"}}, may_grandfather=True)
-    assert review.status == "unscored" and review.verdict is None
-    assert (review.expect_status, review.expect_sha) == (None, "old")
+    assert review.status == "unscored" and review.verdict is None and review.expect_revision == 7
 
 
 async def test_assess_grandfathers_only_unchanged_never_scored_content():
