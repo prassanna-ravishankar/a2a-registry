@@ -147,8 +147,14 @@ def review_document(record: dict[str, Any], live_card: dict[str, Any]) -> dict[s
 
 
 def _strings(value: Any, path: str = "$") -> Iterator[tuple[str, str]]:
+    """Every authored text in a document: string values AND property names.
+
+    Property names are attacker-controlled too, so each is yielded as text in
+    its own right, whatever its value's type and even if that value repeats.
+    """
     if isinstance(value, dict):
         for key, child in value.items():
+            yield f"{path} property name", str(key)
             yield from _strings(child, f"{path}.{key}")
     elif isinstance(value, list):
         for index, child in enumerate(value):

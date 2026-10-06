@@ -77,6 +77,18 @@ async def test_classify_wraps_any_windowing_failure():
         await classify_card(card, client=_jev())
 
 
+@pytest.mark.parametrize("value", [True, None, 0, "", {}, []])
+def test_malicious_property_names_are_scored_whatever_their_value(value):
+    card = {"x-extension": {INJECTION: value}}
+    assert any(INJECTION in window for window in card_windows({"record": card, "live_card": card}))
+
+
+def test_malicious_property_name_survives_value_deduplication():
+    scheme = {"type": "apiKey", "in": "header", "name": "x-key"}
+    card = {"securitySchemes": {"normal": scheme, INJECTION: dict(scheme)}}
+    assert any(INJECTION in window for window in card_windows({"record": card, "live_card": card}))
+
+
 def test_windows_deduplicate_repeated_text():
     card = {"skills": [{"description": "same text"} for _ in range(50)]}
     assert "".join(card_windows(card)).count("same text") == 1
