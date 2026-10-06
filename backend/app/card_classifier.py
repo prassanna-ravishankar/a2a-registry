@@ -292,11 +292,11 @@ def next_review_status(
 ) -> Optional[str]:
     """Decide an agent's review status after a classification attempt.
 
-    `verdict` is None when Jev failed. `grandfathered` is true only for an
-    agent published before classification existed, scored for the first time
-    with its content unchanged: it is flagged rather than held, and a failure
-    leaves it as it was. Anything new or changed is held when flagged and held
-    as unscored when Jev fails.
+    `verdict` is None when Jev failed. `grandfathered` is true only for the
+    worker's first score of an agent published before it was ever classified:
+    it is flagged rather than held, and a failure leaves it as it was.
+    Registrations, PUTs and anything already scored are held when flagged and
+    held as unscored when Jev fails.
     """
     if current == "rejected":
         return "rejected"

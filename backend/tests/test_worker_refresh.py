@@ -8,7 +8,7 @@ registration values forever.
 
 import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -688,3 +688,50 @@ async def test_update_card_metadata_noop_on_empty():
 
     assert written is False
     db.execute.assert_not_awaited()
+
+
+def _stored_model():
+    """A real stored record (card_record needs model_dump) that drifts from _live_card()."""
+    from datetime import datetime, timezone
+
+    from app.models import AgentInDB
+
+    old = agent_create_from_card(_live_card(name="Old Name", version="0.1.0"), "https://a2a.gogonka.com/.well-known/agent.json")
+    now = datetime.now(timezone.utc)
+    return AgentInDB(**old.model_dump(), id="95e89fba-1765-4c16-a8c5-0a239dbfd29e", created_at=now, updated_at=now)
+
+
+async def test_first_worker_score_of_published_agent_only_flags_even_with_metadata_drift():
+    """Deploy regression: provider/skills report drift every cycle for unchanged cards,
+    so the first score of an already-published agent must flag it, never hold it."""
+    from app.card_classifier import CardVerdict
+
+    stored = _stored_model()
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(return_value=(stored, {"review_revision": 0})),
+        update_card_metadata=AsyncMock(return_value=True),
+    )
+    flagged = CardVerdict(score=0.9, signals={"injection": 0.9}, model="jev-test")
+    with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=flagged)):
+        await worker.refresh_agent_metadata(stored, _live_card(), repo, conformance_errors=[], classify=True)
+
+    fields = repo.update_card_metadata.await_args.args[1]
+    review = repo.update_card_metadata.await_args.kwargs["review"]
+    assert fields, "the scenario needs metadata drift"
+    assert review.status == "flagged"
+
+
+async def test_already_scored_published_agent_with_changed_card_is_held():
+    from app.card_classifier import CardVerdict
+
+    stored = _stored_model()
+    state = {"review_status": None, "jev_card_sha256": "earlier-content", "review_revision": 5}
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(return_value=(stored, state)),
+        update_card_metadata=AsyncMock(return_value=True),
+    )
+    flagged = CardVerdict(score=0.9, signals={"injection": 0.9}, model="jev-test")
+    with patch("app.card_classifier.classify_card", new=AsyncMock(return_value=flagged)):
+        await worker.refresh_agent_metadata(stored, _live_card(), repo, conformance_errors=[], classify=True)
+
+    assert repo.update_card_metadata.await_args.kwargs["review"].status == "pending"
