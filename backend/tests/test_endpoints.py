@@ -5,6 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+from app.card_classifier import CardClassifierError, CardVerdict
 from app.main import _is_private_url
 from app.models import AgentInDB, AgentPublic, Capabilities
 
@@ -116,6 +117,7 @@ def test_register_agent_success(client):
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.record_card_review = AsyncMock()
         instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.update_task_conformance = AsyncMock(return_value=None)
         instance.get_by_id = AsyncMock(return_value=mock_public)
@@ -164,6 +166,7 @@ def test_register_agent_smoke_test_failure_attaches_note(client):
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.record_card_review = AsyncMock()
         instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.update_task_conformance = AsyncMock(return_value=None)
         instance.get_by_id = AsyncMock(return_value=mock_public)
@@ -1117,3 +1120,68 @@ def test_parsed_split_host_card_resolves_transport_to_card_url():
     transport = getattr(sdk_client, "_transport", None) or getattr(sdk_client, "transport", None)
     assert transport is not None
     assert transport.url == "https://paki-api.elfresonero.workers.dev/a2a"
+
+
+def _register_with_verdict(client, classify_mock):
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.classify_card", new=classify_mock), \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "ok", 10))):
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.create = AsyncMock(return_value=_make_agent_in_db())
+        instance.record_card_review = AsyncMock()
+        instance.update_maintainer_notes = AsyncMock(return_value=True)
+        instance.update_task_conformance = AsyncMock(return_value=None)
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        response = client.post(
+            "/agents/register",
+            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
+        )
+    return response, instance
+
+
+def test_register_flagged_card_is_inserted_hidden_and_not_returned(client):
+    """A flagged card is created already held, and the response does not echo the agent or the reason."""
+    flagged = AsyncMock(return_value=CardVerdict(score=0.95, signals={"injection": 0.95}, model="jev-test"))
+    response, repo = _register_with_verdict(client, flagged)
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "under_review"
+    assert "injection" not in response.text and "0.95" not in response.text
+    assert repo.create.await_args.kwargs["review_status"] == "pending"
+    repo.get_by_id.assert_not_awaited()
+
+
+def test_register_fails_closed_when_jev_errors(client):
+    response, repo = _register_with_verdict(client, AsyncMock(side_effect=CardClassifierError("TimeoutError")))
+
+    assert response.status_code == 202
+    assert repo.create.await_args.kwargs["review_status"] == "unscored"
+    assert repo.record_card_review.await_args.args[1] is None
+
+
+def test_register_clean_card_is_published(client):
+    response, repo = _register_with_verdict(client, AsyncMock(return_value=CardVerdict(score=0.05, signals={}, model="jev-test")))
+
+    assert response.status_code == 201
+    assert repo.create.await_args.kwargs["review_status"] is None
+
+
+def test_review_endpoints_require_admin(client):
+    agent_id = "550e8400-e29b-41d4-a716-446655440000"
+    assert client.get("/admin/review").status_code == 403
+    assert client.post(f"/admin/agents/{agent_id}/review", json={"decision": "approve"}).status_code == 403
+
+
+def test_review_decision_conflict_when_not_queued(client):
+    agent_id = "550e8400-e29b-41d4-a716-446655440000"
+    with patch("app.main.settings.admin_api_key", "secret"), patch("app.main.AgentRepository") as mock_repo:
+        mock_repo.return_value.decide_review = AsyncMock(return_value=False)
+        response = client.post(
+            f"/admin/agents/{agent_id}/review", json={"decision": "approve"}, headers={"X-Admin-Key": "secret"},
+        )
+    assert response.status_code == 409

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
+from .card_classifier import HIDDEN_STATUSES, CardVerdict
 from .database import Database
 from .models import (
     AgentCreate,
@@ -25,16 +26,17 @@ class AgentRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    async def create(self, agent: AgentCreate) -> AgentInDB:
-        """Create a new agent"""
+    async def create(self, agent: AgentCreate, review_status: Optional[str] = None) -> AgentInDB:
+        """Create a new agent, hidden from the start when its review status says so."""
         query = """
             INSERT INTO agents (
                 protocol_version, name, description, author, well_known_uri,
                 url, version, provider, documentation_url, capabilities,
                 default_input_modes, default_output_modes, skills, conformance,
-                icon_url, supports_authenticated_extended_card, security_requirements, security_schemes
+                icon_url, supports_authenticated_extended_card, security_requirements, security_schemes,
+                review_status, hidden
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         """
 
@@ -58,6 +60,8 @@ class AgentRepository:
             agent.supportsAuthenticatedExtendedCard,
             json.dumps(agent.security or []),
             json.dumps(agent.securitySchemes or {}),
+            review_status,
+            review_status in HIDDEN_STATUSES,
         )
 
         return self._row_to_agent(row)
@@ -469,6 +473,104 @@ class AgentRepository:
         """Delete an agent (soft delete by marking hidden)"""
         query = "UPDATE agents SET hidden = true WHERE id = $1"
         result = await self.db.execute(query, agent_id)
+        return result == "UPDATE 1"
+
+    async def get_review_state(self, agent_id: UUID) -> Optional[dict]:
+        """Classification and review fields for one agent, hidden or not."""
+        row = await self.db.fetchrow(
+            """
+            SELECT review_status, jev_card_sha256, review_approved_sha256
+            FROM agents WHERE id = $1
+            """,
+            agent_id,
+        )
+        return dict(row) if row else None
+
+    async def record_card_review(
+        self,
+        agent_id: UUID,
+        verdict: Optional[CardVerdict],
+        card_sha256: str,
+        status: Optional[str],
+        *,
+        previous: Optional[str],
+    ) -> None:
+        """Persist a classification attempt and move visibility with the review status.
+
+        Visibility only changes when the review status crosses between a hidden
+        and a visible status, so agents hidden for other reasons (deleted, dead)
+        are never re-published here. A failed attempt keeps the last score and
+        card fingerprint so the card is retried.
+        """
+        hide = status in HIDDEN_STATUSES
+        moves = hide != (previous in HIDDEN_STATUSES)
+        if verdict is None:
+            await self.db.execute(
+                """
+                UPDATE agents SET review_status = $2,
+                       hidden = CASE WHEN $3 THEN $4 ELSE hidden END
+                WHERE id = $1
+                """,
+                agent_id, status, moves, hide,
+            )
+            return
+        await self.db.execute(
+            """
+            UPDATE agents SET jev_score = $2, jev_signals = $3, jev_model = $4,
+                   jev_card_sha256 = $5, jev_checked_at = NOW(), review_status = $6,
+                   hidden = CASE WHEN $7 THEN $8 ELSE hidden END
+            WHERE id = $1
+            """,
+            agent_id, verdict.score, json.dumps(verdict.signals), verdict.model,
+            card_sha256, status, moves, hide,
+        )
+
+    async def list_unscored(self) -> list[tuple[UUID, str]]:
+        """Agents held because Jev could not classify them."""
+        rows = await self.db.fetch(
+            "SELECT id, well_known_uri FROM agents WHERE review_status = 'unscored'"
+        )
+        return [(row["id"], row["well_known_uri"]) for row in rows]
+
+    async def list_review_queue(self) -> list[dict]:
+        """Agents awaiting an admin decision, highest score first."""
+        rows = await self.db.fetch(
+            """
+            SELECT id, name, author, well_known_uri, hidden, review_status,
+                   jev_score, jev_signals, jev_model, jev_checked_at, created_at
+            FROM agents
+            WHERE review_status IN ('unscored', 'pending', 'flagged')
+            ORDER BY jev_score DESC NULLS LAST, created_at
+            """
+        )
+        return [
+            {
+                **dict(row),
+                "jev_signals": json.loads(row["jev_signals"]) if row["jev_signals"] else None,
+            }
+            for row in rows
+        ]
+
+    async def decide_review(self, agent_id: UUID, approve: bool) -> bool:
+        """Admin decision on a queued agent. Approval covers the scored card content only."""
+        if approve:
+            result = await self.db.execute(
+                """
+                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256,
+                       hidden = false
+                WHERE id = $1 AND review_status IN ('unscored', 'pending', 'flagged')
+                  AND jev_card_sha256 IS NOT NULL
+                """,
+                agent_id,
+            )
+        else:
+            result = await self.db.execute(
+                """
+                UPDATE agents SET review_status = 'rejected', hidden = true
+                WHERE id = $1 AND review_status IN ('unscored', 'pending', 'flagged')
+                """,
+                agent_id,
+            )
         return result == "UPDATE 1"
 
     async def update_maintainer_notes(self, agent_id: UUID, notes: str | None) -> bool:

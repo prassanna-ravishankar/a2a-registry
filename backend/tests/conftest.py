@@ -48,6 +48,17 @@ MOCK_AGENT_CARD = {
 }
 
 
+@pytest.fixture(autouse=True)
+def clean_jev_verdict():
+    """Registration classifies cards with Jev; default every test to a clean verdict."""
+    from app.card_classifier import CardVerdict
+
+    verdict = CardVerdict(score=0.01, signals={}, model="jev-test")
+    with patch("app.main.classify_card", new=AsyncMock(return_value=verdict)) as classify, \
+         patch("app.main.review_card", new=AsyncMock(return_value=None)):
+        yield classify
+
+
 @pytest.fixture
 def mock_db():
     db = MagicMock()

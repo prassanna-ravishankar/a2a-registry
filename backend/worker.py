@@ -11,12 +11,14 @@ import aiohttp
 from pydantic import HttpUrl, TypeAdapter
 
 from app.agent_card import extract_agent_url, extract_protocol_version
+from app.card_classifier import review_card
 from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.models import Capabilities
 from app.repositories import AgentRepository, HealthCheckRepository
 from app.smoke_test import CATEGORY_NOTES, TASK_PROBE_USER_AGENT, smoke_test
+from app.utils import fetch_agent_card
 from app.validators import _normalise_fields, validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
@@ -432,6 +434,17 @@ async def check_agent_health(
                 except Exception as note_err:
                     bound_logger.warning("system_notes_refresh_failed", error=str(note_err))
 
+            # Classify the live card with Jev whenever its content changes. A
+            # changed card that is flagged, or that Jev cannot classify, is
+            # hidden for review; a published card scored for the first time is
+            # only flagged.
+            try:
+                review_status = await review_card(agent_repo, agent_id, card_data)
+                if review_status:
+                    bound_logger.info("card_review", review_status=review_status)
+            except Exception as review_err:
+                bound_logger.warning("card_review_failed", error=str(review_err))
+
     except asyncio.TimeoutError:
         response_time_ms = int((time.time() - start_time) * 1000)
         error_message = f"Timeout after {response_time_ms}ms"
@@ -467,6 +480,19 @@ async def check_agent_health(
             error_message=error_message,
         )
         bound_logger.error("health_check_error", error=error_message)
+
+
+async def review_unscored(agent_repo: AgentRepository) -> int:
+    """Classify agents held because Jev could not score them; publish the clean ones."""
+    released = 0
+    for agent_id, well_known_uri in await agent_repo.list_unscored():
+        card, error = await fetch_agent_card(well_known_uri)
+        if error or card is None:
+            continue
+        status = await review_card(agent_repo, agent_id, card, published=False)
+        logger.info("unscored_card_review", agent_id=agent_id, review_status=status)
+        released += status is None
+    return released
 
 
 async def _agents_needing_task_probe(agents) -> set:
@@ -613,6 +639,13 @@ async def health_check_cycle():
                 for result in results:
                     if isinstance(result, Exception):
                         logger.error("health_check_task_error", error=str(result))
+
+        # Retry agents held as unscored (Jev failed earlier). They are hidden,
+        # so the health pass above never sees them.
+        try:
+            await review_unscored(agent_repo)
+        except Exception as unscored_err:
+            logger.warning("unscored_review_failed", error=str(unscored_err))
 
         # Task probes: real A2A message/send via the SDK, persisted as a
         # structured category. DB-driven (re-probe agents whose last probe is
