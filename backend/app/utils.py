@@ -301,7 +301,7 @@ def track_event(event_name: str, properties: dict | None = None):
     """Track an event to PostHog"""
     if posthog_client and settings.posthog_enabled:
         try:
-            posthog_client.capture("api_user", event_name, properties or {})
+            posthog_client.capture(event_name, distinct_id="api_user", properties=properties or {})
         except Exception:
             # Silently fail - analytics shouldn't break the app
             pass
