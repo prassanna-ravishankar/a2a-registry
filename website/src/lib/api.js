@@ -69,6 +69,11 @@ export const api = {
     return fetchAPI('/stats');
   },
 
+  // Categories are defined once in the backend (app/categories.py) and served here.
+  async getCategories() {
+    return fetchAPI('/categories');
+  },
+
   // Register a new agent (full payload)
   async registerAgent(agentData) {
     return fetchAPI('/agents', {

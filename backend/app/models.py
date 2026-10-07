@@ -108,6 +108,9 @@ class AgentInDB(AgentBase):
     hidden: bool = False
     flag_count: int = 0
     maintainer_notes: Optional[str] = None
+    # Assigned by Jev from app.categories; not part of the Agent Card.
+    category: Optional[str] = None
+    category_secondary: Optional[str] = None
 
 
 class TaskConformance(BaseModel):
@@ -201,6 +204,14 @@ class AgentFlagInDB(AgentFlag):
     flagged_at: datetime
     ip_address: Optional[str] = None
     agent_name: Optional[str] = None
+
+
+class CategoryInfo(BaseModel):
+    """One registry category, as defined in app.categories."""
+    slug: str
+    label: str
+    description: str
+    agent_count: int
 
 
 class PaginatedAgents(BaseModel):

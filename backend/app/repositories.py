@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
-from .card_classifier import PUBLIC_REVIEW_SQL, ReviewWrite
+from .card_classifier import PUBLIC_REVIEW_SQL, CardVerdict, ReviewWrite
 from .database import Database
 from .models import (
     AgentCreate,
@@ -35,10 +35,12 @@ class AgentRepository:
                 url, version, provider, documentation_url, capabilities,
                 default_input_modes, default_output_modes, skills, conformance,
                 icon_url, supports_authenticated_extended_card, security_requirements, security_schemes,
-                review_status, jev_score, jev_signals, jev_model, jev_card_sha256, jev_checked_at
+                review_status, jev_score, jev_signals, jev_model, jev_card_sha256,
+                category, category_secondary, category_confidence, jev_checked_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                    $19, $20, $21, $22, $23, CASE WHEN $20::real IS NULL THEN NULL ELSE NOW() END)
+                    $19, $20, $21, $22, $23, $24, $25, $26,
+                    CASE WHEN $20::real IS NULL THEN NULL ELSE NOW() END)
             RETURNING *
         """
 
@@ -69,17 +71,21 @@ class AgentRepository:
 
     @staticmethod
     def _review_values(review: Optional[ReviewWrite]) -> tuple:
-        """(review_status, jev_score, jev_signals, jev_model, jev_card_sha256) for a write.
+        """(review_status, jev_score, jev_signals, jev_model, jev_card_sha256, category,
+        category_secondary, category_confidence) for a write.
 
-        A failed classification records only the status: the last score and
-        fingerprint stay, so the content is classified again next cycle.
+        A failed classification records only the status: the last score,
+        category and fingerprint stay, so the content is classified again next cycle.
         """
         if review is None:
-            return (None, None, None, None, None)
+            return (None,) * 8
         if review.verdict is None:
-            return (review.status, None, None, None, None)
+            return (review.status,) + (None,) * 7
         v = review.verdict
-        return (review.status, v.score, json.dumps(v.signals), v.model, review.sha)
+        return (
+            review.status, v.score, json.dumps(v.signals), v.model, review.sha,
+            v.category, v.category_secondary, v.category_confidence,
+        )
 
     @staticmethod
     def _guarded_review(
@@ -98,16 +104,17 @@ class AgentRepository:
         params: list = [revision]
         guard = f" AND review_revision = ${first}"
         if review is not None:
-            status, score, signals, model, sha = AgentRepository._review_values(review)
+            status, score, signals, model, sha, *category = AgentRepository._review_values(review)
             n = first + 1
             sets.append(f"review_status = ${n}")
             params.append(status)
             if review.verdict is not None:
                 sets.append(
                     f"jev_score = ${n + 1}, jev_signals = ${n + 2}, jev_model = ${n + 3}, "
-                    f"jev_card_sha256 = ${n + 4}, jev_checked_at = NOW()"
+                    f"jev_card_sha256 = ${n + 4}, jev_checked_at = NOW(), category = ${n + 5}, "
+                    f"category_secondary = ${n + 6}, category_confidence = ${n + 7}"
                 )
-                params += [score, signals, model, sha]
+                params += [score, signals, model, sha, *category]
         return sets, guard, params
 
     @staticmethod
@@ -255,6 +262,7 @@ class AgentRepository:
         conformance: Optional[str] = None,
         healthy: Optional[bool] = None,
         task_verified: Optional[bool] = None,
+        category: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[AgentPublic], int]:
@@ -306,6 +314,12 @@ class AgentRepository:
             where_clauses.append("conformance = true")
         elif conformance == "non-standard":
             where_clauses.append("conformance IS NOT TRUE")
+
+        if category:
+            # Primary or secondary: an agent that clearly does two things is in both.
+            where_clauses.append(f"(a.category = ${param_idx} OR a.category_secondary = ${param_idx})")
+            params.append(category)
+            param_idx += 1
 
         if task_verified is True:
             where_clauses.append("task_conformance_passed = true")
@@ -551,6 +565,44 @@ class AgentRepository:
         result = await self.db.execute(query, agent_id)
         return result == "UPDATE 1"
 
+    async def set_category(self, agent_id: UUID, verdict: CardVerdict, expect_revision: int) -> bool:
+        """Write only the category fields (one-off backfill), guarded by the review revision.
+
+        Review status, score and fingerprint are untouched, so this can never
+        change an agent's visibility.
+        """
+        result = await self.db.execute(
+            """
+            UPDATE agents SET category = $1, category_secondary = $2, category_confidence = $3,
+                   review_revision = review_revision + 1
+            WHERE id = $4 AND hidden = false AND review_revision = $5
+            """,
+            verdict.category, verdict.category_secondary, verdict.category_confidence,
+            agent_id, expect_revision,
+        )
+        return result == "UPDATE 1"
+
+    async def count_by_category(self) -> dict[str, int]:
+        """Publicly visible agents per category, counting primary and secondary.
+
+        Matches the list filter (primary OR secondary), so a category's count is
+        the number of agents its filter returns.
+        """
+        rows = await self.db.fetch(
+            f"""
+            SELECT slug, COUNT(DISTINCT id) AS n FROM (
+                SELECT id, category AS slug FROM agents
+                WHERE hidden = false AND {PUBLIC_REVIEW_SQL}
+                UNION
+                SELECT id, category_secondary AS slug FROM agents
+                WHERE hidden = false AND {PUBLIC_REVIEW_SQL}
+            ) categorised
+            WHERE slug IS NOT NULL
+            GROUP BY slug
+            """
+        )
+        return {row["slug"]: row["n"] for row in rows}
+
     async def get_review_state(self, agent_id: UUID) -> Optional[dict]:
         """Classification and review fields for one agent, hidden or not."""
         row = await self.db.fetchrow(
@@ -688,6 +740,8 @@ class AgentRepository:
             conformance=row["conformance"],
             conformance_errors=json.loads(row["conformance_errors"]) if row.get("conformance_errors") else None,
             maintainer_notes=row.get("maintainer_notes"),
+            category=row.get("category"),
+            category_secondary=row.get("category_secondary"),
         )
 
     def _row_to_agent_public(self, row) -> AgentPublic:

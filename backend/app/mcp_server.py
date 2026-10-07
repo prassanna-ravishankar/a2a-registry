@@ -6,6 +6,7 @@ from typing import Optional
 from fastmcp import FastMCP
 
 from .card_classifier import PUBLIC_REVIEW_SQL
+from .categories import CATEGORIES, CATEGORY_SLUGS
 from .database import db
 from .repositories import AgentRepository, StatsRepository
 
@@ -115,6 +116,8 @@ def _format_agent(agent) -> dict:
         "provider": provider,
         "is_healthy": agent.is_healthy,
         "uptime_percentage": agent.uptime_percentage,
+        "category": getattr(agent, "category", None),
+        "category_secondary": getattr(agent, "category_secondary", None),
     }
     if hasattr(agent, "maintainer_notes") and agent.maintainer_notes:
         result["maintainer_notes"] = _untrusted_text(agent.maintainer_notes, 1_000)
@@ -148,6 +151,7 @@ async def list_agents(
     author: Optional[str] = None,
     conformance: Optional[str] = None,
     healthy: Optional[bool] = None,
+    category: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> dict:
@@ -160,11 +164,14 @@ async def list_agents(
         author: Filter by author name (partial match)
         conformance: "standard" (A2A spec compliant) or "non-standard"
         healthy: Filter by health status (true = only healthy agents)
+        category: Category slug from list_categories (matches primary or secondary)
         limit: Max results (default 20)
         offset: Pagination offset
     """
     if conformance not in (None, "standard", "non-standard"):
         conformance = None
+    if category not in CATEGORY_SLUGS:
+        category = None
     effective_limit = _bounded_limit(limit, 100)
     effective_offset = max(0, offset)
     repo = AgentRepository(db)
@@ -174,6 +181,7 @@ async def list_agents(
         author=author,
         conformance=conformance,
         healthy=healthy,
+        category=category,
         limit=effective_limit,
         offset=effective_offset,
     )
@@ -183,6 +191,19 @@ async def list_agents(
         "limit": effective_limit,
         "offset": effective_offset,
     }
+
+
+@mcp.tool
+async def list_categories() -> list[dict]:
+    """The registry's agent categories (slug, label, description) with public agent counts.
+
+    Use a slug with list_agents(category=...) to browse agents by what they do.
+    """
+    counts = await AgentRepository(db).count_by_category()
+    return [
+        {"slug": c.slug, "label": c.label, "description": c.description, "agent_count": counts.get(c.slug, 0)}
+        for c in CATEGORIES
+    ]
 
 
 @mcp.tool

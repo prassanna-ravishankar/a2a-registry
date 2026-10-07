@@ -36,6 +36,15 @@ export function loadRegistry() {
 }
 
 export function loadRegistryStats() { return fetchJson('/stats'); }
+
+let categoriesPromise;
+// Category slugs, labels and descriptions are defined once in the backend (app/categories.py).
+export function loadCategories() {
+  // CI builds the frontend before the backend deploys, so a backend without
+  // /categories must not fail the build; the page fills them in live.
+  if (!categoriesPromise) categoriesPromise = fetchJson('/categories').catch(() => []);
+  return categoriesPromise;
+}
 export function loadAgentUptime(agentId) {
   return fetchJson(`/agents/${agentId}/uptime?period_days=30`).catch(() => null);
 }

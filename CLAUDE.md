@@ -83,6 +83,10 @@ GKE Autopilot, namespace `a2aregistry`, 1 replica each (api, worker, frontend).
 Resources are right-sized for a personal project — see `helm/a2aregistry/values-prod.yaml`.
 Health check interval: 1800s (30 min).
 
+## Agent Categories
+
+Jev assigns each agent a category in the same request as moderation (primary plus an optional secondary). `backend/app/categories.py` is the single source of truth: Jev's question is built from it, `GET /api/categories` serves it, and the website renders filters and labels from that endpoint. To change categories, edit only that file, then check accuracy with `cd backend && uv run python ../scripts/jev_eval/categories.py` against `scripts/jev_eval/category_labels.json`. Categories never affect moderation or visibility.
+
 ## Review Queue
 
 Jev's flags and holds are worked with `/generate-notes` (`.claude/skills/generate-notes/SKILL.md`): decide each queued agent against the registry policy via the admin API, write human maintainer notes only where they add something, and record each decision in `scripts/jev_eval/labels.json`. `scripts/jev_eval/evaluate.py` measures prompt changes against those labels plus synthetic policy cards.

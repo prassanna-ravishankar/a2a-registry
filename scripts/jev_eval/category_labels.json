@@ -1,0 +1,1064 @@
+{
+ "0136e410-6621-4f8b-bba7-8ea58fc46db7": {
+  "acceptable": [
+   "data-analytics",
+   "markets-trading",
+   "payments"
+  ],
+  "primary": "crypto-web3"
+ },
+ "014a8c20-e8a0-4b13-8dc2-2a3c5536e7e5": {
+  "acceptable": [
+   "payments",
+   "trust-safety"
+  ],
+  "primary": "demo-test"
+ },
+ "04f9be44-e979-49a8-9cb1-af23886707d6": {
+  "acceptable": [
+   "crypto-web3"
+  ],
+  "primary": "payments"
+ },
+ "0795866b-986d-46d0-ab11-4fe428ffae1e": {
+  "acceptable": [
+   "agent-directories"
+  ],
+  "primary": "demo-test"
+ },
+ "07b050ad-2750-4d10-989e-a59d3b274bfa": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "research-learning"
+ },
+ "0e4c2c1e-728e-4de8-92b9-b971ab9edbb9": {
+  "acceptable": [
+   "productivity"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "0ef8f805-8ace-484e-b8df-a0eddd6b75ea": {
+  "acceptable": [
+   "agent-directories",
+   "data-analytics"
+  ],
+  "primary": "developer-tools"
+ },
+ "11c608a1-dbaf-47fb-af4e-57a7949b1d2e": {
+  "acceptable": [
+   "data-analytics",
+   "games-entertainment",
+   "legal-compliance"
+  ],
+  "primary": "trust-safety"
+ },
+ "11f57018-eba7-4be8-9807-f925d7599889": {
+  "acceptable": [
+   "legal-compliance"
+  ],
+  "primary": "trust-safety"
+ },
+ "125be81b-7326-41cd-85a2-7e0c2aa031b8": {
+  "acceptable": [],
+  "primary": "legal-compliance"
+ },
+ "129ef298-908d-47ba-b043-f037cb5f22f1": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "trust-safety"
+ },
+ "139282f6-5f38-4c7f-9e90-dfb8498fa9bb": {
+  "acceptable": [],
+  "primary": "content-media"
+ },
+ "164c9602-bbd1-4f39-bdd3-e3adb31c5df7": {
+  "acceptable": [
+   "developer-tools",
+   "trust-safety"
+  ],
+  "primary": "data-analytics"
+ },
+ "182acf69-880f-4669-8167-b3db64d785a8": {
+  "acceptable": [
+   "data-analytics",
+   "trust-safety"
+  ],
+  "primary": "crypto-web3"
+ },
+ "19404b51-7a27-4f74-a8e7-ac2294b2ac9d": {
+  "acceptable": [
+   "agent-communities",
+   "agent-directories"
+  ],
+  "primary": "games-entertainment"
+ },
+ "1a792099-1f4e-4aeb-97a6-0d66116be0a1": {
+  "acceptable": [
+   "agent-orchestration",
+   "other"
+  ],
+  "primary": "agent-communities"
+ },
+ "1b1f4603-9a77-4751-86ee-7ce97935c0bb": {
+  "acceptable": [],
+  "primary": "productivity"
+ },
+ "1bddda7e-84ea-4a98-a3f9-ad8d09560579": {
+  "acceptable": [],
+  "primary": "commerce-marketing"
+ },
+ "1d23476d-995b-4d68-9706-9de420980e68": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "trust-safety"
+ },
+ "1fc38fef-9e62-4139-ae9e-8340cb6e7b5c": {
+  "acceptable": [
+   "crypto-web3",
+   "trust-safety"
+  ],
+  "primary": "legal-compliance"
+ },
+ "2028f0e7-4d2f-48c5-a21e-cd093b45df2a": {
+  "acceptable": [
+   "developer-tools",
+   "trust-safety"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "22d25410-1c88-45c2-841b-eb0971c4583d": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "crypto-web3"
+ },
+ "234cc6cf-0236-44bc-83d1-aa239501d77b": {
+  "acceptable": [],
+  "primary": "commerce-marketing"
+ },
+ "25023d10-d8d5-44bf-9c35-891e48d61267": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "25647827-e8b7-4d38-a4da-0bb20ae71dae": {
+  "acceptable": [
+   "agent-communities",
+   "games-entertainment"
+  ],
+  "primary": "content-media"
+ },
+ "263ef840-d73b-4855-82e6-8b0cce2dd55b": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "research-learning"
+ },
+ "28ea5685-19e0-45dd-ae95-dd4b98a8050d": {
+  "acceptable": [],
+  "primary": "agent-directories"
+ },
+ "2957a45b-9654-4045-8436-efa209a91f43": {
+  "acceptable": [
+   "agent-communities",
+   "agent-directories",
+   "research-learning"
+  ],
+  "primary": "trust-safety"
+ },
+ "29ff0025-873f-4848-b035-959633660c1b": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "demo-test"
+ },
+ "2a8572c7-8d8e-4887-bbd6-77fe42db8ede": {
+  "acceptable": [
+   "agent-directories",
+   "agent-memory-storage",
+   "agent-orchestration"
+  ],
+  "primary": "agent-communities"
+ },
+ "2ace878f-31a5-4a57-b0a8-e99a8707cdb3": {
+  "acceptable": [
+   "agent-directories",
+   "professional-services"
+  ],
+  "primary": "real-world-services"
+ },
+ "2b67d1df-c72a-4e8a-951f-d4ddaf769e55": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "content-media"
+ },
+ "2c8ca5e2-5715-470e-b3fb-a2e4ed0cd471": {
+  "acceptable": [
+   "research-learning"
+  ],
+  "primary": "professional-services"
+ },
+ "2cda1877-d379-40e9-8785-6768c9a7b0b0": {
+  "acceptable": [
+   "agent-directories"
+  ],
+  "primary": "agent-communities"
+ },
+ "2e79acaa-95a3-40f3-aa3a-9a3fc362f2ee": {
+  "acceptable": [],
+  "primary": "real-world-services"
+ },
+ "302e6847-be69-4308-a494-1a6214e95093": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "legal-compliance"
+ },
+ "319582ad-2872-4c58-ad0e-9ec8da4cce15": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "31c30f14-bc7c-46af-b452-3c16209a491b": {
+  "acceptable": [
+   "agent-orchestration"
+  ],
+  "primary": "developer-tools"
+ },
+ "31c83081-b727-4e75-9ff4-036f475997bf": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "37688090-3b48-4738-8bb4-d927e05d9d1e": {
+  "acceptable": [
+   "productivity"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "39890983-03da-405f-bf1a-a19c2035cb84": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "3a715dca-fe38-4446-89d9-2a12523e1f7e": {
+  "acceptable": [],
+  "primary": "games-entertainment"
+ },
+ "3ae238a2-0ee4-4006-9dc1-c35c03b7ba20": {
+  "acceptable": [
+   "commerce-marketing",
+   "trust-safety"
+  ],
+  "primary": "data-analytics"
+ },
+ "3bd3bc04-c07c-4e5c-ae3f-63a42be0e301": {
+  "acceptable": [
+   "demo-test",
+   "developer-tools"
+  ],
+  "primary": "productivity"
+ },
+ "3e2c47f7-903d-44c3-b506-7da0a39fe380": {
+  "acceptable": [
+   "crypto-web3",
+   "payments"
+  ],
+  "primary": "trust-safety"
+ },
+ "3e9bd928-60ee-491e-91c9-6557d18ba06e": {
+  "acceptable": [
+   "agent-communities",
+   "agent-directories"
+  ],
+  "primary": "agent-orchestration"
+ },
+ "404b24f8-93c1-44a9-9836-6db154380bdb": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "markets-trading"
+ },
+ "4105b387-022d-4f4b-8955-a8ea49eac1ec": {
+  "acceptable": [],
+  "primary": "content-media"
+ },
+ "41d157e0-cdec-4431-a6e1-07e070f35b08": {
+  "acceptable": [
+   "payments",
+   "trust-safety"
+  ],
+  "primary": "agent-directories"
+ },
+ "41db9aac-e838-4142-ae16-894a7a6a983c": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "content-media"
+ },
+ "42432a57-bd1a-4a09-9460-9874ae23b13b": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "427e26db-25ad-41ae-ae73-cc8998b54b29": {
+  "acceptable": [
+   "ai-models",
+   "crypto-web3"
+  ],
+  "primary": "other"
+ },
+ "42c185d8-46c2-48f5-acd7-1982f1a2c5ed": {
+  "acceptable": [
+   "productivity"
+  ],
+  "primary": "professional-services"
+ },
+ "42ed5b79-64a8-40f4-a408-f1bbc162aa31": {
+  "acceptable": [
+   "content-media"
+  ],
+  "primary": "developer-tools"
+ },
+ "43355869-ed4f-4dd4-8ac3-c1773fc61823": {
+  "acceptable": [],
+  "primary": "legal-compliance"
+ },
+ "4460205b-6246-48b7-a103-fc30e3e4f57f": {
+  "acceptable": [
+   "professional-services"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "446b5eb5-d084-4d04-85c4-a0aa6b16bcad": {
+  "acceptable": [
+   "crypto-web3"
+  ],
+  "primary": "games-entertainment"
+ },
+ "453a3635-ff21-4617-8220-7a52b2cb0d62": {
+  "acceptable": [
+   "data-analytics",
+   "developer-tools"
+  ],
+  "primary": "crypto-web3"
+ },
+ "46a86268-b2cd-4aca-a466-23d89f341521": {
+  "acceptable": [
+   "games-entertainment",
+   "other"
+  ],
+  "primary": "agent-communities"
+ },
+ "47776b1e-8f4b-4e29-acfd-270bb90b7275": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "4781df09-515b-45d0-9ad3-5f6803402d88": {
+  "acceptable": [
+   "content-media"
+  ],
+  "primary": "data-analytics"
+ },
+ "4bd214de-e6af-48bf-9b4c-25ac49b5f85d": {
+  "acceptable": [
+   "demo-test",
+   "developer-tools"
+  ],
+  "primary": "productivity"
+ },
+ "4c19eab2-4b8b-4ae6-a5f8-6010c78c4f75": {
+  "acceptable": [
+   "agent-directories",
+   "demo-test"
+  ],
+  "primary": "real-world-services"
+ },
+ "4d608f5e-284f-4082-a64b-b3278b06c944": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "4ef46345-75fa-4782-a148-fee44752e642": {
+  "acceptable": [
+   "games-entertainment",
+   "research-learning"
+  ],
+  "primary": "trust-safety"
+ },
+ "513454f3-816b-444e-9c80-445a6710cb0d": {
+  "acceptable": [],
+  "primary": "agent-communities"
+ },
+ "53a97ee4-e72b-4f1d-9399-4cf46a1522ba": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "professional-services"
+ },
+ "565dc029-29e0-4670-8c6b-c23dd8ae4a60": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "agent-directories"
+ },
+ "569c2d1c-1d78-494d-bed2-318f7a8c44b4": {
+  "acceptable": [
+   "professional-services"
+  ],
+  "primary": "content-media"
+ },
+ "580aece3-8978-44e7-b0a3-fe55ebe2b9f3": {
+  "acceptable": [
+   "content-media",
+   "professional-services"
+  ],
+  "primary": "real-world-services"
+ },
+ "58534b7a-879d-46eb-968a-0c0bcb236086": {
+  "acceptable": [
+   "research-learning"
+  ],
+  "primary": "agent-directories"
+ },
+ "58fab43b-abc1-4e80-a410-d23ae767adaf": {
+  "acceptable": [
+   "agent-directories"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "591b3b6a-fbcb-457e-9ffc-68486699208f": {
+  "acceptable": [
+   "productivity"
+  ],
+  "primary": "real-world-services"
+ },
+ "59bb9fdc-11fd-4e45-afc4-5c6bbde8b693": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "data-analytics"
+ },
+ "5acf7371-c956-40d3-ae37-ea7e0f7d42bb": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "ai-models"
+ },
+ "5c44ab88-0be6-43cb-a414-ddbb83b79a35": {
+  "acceptable": [
+   "other",
+   "research-learning"
+  ],
+  "primary": "markets-trading"
+ },
+ "5cf54596-2e76-49ce-9482-c9e035067baf": {
+  "acceptable": [
+   "agent-communities",
+   "content-media"
+  ],
+  "primary": "games-entertainment"
+ },
+ "6099db20-1728-42b2-933b-9a4b38ebb93e": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "62a72ae8-345e-45e4-961b-1aa151dd9ef3": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "68e129c2-ce34-4226-b324-96bf76219bfa": {
+  "acceptable": [
+   "data-analytics",
+   "markets-trading"
+  ],
+  "primary": "trust-safety"
+ },
+ "69e09b64-5b61-4482-920e-ffdc55a46914": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "6b6a534d-a82b-4dec-9c7f-49a5dd49f229": {
+  "acceptable": [
+   "agent-memory-storage",
+   "games-entertainment"
+  ],
+  "primary": "agent-communities"
+ },
+ "6d525abf-d47f-4f26-9c36-965d3909e6b1": {
+  "acceptable": [
+   "agent-directories"
+  ],
+  "primary": "agent-communities"
+ },
+ "6ebd2b6c-2cef-4421-8f28-6896ca3bf307": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "crypto-web3"
+ },
+ "6f97c159-43ed-49de-92b6-1d5aa5ae8ce7": {
+  "acceptable": [],
+  "primary": "real-world-services"
+ },
+ "718cd1d2-ea55-418c-a7ea-81529fc21938": {
+  "acceptable": [],
+  "primary": "real-world-services"
+ },
+ "72ac165d-ea96-4990-a5c5-91d55ac95a73": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "trust-safety"
+ },
+ "730b69eb-7bca-4b96-9861-20019f7a9f1a": {
+  "acceptable": [
+   "markets-trading",
+   "trust-safety"
+  ],
+  "primary": "crypto-web3"
+ },
+ "754abc2b-2d4d-4330-9da4-e2277a8dadb7": {
+  "acceptable": [],
+  "primary": "games-entertainment"
+ },
+ "76fd49fc-32b2-435b-a2b4-bf0ef8d66998": {
+  "acceptable": [
+   "commerce-marketing",
+   "data-analytics"
+  ],
+  "primary": "real-world-services"
+ },
+ "77620ea2-0d11-4b72-8063-6c27717755c8": {
+  "acceptable": [],
+  "primary": "developer-tools"
+ },
+ "77c18a1a-bc34-4314-9cd3-8192f9f288a2": {
+  "acceptable": [
+   "data-analytics",
+   "trust-safety"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "7a4c47bc-2113-49a9-b5ee-c1fd361c5122": {
+  "acceptable": [
+   "crypto-web3"
+  ],
+  "primary": "markets-trading"
+ },
+ "7bb9acba-fee1-4289-a5dc-0b06dd11ebf7": {
+  "acceptable": [],
+  "primary": "games-entertainment"
+ },
+ "7c785b23-5113-45e8-a860-a2231270b14e": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "legal-compliance"
+ },
+ "7df1cfee-1d53-47f5-9d92-51ef9ffd6622": {
+  "acceptable": [
+   "research-learning"
+  ],
+  "primary": "games-entertainment"
+ },
+ "822c3b7a-d654-4f28-b08e-6dc069da4e7c": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "content-media"
+ },
+ "839daa96-9228-4b3d-9840-a35b92fa855d": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "content-media"
+ },
+ "83c4fd3f-6a8b-4947-a8ea-e2a40866710c": {
+  "acceptable": [],
+  "primary": "agent-memory-storage"
+ },
+ "87b96c59-9bd4-44f2-a4be-31b573039581": {
+  "acceptable": [
+   "agent-directories",
+   "legal-compliance",
+   "trust-safety"
+  ],
+  "primary": "data-analytics"
+ },
+ "881a37a2-df2a-4045-88c0-9eb3fe6603b7": {
+  "acceptable": [
+   "agent-directories",
+   "agent-orchestration",
+   "trust-safety"
+  ],
+  "primary": "agent-communities"
+ },
+ "89ca266f-10b2-4e79-8ec0-807bcdb30c60": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "89e27371-b4f6-4bb9-bd55-b8253bdc6dd4": {
+  "acceptable": [
+   "games-entertainment",
+   "other"
+  ],
+  "primary": "agent-communities"
+ },
+ "8c15fe41-d037-427f-8cad-682aaa64b074": {
+  "acceptable": [
+   "agent-communities"
+  ],
+  "primary": "agent-directories"
+ },
+ "8d086134-da1e-4efe-8d8f-05fccd15b28d": {
+  "acceptable": [
+   "games-entertainment",
+   "research-learning"
+  ],
+  "primary": "data-analytics"
+ },
+ "8f858208-d240-4abd-b9da-41ed696a9a55": {
+  "acceptable": [
+   "real-world-services"
+  ],
+  "primary": "data-analytics"
+ },
+ "900d4d12-f8e3-4512-ab85-aac98fde7da8": {
+  "acceptable": [
+   "agent-memory-storage",
+   "productivity"
+  ],
+  "primary": "data-analytics"
+ },
+ "904974b4-4782-4c92-b61e-7b75acaae2a6": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "91392214-9037-4c80-a8b2-9fed59fb4e5b": {
+  "acceptable": [
+   "agent-orchestration"
+  ],
+  "primary": "agent-communities"
+ },
+ "945df23a-0e51-40f4-aff9-3d85df00d44f": {
+  "acceptable": [],
+  "primary": "content-media"
+ },
+ "95f5f1ed-c0ae-40d0-9b76-f430427effa2": {
+  "acceptable": [
+   "agent-communities",
+   "agent-memory-storage",
+   "research-learning"
+  ],
+  "primary": "games-entertainment"
+ },
+ "99534549-bd70-4a44-83dd-567abcb2ad71": {
+  "acceptable": [],
+  "primary": "research-learning"
+ },
+ "9b06ff22-bc54-44f4-934f-53384f5fea1f": {
+  "acceptable": [
+   "agent-memory-storage",
+   "developer-tools"
+  ],
+  "primary": "content-media"
+ },
+ "9be9c818-da25-42db-9850-4505ea5237f1": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "legal-compliance"
+ },
+ "9df38a0c-68fe-48b5-902b-c5a2c16a25f6": {
+  "acceptable": [
+   "games-entertainment"
+  ],
+  "primary": "data-analytics"
+ },
+ "9e381d24-5fdb-4f5a-bab7-9a097d8deaf2": {
+  "acceptable": [
+   "content-media",
+   "data-analytics",
+   "productivity"
+  ],
+  "primary": "legal-compliance"
+ },
+ "a29595cd-f7a5-4536-afa1-51fc8a588de3": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "a42b5967-7725-48b4-9d7e-d250a58d223b": {
+  "acceptable": [],
+  "primary": "developer-tools"
+ },
+ "a4cf9bc2-7d70-4f50-bf8f-9bfa8135457f": {
+  "acceptable": [
+   "commerce-marketing",
+   "developer-tools"
+  ],
+  "primary": "professional-services"
+ },
+ "a59f1af3-381d-4e60-92c3-08f3965822a4": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "data-analytics"
+ },
+ "a59fe9a5-602d-4cee-a2d4-555ca9201136": {
+  "acceptable": [
+   "agent-memory-storage"
+  ],
+  "primary": "data-analytics"
+ },
+ "a5afca84-cb86-4dc4-b222-9fec1f2d402d": {
+  "acceptable": [],
+  "primary": "crypto-web3"
+ },
+ "a6c53cf6-c191-4df4-a7bf-3046672cdf45": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "a9ae173f-0016-4279-a7dd-3a02907faec1": {
+  "acceptable": [
+   "agent-communities"
+  ],
+  "primary": "research-learning"
+ },
+ "afa6b5aa-2dfa-4f8b-a78b-0ba880759176": {
+  "acceptable": [
+   "agent-orchestration",
+   "other"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "b28ad36e-7aa4-4c9a-8910-cad1a74b801f": {
+  "acceptable": [
+   "other"
+  ],
+  "primary": "agent-communities"
+ },
+ "b8105073-5512-4e86-a153-cf21aa85fa4c": {
+  "acceptable": [
+   "crypto-web3"
+  ],
+  "primary": "payments"
+ },
+ "bb5619ad-5dbf-4a74-a583-9af96a735aaa": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "be04d4bb-ba3d-4862-826a-fcf250994120": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "be800540-34e2-4e55-863b-52150dc470b6": {
+  "acceptable": [
+   "games-entertainment"
+  ],
+  "primary": "agent-communities"
+ },
+ "c10bc5e9-ae93-4cb5-95c2-924d0bb654f6": {
+  "acceptable": [
+   "professional-services"
+  ],
+  "primary": "real-world-services"
+ },
+ "c17e39c3-7aea-470e-898f-a8ebbed280cc": {
+  "acceptable": [
+   "crypto-web3",
+   "data-analytics"
+  ],
+  "primary": "markets-trading"
+ },
+ "c4933993-a0d6-4560-97f9-29ca01cadf7a": {
+  "acceptable": [],
+  "primary": "agent-directories"
+ },
+ "c59e1c87-855d-4b04-8c2c-fddc3dde9370": {
+  "acceptable": [
+   "agent-communities",
+   "agent-directories",
+   "trust-safety"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "c5e0def9-6a7d-404c-a1d9-3d329bf53333": {
+  "acceptable": [
+   "real-world-services"
+  ],
+  "primary": "demo-test"
+ },
+ "c64ffdd4-0d8d-424d-b2b4-f2d478fb4939": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "legal-compliance"
+ },
+ "c7393d65-7016-4b68-b743-e91ab1c36c11": {
+  "acceptable": [
+   "markets-trading"
+  ],
+  "primary": "crypto-web3"
+ },
+ "c8d90dd2-5d5f-4178-86e6-47546320c25c": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "c8e53217-e2f4-46dd-98cc-498b48dbddde": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "cb762888-326b-4a21-b155-553cd598a32f": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "legal-compliance"
+ },
+ "cc2b4f22-8b5a-49dc-8a74-42a2b4f5b25f": {
+  "acceptable": [
+   "markets-trading"
+  ],
+  "primary": "crypto-web3"
+ },
+ "cd035cbe-46f9-4591-889e-e4fa20663113": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "real-world-services"
+ },
+ "d0233090-4395-4933-9347-a6c6d6328792": {
+  "acceptable": [
+   "trust-safety"
+  ],
+  "primary": "agent-directories"
+ },
+ "d1bca6b1-b42f-4a82-a153-db35d6d71561": {
+  "acceptable": [
+   "legal-compliance",
+   "payments"
+  ],
+  "primary": "markets-trading"
+ },
+ "d2ab71cf-7eb5-4400-a67c-c7f8d542ae60": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "agent-orchestration"
+ },
+ "d34896a6-9771-4e45-a6ac-228b5c976e3e": {
+  "acceptable": [
+   "commerce-marketing",
+   "data-analytics",
+   "markets-trading"
+  ],
+  "primary": "crypto-web3"
+ },
+ "d6e46740-5105-4b62-9653-8aba2c89ede3": {
+  "acceptable": [
+   "content-media",
+   "research-learning"
+  ],
+  "primary": "games-entertainment"
+ },
+ "d8231845-aa28-408e-97c9-b7926f35a8ab": {
+  "acceptable": [
+   "crypto-web3",
+   "developer-tools"
+  ],
+  "primary": "payments"
+ },
+ "d8968fc9-9a3c-4a10-9daa-c21cb3d5c9f4": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "research-learning"
+ },
+ "d9000bac-6856-49ba-9eff-ec11c96b81c6": {
+  "acceptable": [
+   "agent-orchestration"
+  ],
+  "primary": "agent-communities"
+ },
+ "da0979dd-6412-4a92-9ca6-c47958888b04": {
+  "acceptable": [
+   "ai-models",
+   "data-analytics",
+   "developer-tools"
+  ],
+  "primary": "agent-directories"
+ },
+ "da3b9b9f-7c8f-497b-8d9d-38d9047f2de4": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "db85f866-2802-4585-9c2a-2c332979804f": {
+  "acceptable": [
+   "other"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "dbd7ce71-239c-4c58-afb3-7befed0476bd": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "dce9091c-d608-483d-90b5-e93f34d4663b": {
+  "acceptable": [],
+  "primary": "demo-test"
+ },
+ "dd3c09d6-c39d-45a5-ac14-d2584d0ce92a": {
+  "acceptable": [
+   "agent-communities",
+   "games-entertainment"
+  ],
+  "primary": "demo-test"
+ },
+ "e54d8dbe-1360-4d0b-bc3d-2f0b44b3b3c6": {
+  "acceptable": [
+   "agent-communities",
+   "research-learning"
+  ],
+  "primary": "demo-test"
+ },
+ "e8421a10-3d58-4651-8fbf-9338d70a1b83": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "data-analytics"
+ },
+ "e866f043-d66b-4d49-8ee5-e84de2de6c40": {
+  "acceptable": [
+   "content-media"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "ea4dd23d-df0c-4078-86d7-19dad43cda35": {
+  "acceptable": [],
+  "primary": "research-learning"
+ },
+ "ea607933-f33b-4127-aff6-3e26e5fec3f4": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "ec8aa940-0ddf-4ac9-b99a-16108bd2bd59": {
+  "acceptable": [
+   "agent-orchestration"
+  ],
+  "primary": "agent-communities"
+ },
+ "ee3508f9-9a8d-4221-8668-fef137ff9fff": {
+  "acceptable": [
+   "agent-communities",
+   "agent-directories"
+  ],
+  "primary": "games-entertainment"
+ },
+ "ee398404-9d74-4056-bfdb-c676497b9711": {
+  "acceptable": [
+   "data-analytics",
+   "real-world-services"
+  ],
+  "primary": "trust-safety"
+ },
+ "ef952ba9-e388-412a-bb16-da61e07d13e5": {
+  "acceptable": [
+   "commerce-marketing"
+  ],
+  "primary": "professional-services"
+ },
+ "f8f46437-77d7-48e0-9914-977e84190bcc": {
+  "acceptable": [
+   "agent-orchestration",
+   "payments"
+  ],
+  "primary": "agent-directories"
+ },
+ "f941b8fe-c21b-4fe2-a9f0-d57ba68f724b": {
+  "acceptable": [
+   "crypto-web3"
+  ],
+  "primary": "payments"
+ },
+ "f95bd2bf-a239-419a-8f75-c8e5d3844d28": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "f9af9482-62d5-4417-9b11-2ad27e85367e": {
+  "acceptable": [
+   "agent-communities",
+   "data-analytics",
+   "trust-safety"
+  ],
+  "primary": "agent-memory-storage"
+ },
+ "fa2b6fcf-c79e-4e69-9710-a4dd0576914c": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "fb961915-bafe-4393-9674-cabb1ea24ca1": {
+  "acceptable": [
+   "developer-tools"
+  ],
+  "primary": "demo-test"
+ },
+ "fbbc1e43-6975-46d2-a066-7e8ad90357b3": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "productivity"
+ },
+ "fd5a7fba-3c4b-4475-b479-00e9fc31cdaf": {
+  "acceptable": [
+   "content-media",
+   "developer-tools"
+  ],
+  "primary": "commerce-marketing"
+ },
+ "fe3f6353-75c5-40b7-9538-dcc3c23859dd": {
+  "acceptable": [
+   "data-analytics"
+  ],
+  "primary": "real-world-services"
+ },
+ "fff7e30d-4e0a-4eb0-bc83-e2a6410184b9": {
+  "acceptable": [
+   "agent-communities",
+   "real-world-services"
+  ],
+  "primary": "professional-services"
+ }
+}

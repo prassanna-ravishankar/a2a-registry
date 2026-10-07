@@ -4,7 +4,7 @@ import { agentProvider } from '@/lib/utils';
 
 import { relativeCheck } from '@/lib/registryView';
 
-export default function AgentRow({ agent }) {
+export default function AgentRow({ agent, categoryLabel }) {
   const lastChecked = agent.last_health_check || agent.task_conformance?.checked_at;
   const uptime = Number.isFinite(Number(agent.uptime_percentage))
     ? `${Number(agent.uptime_percentage).toFixed(1)}%`
@@ -14,7 +14,7 @@ export default function AgentRow({ agent }) {
     <a className="agent-row" href={`/agents/${encodeURIComponent(agent.id)}`}>
       <span className="agent-row__identity">
         <strong>{agent.name}</strong>
-        <span>{agentProvider(agent)}</span>
+        <span>{agentProvider(agent)}{categoryLabel && <span className="agent-row__category"> · {categoryLabel}</span>}</span>
       </span>
       <span className="agent-row__datum agent-row__protocol">
         <span className="agent-row__mobile-label">Protocol</span>

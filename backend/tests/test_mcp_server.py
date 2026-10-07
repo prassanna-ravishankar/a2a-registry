@@ -82,3 +82,8 @@ def test_mcp_marks_aggregate_skill_ids_as_untrusted_and_sanitizes_them():
 
     assert listed["agent_count"] == 3
     assert trending["count"] == 3
+
+
+def test_mcp_formats_agent_category():
+    result = _format_agent(_agent(category="payments", category_secondary="crypto-web3"))
+    assert (result["category"], result["category_secondary"]) == ("payments", "crypto-web3")

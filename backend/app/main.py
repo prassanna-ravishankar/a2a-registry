@@ -25,6 +25,7 @@ from slowapi.util import get_remote_address
 
 from .agent_card import agent_create_from_card
 from .card_classifier import HELD_STATUSES, assess, card_record, review_document
+from .categories import CATEGORIES, CATEGORY_SLUGS
 from .config import settings
 from .database import db
 from .mcp_server import mcp
@@ -33,6 +34,7 @@ from .models import (
     AgentFlag,
     AgentPublic,
     AgentRegister,
+    CategoryInfo,
     HealthStatus,
     PaginatedAgents,
     RegistryStats,
@@ -351,6 +353,7 @@ async def list_agents(
     conformance: Optional[str] = None,
     healthy: Optional[bool] = None,
     task_verified: Optional[bool] = None,
+    category: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -365,6 +368,7 @@ async def list_agents(
     - conformance: Filter by conformance ("standard" or "non-standard")
     - healthy: Filter by health status (true = healthy, false = unhealthy)
     - task_verified: true = only agents whose last A2A message/send probe passed
+    - category: category slug from GET /categories (matches primary or secondary)
     - limit: Max results to return (default: 50, max: 100)
     - offset: Pagination offset (default: 0)
     """
@@ -377,6 +381,7 @@ async def list_agents(
         conformance=conformance,
         healthy=healthy,
         task_verified=task_verified,
+        category=category,
         limit=limit,
         offset=offset,
     )
@@ -389,6 +394,9 @@ async def list_agents(
     if conformance not in (None, "standard", "non-standard"):
         conformance = None
 
+    if category is not None and category not in CATEGORY_SLUGS:
+        raise HTTPException(status_code=400, detail="Unknown category; see GET /categories")
+
     agent_repo = AgentRepository(db)
     agents, total = await agent_repo.list_agents(
         skill=skill,
@@ -398,6 +406,7 @@ async def list_agents(
         conformance=conformance,
         healthy=healthy,
         task_verified=task_verified,
+        category=category,
         limit=limit,
         offset=offset,
     )
@@ -408,6 +417,20 @@ async def list_agents(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/categories", response_model=list[CategoryInfo])
+async def list_categories():
+    """The registry's agent categories with how many public agents are in each.
+
+    Defined in one place (app/categories.py); the website and Jev both use it.
+    """
+    track_api_query("GET /categories")
+    counts = await AgentRepository(db).count_by_category()
+    return [
+        CategoryInfo(slug=c.slug, label=c.label, description=c.description, agent_count=counts.get(c.slug, 0))
+        for c in CATEGORIES
+    ]
 
 
 @router.get("/agents/{agent_id}", response_model=AgentPublic)

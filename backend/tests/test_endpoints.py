@@ -1242,3 +1242,25 @@ def test_put_with_already_scored_content_writes_nothing(client):
 
     assert response.status_code == 202
     instance.update.assert_not_awaited()
+
+
+def test_categories_endpoint_serves_the_category_module_with_counts(client):
+    from app.categories import CATEGORIES
+
+    with patch("app.main.AgentRepository") as mock_repo:
+        mock_repo.return_value.count_by_category = AsyncMock(return_value={"payments": 7})
+        response = client.get("/categories")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["slug"] for c in body] == [c.slug for c in CATEGORIES]
+    payments = next(c for c in body if c["slug"] == "payments")
+    assert payments["agent_count"] == 7 and payments["label"] and payments["description"]
+
+
+def test_agent_list_rejects_unknown_category_and_passes_known_ones(client):
+    assert client.get("/agents?category=not-a-category").status_code == 400
+    with patch("app.main.AgentRepository") as mock_repo:
+        mock_repo.return_value.list_agents = AsyncMock(return_value=([], 0))
+        assert client.get("/agents?category=payments").status_code == 200
+    assert mock_repo.return_value.list_agents.await_args.kwargs["category"] == "payments"
