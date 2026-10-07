@@ -83,6 +83,10 @@ GKE Autopilot, namespace `a2aregistry`, 1 replica each (api, worker, frontend).
 Resources are right-sized for a personal project — see `helm/a2aregistry/values-prod.yaml`.
 Health check interval: 1800s (30 min).
 
+## Review Queue
+
+Jev's flags and holds are worked with `/generate-notes` (`.claude/skills/generate-notes/SKILL.md`): decide each queued agent against the registry policy via the admin API, write human maintainer notes only where they add something, and record each decision in `scripts/jev_eval/labels.json`. `scripts/jev_eval/evaluate.py` measures prompt changes against those labels plus synthetic policy cards.
+
 ## Agent Card Security Audit
 
 Run `/audit-agent-cards` periodically and after any poisoning or prompt-injection report. The skill is defined in `.claude/skills/audit-agent-cards/SKILL.md`; its default command is:
