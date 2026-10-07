@@ -228,7 +228,8 @@ async def test_category_is_stored_with_the_review_counted_and_filterable(db, rep
     held = await repo.create(_agent(13), review=_review(categorised, "sha-13", "pending"))
 
     assert (await repo.get_by_id(public.id)).category == "payments"
-    assert await repo.count_by_category() == {"payments": 1}  # the held agent is not counted
+    # Secondary counts too, matching the filter; the held agent is not counted.
+    assert await repo.count_by_category() == {"payments": 1, "crypto-web3": 1}
     by_primary, _ = await repo.list_agents(category="payments", limit=10, offset=0)
     by_secondary, _ = await repo.list_agents(category="crypto-web3", limit=10, offset=0)
     assert [a.id for a in by_primary] == [a.id for a in by_secondary] == [public.id]
@@ -238,3 +239,20 @@ async def test_category_is_stored_with_the_review_counted_and_filterable(db, rep
     await repo.update_card_metadata(public.id, {}, review=failed)
     row = await db.fetchrow("SELECT category FROM agents WHERE id = $1", public.id)
     assert row["category"] == "payments", "a failed classification keeps the last category"
+
+
+async def test_category_counts_match_the_filter_including_secondary(db, repo):
+    def verdict(primary, secondary):
+        return CardVerdict(score=0.0, signals={}, model="jev-test", category=primary, category_secondary=secondary)
+
+    await repo.create(_agent(20), review=_review(verdict("payments", "crypto-web3"), "s20", None))
+    await repo.create(_agent(21), review=_review(verdict("payments", "payments"), "s21", None))
+    await repo.create(_agent(22), review=_review(verdict("crypto-web3", None), "s22", "pending"))
+    deleted = await repo.create(_agent(23), review=_review(verdict("crypto-web3", None), "s23", None))
+    await repo.delete(deleted.id)
+
+    counts = await repo.count_by_category()
+    assert counts == {"payments": 2, "crypto-web3": 1}  # secondary counted, same slug once, held/deleted not
+    for slug, n in counts.items():
+        listed, total = await repo.list_agents(category=slug, limit=50, offset=0)
+        assert total == n

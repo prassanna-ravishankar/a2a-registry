@@ -583,15 +583,25 @@ class AgentRepository:
         return result == "UPDATE 1"
 
     async def count_by_category(self) -> dict[str, int]:
-        """Publicly visible agents per primary category."""
+        """Publicly visible agents per category, counting primary and secondary.
+
+        Matches the list filter (primary OR secondary), so a category's count is
+        the number of agents its filter returns.
+        """
         rows = await self.db.fetch(
             f"""
-            SELECT category, COUNT(*) AS n FROM agents
-            WHERE hidden = false AND {PUBLIC_REVIEW_SQL} AND category IS NOT NULL
-            GROUP BY category
+            SELECT slug, COUNT(DISTINCT id) AS n FROM (
+                SELECT id, category AS slug FROM agents
+                WHERE hidden = false AND {PUBLIC_REVIEW_SQL}
+                UNION
+                SELECT id, category_secondary AS slug FROM agents
+                WHERE hidden = false AND {PUBLIC_REVIEW_SQL}
+            ) categorised
+            WHERE slug IS NOT NULL
+            GROUP BY slug
             """
         )
-        return {row["category"]: row["n"] for row in rows}
+        return {row["slug"]: row["n"] for row in rows}
 
     async def get_review_state(self, agent_id: UUID) -> Optional[dict]:
         """Classification and review fields for one agent, hidden or not."""

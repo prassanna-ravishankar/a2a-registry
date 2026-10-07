@@ -20,7 +20,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
 
-from typesafe_sdk import AsyncTypeSafeClient, Choice, Noul
+from typesafe_sdk import AsyncTypeSafeClient, Choice, Noul, TypeSafeAPIResponseValidationError
 
 from .categories import CATEGORIES, CATEGORY_INSTRUCTIONS, CATEGORY_SLUGS, SECONDARY_MIN_PROBABILITY
 from .config import settings
@@ -248,31 +248,41 @@ def card_windows(document: dict[str, Any]) -> list[str]:
 CATEGORY_QUESTION = "category"
 
 
-def _questions() -> dict[str, Noul | Choice]:
+def _questions(with_category: bool = True) -> dict[str, Noul | Choice]:
     questions: dict[str, Noul | Choice] = {
         name: Noul(instructions=f"{PREAMBLE}\n\n{question}", criteria={"true": yes, "false": no})
         for name, (question, yes, no) in QUESTIONS.items()
     }
-    questions[CATEGORY_QUESTION] = Choice(
-        instructions=CATEGORY_INSTRUCTIONS, criteria={c.slug: c.description for c in CATEGORIES}
-    )
+    if with_category:
+        questions[CATEGORY_QUESTION] = Choice(
+            instructions=CATEGORY_INSTRUCTIONS, criteria={c.slug: c.description for c in CATEGORIES}
+        )
     return questions
+
+
+NO_CATEGORY: tuple[Optional[str], Optional[str], Optional[float]] = (None, None, None)
 
 
 def _categorise(responses) -> tuple[Optional[str], Optional[str], Optional[float]]:
     """Primary and optional secondary category, averaging probabilities over windows.
 
     Unlike moderation (any window can trip it), a category describes the whole
-    card, so every window votes equally.
+    card, so every window votes equally. Best effort: any missing or malformed
+    category answer yields no category and never affects moderation.
     """
-    totals = {slug: 0.0 for slug in CATEGORY_SLUGS}
-    for response in responses:
-        for slug, p in response.answers[CATEGORY_QUESTION].probabilities.items():
-            if slug in totals:
-                totals[slug] += _probability(p) / len(responses)
-    ranked = sorted(totals.items(), key=lambda kv: -kv[1])
-    (top, p_top), (second, p_second) = ranked[0], ranked[1]
-    return top, second if p_second >= SECONDARY_MIN_PROBABILITY else None, round(p_top, 4)
+    try:
+        totals = {slug: 0.0 for slug in CATEGORY_SLUGS}
+        for response in responses:
+            for slug, p in response.answers[CATEGORY_QUESTION].probabilities.items():
+                if slug in totals:
+                    totals[slug] += _probability(p) / len(responses)
+        ranked = sorted(totals.items(), key=lambda kv: -kv[1])
+        (top, p_top), (second, p_second) = ranked[0], ranked[1]
+        if p_top <= 0:
+            return NO_CATEGORY
+        return top, second if p_second >= SECONDARY_MIN_PROBABILITY else None, round(p_top, 4)
+    except Exception:
+        return NO_CATEGORY
 
 
 _client: Optional[AsyncTypeSafeClient] = None
@@ -317,7 +327,13 @@ async def classify_card(
 
         async def ask(window: str):
             async with _inflight:
-                return await jev.system_one(window, _questions(), model=settings.jev_model)
+                try:
+                    return await jev.system_one(window, _questions(), model=settings.jev_model)
+                except TypeSafeAPIResponseValidationError:
+                    # The response failed SDK validation; ask moderation alone so a
+                    # bad category answer cannot block it. Any failure here is real
+                    # and fails closed.
+                    return await jev.system_one(window, _questions(with_category=False), model=settings.jev_model)
 
         async with asyncio.timeout(deadline):
             async with asyncio.TaskGroup() as group:
@@ -328,7 +344,6 @@ async def classify_card(
             for name in QUESTIONS:
                 signals[name] = max(signals[name], _probability(response.answers[name].noul))
         model = responses[0].model
-        category, category_secondary, category_confidence = _categorise(responses)
     except CardClassifierError:
         raise
     except Exception as exc:
@@ -336,6 +351,7 @@ async def classify_card(
     # The strongest single signal decides: summing many weak ones (noisy-or)
     # held long, jargon-heavy but benign cards.
     score = max(signals.values())
+    category, category_secondary, category_confidence = _categorise(responses)
     return CardVerdict(
         score=round(score, 4),
         signals={k: round(v, 4) for k, v in signals.items()},

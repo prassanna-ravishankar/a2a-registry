@@ -227,3 +227,48 @@ async def test_assess_grandfathers_only_unchanged_never_scored_content():
         changed = await assess({}, {"record": {}}, may_grandfather=False)
         rescored = await assess({"jev_card_sha256": "old"}, {"record": {}}, may_grandfather=True)
     assert (first.status, changed.status, rescored.status) == ("flagged", "pending", "pending")
+
+
+def _reply(moderation: dict[str, float], category=None):
+    """One Jev response; `category` None means the category answer is missing entirely."""
+    answers = {name: SimpleNamespace(noul=moderation.get(name, 0.0)) for name in QUESTIONS}
+    if category is not None:
+        answers["category"] = SimpleNamespace(probabilities=category)
+    return SimpleNamespace(model="jev-test", answers=answers)
+
+
+@pytest.mark.parametrize(
+    "category",
+    [None, {"payments": float("nan")}, {"payments": 1.7}, {"not-a-slug": 1.0}, {}],
+    ids=["missing", "nan", "out-of-range", "unknown-slug", "empty"],
+)
+@pytest.mark.parametrize(("moderation", "expected_status"), [({}, None), ({"gambling": 0.9}, "pending")])
+async def test_bad_category_answers_never_change_moderation(category, moderation, expected_status):
+    client = SimpleNamespace(system_one=AsyncMock(return_value=_reply(moderation, category)))
+    # The suite-wide fixture stubs classify_card; run the real one here.
+    with patch("app.card_classifier.classify_card", new=classify_card), \
+         patch("app.card_classifier._get_client", return_value=client):
+        review = await assess({}, {"record": {"name": "x"}}, may_grandfather=False)
+    assert review.verdict is not None, "a bad category must not fail moderation"
+    assert review.status == expected_status
+    assert review.verdict.category is None
+
+
+async def test_sdk_rejected_combined_response_falls_back_to_moderation_only():
+    from typesafe_sdk import TypeSafeAPIResponseValidationError
+
+    error = TypeSafeAPIResponseValidationError.__new__(TypeSafeAPIResponseValidationError)
+    client = SimpleNamespace(system_one=AsyncMock(side_effect=[error, _reply({"gambling": 0.9})]))
+    verdict = await classify_card({"a": "x"}, client=client)
+    assert verdict.flagged and verdict.category is None
+    retry_questions = client.system_one.await_args_list[1].args[1]
+    assert "category" not in retry_questions and set(QUESTIONS) <= set(retry_questions)
+
+
+async def test_moderation_failure_after_fallback_still_fails_closed():
+    from typesafe_sdk import TypeSafeAPIResponseValidationError
+
+    error = TypeSafeAPIResponseValidationError.__new__(TypeSafeAPIResponseValidationError)
+    client = SimpleNamespace(system_one=AsyncMock(side_effect=[error, TimeoutError()]))
+    with pytest.raises(CardClassifierError):
+        await classify_card({"a": "x"}, client=client)
