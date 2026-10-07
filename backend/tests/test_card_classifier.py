@@ -101,12 +101,17 @@ def test_card_sha256_ignores_key_order():
 # ── classify_card ────────────────────────────────────────────────────────────
 
 
-async def test_classify_takes_max_across_windows_then_noisy_or():
+async def test_classify_scores_the_strongest_single_signal():
     card = {"a": "x" * 2500, "b": "y" * 2500}
-    verdict = await classify_card(card, client=_jev({"gambling": 0.5}, {"gambling": 0.2, "adult": 0.5}))
-    assert verdict.signals["gambling"] == 0.5
-    assert verdict.score == pytest.approx(1 - 0.5 * 0.5)
-    assert verdict.flagged
+    verdict = await classify_card(card, client=_jev({"gambling": 0.5}, {"gambling": 0.2, "adult": 0.3}))
+    assert verdict.signals == {**{name: 0.0 for name in QUESTIONS}, "gambling": 0.5, "adult": 0.3}
+    assert verdict.score == 0.5 and verdict.flagged
+
+
+async def test_many_weak_signals_do_not_add_up_to_a_hold():
+    weak = {name: 0.3 for name in QUESTIONS}
+    verdict = await classify_card({"a": "x"}, client=_jev(weak))
+    assert verdict.score == pytest.approx(0.3) and not verdict.flagged
 
 
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), -0.1, 1.5])
