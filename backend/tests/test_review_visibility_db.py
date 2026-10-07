@@ -217,3 +217,24 @@ async def test_stale_snapshot_write_is_refused_after_a_concurrent_put(db, repo):
     assert await repo.update(created.id, _agent(11, name="Put Wins"), review=_review(FLAGGED, "sha-p", "pending"))
     assert not await repo.update_card_metadata(created.id, {"name": "Worker Overwrite"}, review=worker_review)
     assert await db.fetchval("SELECT name FROM agents WHERE id = $1", created.id) == "Put Wins"
+
+
+async def test_category_is_stored_with_the_review_counted_and_filterable(db, repo):
+    categorised = CardVerdict(
+        score=0.02, signals={}, model="jev-test",
+        category="payments", category_secondary="crypto-web3", category_confidence=0.7,
+    )
+    public = await repo.create(_agent(12), review=_review(categorised, "sha-12", None))
+    held = await repo.create(_agent(13), review=_review(categorised, "sha-13", "pending"))
+
+    assert (await repo.get_by_id(public.id)).category == "payments"
+    assert await repo.count_by_category() == {"payments": 1}  # the held agent is not counted
+    by_primary, _ = await repo.list_agents(category="payments", limit=10, offset=0)
+    by_secondary, _ = await repo.list_agents(category="crypto-web3", limit=10, offset=0)
+    assert [a.id for a in by_primary] == [a.id for a in by_secondary] == [public.id]
+    assert held.id not in {a.id for a in by_primary}
+
+    failed = _review(None, "sha-12b", "unscored", expect_revision=0)
+    await repo.update_card_metadata(public.id, {}, review=failed)
+    row = await db.fetchrow("SELECT category FROM agents WHERE id = $1", public.id)
+    assert row["category"] == "payments", "a failed classification keeps the last category"

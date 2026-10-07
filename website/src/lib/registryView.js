@@ -1,5 +1,5 @@
 export function rowAgent(agent) {
-  const fields = ['id', 'name', 'author', 'provider', 'protocolVersion', 'uptime_percentage', 'is_healthy', 'conformance', 'task_conformance', 'last_health_check', 'wellKnownURI'];
+  const fields = ['id', 'name', 'author', 'provider', 'protocolVersion', 'uptime_percentage', 'is_healthy', 'conformance', 'task_conformance', 'last_health_check', 'wellKnownURI', 'category', 'category_secondary'];
   return { ...Object.fromEntries(fields.map((key) => [key, agent[key]])), description: String(agent.description || '').slice(0, 300), tags: agent.tags || [...new Set((agent.skills || []).flatMap((skill) => skill.tags || []))] };
 }
 

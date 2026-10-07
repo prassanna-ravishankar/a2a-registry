@@ -20,8 +20,9 @@ import math
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
 
-from typesafe_sdk import AsyncTypeSafeClient, Noul
+from typesafe_sdk import AsyncTypeSafeClient, Choice, Noul
 
+from .categories import CATEGORIES, CATEGORY_INSTRUCTIONS, CATEGORY_SLUGS, SECONDARY_MIN_PROBABILITY
 from .config import settings
 from .models import AgentBase, AgentCreate
 
@@ -131,6 +132,10 @@ class CardVerdict:
     score: float
     signals: dict[str, float]
     model: str
+    # What the agent does, from the same Jev request. Never affects moderation.
+    category: Optional[str] = None
+    category_secondary: Optional[str] = None
+    category_confidence: Optional[float] = None
 
     @property
     def flagged(self) -> bool:
@@ -240,11 +245,34 @@ def card_windows(document: dict[str, Any]) -> list[str]:
     return windows
 
 
-def _questions() -> dict[str, Noul]:
-    return {
+CATEGORY_QUESTION = "category"
+
+
+def _questions() -> dict[str, Noul | Choice]:
+    questions: dict[str, Noul | Choice] = {
         name: Noul(instructions=f"{PREAMBLE}\n\n{question}", criteria={"true": yes, "false": no})
         for name, (question, yes, no) in QUESTIONS.items()
     }
+    questions[CATEGORY_QUESTION] = Choice(
+        instructions=CATEGORY_INSTRUCTIONS, criteria={c.slug: c.description for c in CATEGORIES}
+    )
+    return questions
+
+
+def _categorise(responses) -> tuple[Optional[str], Optional[str], Optional[float]]:
+    """Primary and optional secondary category, averaging probabilities over windows.
+
+    Unlike moderation (any window can trip it), a category describes the whole
+    card, so every window votes equally.
+    """
+    totals = {slug: 0.0 for slug in CATEGORY_SLUGS}
+    for response in responses:
+        for slug, p in response.answers[CATEGORY_QUESTION].probabilities.items():
+            if slug in totals:
+                totals[slug] += _probability(p) / len(responses)
+    ranked = sorted(totals.items(), key=lambda kv: -kv[1])
+    (top, p_top), (second, p_second) = ranked[0], ranked[1]
+    return top, second if p_second >= SECONDARY_MIN_PROBABILITY else None, round(p_top, 4)
 
 
 _client: Optional[AsyncTypeSafeClient] = None
@@ -300,6 +328,7 @@ async def classify_card(
             for name in QUESTIONS:
                 signals[name] = max(signals[name], _probability(response.answers[name].noul))
         model = responses[0].model
+        category, category_secondary, category_confidence = _categorise(responses)
     except CardClassifierError:
         raise
     except Exception as exc:
@@ -307,7 +336,14 @@ async def classify_card(
     # The strongest single signal decides: summing many weak ones (noisy-or)
     # held long, jargon-heavy but benign cards.
     score = max(signals.values())
-    return CardVerdict(score=round(score, 4), signals={k: round(v, 4) for k, v in signals.items()}, model=model)
+    return CardVerdict(
+        score=round(score, 4),
+        signals={k: round(v, 4) for k, v in signals.items()},
+        model=model,
+        category=category,
+        category_secondary=category_secondary,
+        category_confidence=category_confidence,
+    )
 
 
 # Review statuses that keep an agent out of public reads. Moderation never
