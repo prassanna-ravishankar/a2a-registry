@@ -1,0 +1,85 @@
+name: Refresh Static Registry
+
+# Agent pages, the registry snapshot and the sitemap are prerendered from the
+# live API when the frontend image is built, so they only changed on a push to
+# main. Rebuild just the frontend hourly so new agents appear, and held,
+# rejected or deleted agents disappear, without a backend deploy.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: clusterkit
+  GKE_REGION: us-central1
+  IMAGE_TAG: refresh-${{ github.run_id }}
+
+jobs:
+  refresh:
+    name: Rebuild and roll out frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+      url: https://a2aregistry.org
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - run: gcloud auth configure-docker gcr.io
+
+      # A failed API fetch fails the Astro build, so a broken API never ships an
+      # empty registry.
+      - name: Build and push frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: website
+          file: website/Dockerfile
+          push: true
+          provenance: false
+          build-args: |
+            PUBLIC_API_URL=https://a2aregistry.org/api
+            PUBLIC_POSTHOG_HOST=https://eu.posthog.com
+            PUBLIC_POSTHOG_KEY=${{ secrets.VITE_POSTHOG_KEY }}
+            REGISTRY_REFRESH=${{ github.run_id }}
+          tags: gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
+          cache-from: |
+            type=gha
+            type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:latest
+
+      - uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      # Only the frontend image changes; the next Helm deploy resets it to that
+      # deploy's own (equally fresh) build.
+      - name: Roll out
+        run: |
+          kubectl -n a2aregistry set image deployment/a2aregistry-frontend \
+            frontend=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-frontend:${{ env.IMAGE_TAG }}
+          kubectl -n a2aregistry rollout status deployment/a2aregistry-frontend --timeout=5m
+
+      - name: Purge Cloudflare cache
+        run: |
+          ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=a2aregistry.org" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" | jq -r '.result[0].id')
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
