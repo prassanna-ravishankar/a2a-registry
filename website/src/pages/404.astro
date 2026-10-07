@@ -1,0 +1,13 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ThemeToggle from '@/components/ThemeToggle.jsx';
+
+const title = 'Not found · A2A Registry';
+const description = 'This page is not in the A2A Registry.';
+---
+<BaseLayout title={title} description={description}>
+  <main class="ledger-shell">
+    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>NOT FOUND</span></div><nav aria-label="Primary"><a href="/">Back to register</a><a href="/api/docs">API</a><ThemeToggle client:load /></nav></header>
+    <section class="registry-intro"><h1>This page is not in the registry. The agent may have been removed, or may be awaiting review.</h1></section>
+  </main>
+</BaseLayout>
