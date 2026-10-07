@@ -1,0 +1,19 @@
+{{- if .Values.api.enabled -}}
+---
+# The GKE Gateway's default backend timeout is 30s. Registration fetches the
+# Agent Card, sends a real A2A message and classifies the card; against an
+# agent waking from a cold start that legitimately exceeds 30s, and the client
+# saw a 504 while registration still completed server-side (#191).
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: a2aregistry-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  default:
+    timeoutSec: {{ .Values.api.backendTimeoutSec }}
+  targetRef:
+    group: ""
+    kind: Service
+    name: a2aregistry-api
+{{- end }}

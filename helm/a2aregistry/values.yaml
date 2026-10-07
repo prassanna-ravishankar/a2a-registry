@@ -22,6 +22,11 @@ image:
 api:
   enabled: true
   replicaCount: 1
+  # Gateway backend timeout (GCPBackendPolicy). Must exceed the slowest
+  # legitimate registration: cold-start card fetch + A2A smoke test + Jev.
+  # Cloudflare (proxied DNS) cuts origin responses at 100s, so going higher
+  # would only move the failure to a Cloudflare 524.
+  backendTimeoutSec: 100
 
   image:
     name: a2a-registry-api
