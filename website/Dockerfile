@@ -25,6 +25,11 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL} \
     ASTRO_TELEMETRY_DISABLED=1 \
     ASTRO_OUT_DIR=dist
 
+# The build prerenders agent pages from the live API. A changing value here
+# forces a fresh build (and fresh agent data) on scheduled refreshes instead of
+# a cached layer.
+ARG REGISTRY_REFRESH=""
+
 # Build the Astro site; outputs to ./dist inside the image
 RUN npm run build
 
