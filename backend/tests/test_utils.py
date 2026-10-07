@@ -305,3 +305,20 @@ async def test_bounded_body_rejects_chunked_payload_over_limit():
             yield b"5678"
 
     assert await utils._read_bounded_body(FakeContent(), 7) is None
+
+
+
+def test_track_event_uses_the_posthog_keyword_api():
+    """posthog>=7 takes the event positionally and everything else by keyword; the old
+    positional call raised TypeError on every tracked request and silently dropped analytics."""
+    from unittest.mock import MagicMock, patch
+
+    from app import utils
+
+    client = MagicMock()
+    with patch.object(utils, "posthog_client", client), patch.object(utils.settings, "posthog_enabled", True):
+        utils.track_api_query("GET /agents", limit=5)
+
+    client.capture.assert_called_once_with(
+        "api_query", distinct_id="api_user", properties={"endpoint": "GET /agents", "limit": 5}
+    )
