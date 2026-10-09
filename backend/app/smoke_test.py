@@ -5,6 +5,7 @@ Used at registration time to validate that the card actually leads to a working
 A2A endpoint. Returns a category + maintainer-note-ready message.
 """
 
+import asyncio
 import time
 import uuid
 from typing import TYPE_CHECKING, Optional
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 SMOKE_TEST_TIMEOUT_SECONDS = 15
+SMOKE_TEST_DEADLINE_SECONDS = 40  # whole probe; with card fetch and Jev, registration stays under the 100s gateway limit
 
 # Bindings the registry can speak. The SDK treats an empty list as JSON-RPC only,
 # which rejected valid HTTP+JSON-only agents as NO_TRANSPORTS (#187).
@@ -156,30 +158,33 @@ async def smoke_test(
     start = time.monotonic()
 
     try:
-        async with guarded_httpx_client(
-            timeout=SMOKE_TEST_TIMEOUT_SECONDS,
-            follow_redirects=True,
-            headers={"User-Agent": user_agent},
-        ) as http_client:
-            factory = ClientFactory(
-                ClientConfig(
-                    httpx_client=http_client, streaming=False, supported_protocol_bindings=SUPPORTED_BINDINGS,
-                ),
-            )
-            client = await factory.create_from_url(base_url, relative_card_path=card_path)
-            message = Message(
-                message_id=str(uuid.uuid4()),
-                role=Role.ROLE_USER,
-                parts=[Part(text=SMOKE_TEST_MESSAGE)],
-            )
-            request = SendMessageRequest(message=message)
-            saw_event = False
-            async for _ in client.send_message(request):
-                saw_event = True
-            response_ms = int((time.monotonic() - start) * 1000)
-            if not saw_event:
-                return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
-            return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
+        # httpx timeouts are per read; a slow-drip server could hold a probe
+        # open indefinitely, so the whole probe also has a hard deadline.
+        async with asyncio.timeout(SMOKE_TEST_DEADLINE_SECONDS):
+            async with guarded_httpx_client(
+                timeout=SMOKE_TEST_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers={"User-Agent": user_agent},
+            ) as http_client:
+                factory = ClientFactory(
+                    ClientConfig(
+                        httpx_client=http_client, streaming=False, supported_protocol_bindings=SUPPORTED_BINDINGS,
+                    ),
+                )
+                client = await factory.create_from_url(base_url, relative_card_path=card_path)
+                message = Message(
+                    message_id=str(uuid.uuid4()),
+                    role=Role.ROLE_USER,
+                    parts=[Part(text=SMOKE_TEST_MESSAGE)],
+                )
+                request = SendMessageRequest(message=message)
+                saw_event = False
+                async for _ in client.send_message(request):
+                    saw_event = True
+                response_ms = int((time.monotonic() - start) * 1000)
+                if not saw_event:
+                    return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
+                return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
     except Exception as exc:
         response_ms = int((time.monotonic() - start) * 1000)
         category = classify_error(exc)

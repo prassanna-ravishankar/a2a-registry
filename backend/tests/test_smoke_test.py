@@ -249,3 +249,18 @@ async def test_guarded_backend_refuses_loopback_and_internal_names():
     for host in ("127.0.0.1", "localhost", "metadata.google.internal", "169.254.169.254"):
         with pytest.raises(ValueError):
             await backend.connect_tcp(host, 80)
+
+
+async def test_probe_has_an_overall_deadline_against_slow_drip_servers():
+    import asyncio
+    from unittest.mock import patch
+
+    from app import smoke_test as st
+
+    async def stall(*args, **kwargs):
+        await asyncio.sleep(5)
+
+    with patch.object(st, "SMOKE_TEST_DEADLINE_SECONDS", 0.05), \
+         patch.object(st.ClientFactory, "create_from_url", new=stall):
+        category, _, _ = await st.smoke_test("https://agent.example/.well-known/agent-card.json")
+    assert category == "TIMEOUT"
