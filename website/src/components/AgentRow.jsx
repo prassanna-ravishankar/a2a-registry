@@ -4,7 +4,11 @@ import { agentProvider } from '@/lib/utils';
 
 import { relativeCheck } from '@/lib/registryView';
 
+const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
 export default function AgentRow({ agent, categoryLabel }) {
+  const provider = agentProvider(agent);
+  const meta = [sameName(provider, agent.name) ? null : provider, categoryLabel].filter(Boolean).join(' · ');
   const lastChecked = agent.last_health_check || agent.task_conformance?.checked_at;
   const uptime = Number.isFinite(Number(agent.uptime_percentage))
     ? `${Number(agent.uptime_percentage).toFixed(1)}%`
@@ -14,7 +18,7 @@ export default function AgentRow({ agent, categoryLabel }) {
     <a className="agent-row" href={`/agents/${encodeURIComponent(agent.id)}`}>
       <span className="agent-row__identity">
         <strong>{agent.name}</strong>
-        <span>{agentProvider(agent)}{categoryLabel && <span className="agent-row__category"> · {categoryLabel}</span>}</span>
+        {meta && <span>{meta}</span>}
       </span>
       <span className="agent-row__datum agent-row__protocol">
         <span className="agent-row__mobile-label">Protocol</span>

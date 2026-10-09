@@ -8,8 +8,8 @@ import { loadCategories, loadRegistry, loadRegistryStats } from '@/lib/registryB
 const [registry, stats, categories] = await Promise.all([loadRegistry(), loadRegistryStats(), loadCategories()]);
 const initialAgents = registry.agents.map(rowAgent);
 const sweepAt = lastSweep(registry.agents);
-const sweep = sweepAt ? new Date(sweepAt) : null;
-const sweepLabel = sweep ? sweep.toLocaleString('en-GB', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') + ' UTC' : 'not recorded';
+// Same ISO form the live refresh writes, so the label never changes format.
+const sweepLabel = sweepAt ? `${sweepAt.slice(0, 16).replace('T', ' ')} UTC` : 'not recorded';
 const title = 'A2A Registry · evidence for live A2A agents';
 const description = `Inspect ${stats.total_agents} A2A agents by card conformance, reachability, uptime, and real message/send probes.`;
 const jsonLd = [
