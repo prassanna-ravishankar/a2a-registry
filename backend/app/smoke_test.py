@@ -5,19 +5,30 @@ Used at registration time to validate that the card actually leads to a working
 A2A endpoint. Returns a category + maintainer-note-ready message.
 """
 
+import asyncio
 import time
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
-import httpx
 import structlog
 from a2a.client import ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, SendMessageRequest
+from a2a.utils.constants import TransportProtocol
+
+from .utils import guarded_httpx_client
+
+if TYPE_CHECKING:
+    from .repositories import AgentRepository
 
 logger = structlog.get_logger()
 
 SMOKE_TEST_TIMEOUT_SECONDS = 15
+SMOKE_TEST_DEADLINE_SECONDS = 40  # whole probe; with card fetch and Jev, registration stays under the 100s gateway limit
+
+# Bindings the registry can speak. The SDK treats an empty list as JSON-RPC only,
+# which rejected valid HTTP+JSON-only agents as NO_TRANSPORTS (#187).
+SUPPORTED_BINDINGS = [TransportProtocol.JSONRPC, TransportProtocol.HTTP_JSON]
 SMOKE_TEST_MESSAGE = "Hello, what can you do?"
 
 # Default UA for registration-time smoke tests. Worker uses TaskProbe UA so
@@ -43,10 +54,52 @@ CATEGORY_NOTES = {
     "METHOD": "Agent does not implement the `message/send` JSON-RPC method. Add support for this method per the A2A spec.",
     "PARSE": "The official A2A SDK could not parse the `message/send` response because its result does not match the declared protocol schema. For A2A v1.0, return a `SendMessageResponse` containing `task` or `message`, rather than an unwrapped Task object.",
     "AUTH_BACKEND": "Agent endpoint reachable but returns an internal authentication error from a downstream LLM provider (invalid API key on the agent's side). The agent operator needs to fix their backend credentials.",
+    "BLOCKED": "The agent card points at a non-public network address (private, loopback, link-local or metadata). The registry only contacts public endpoints.",
+    "INPUT": "Agent endpoint is reachable and validates its input, but rejected the registry's plain-text probe message as invalid params: it expects structured input (for example a data part). The probe cannot exercise this agent's tasks, so task verification is not shown.",
     "INTERNAL": "Agent endpoint reachable but returns an A2A `InternalError` when handling `message/send`. Check server-side error logs.",
     "TIMEOUT": "Agent endpoint did not respond within the smoke-test timeout. Could be transient; will be re-checked by the health worker.",
     "OTHER": "Smoke test against `message/send` failed with an unrecognised error. See full message in the registry's worker logs.",
 }
+
+
+# Superseded registry-authored wording remains recognizable so a copy update
+# cannot turn yesterday's system note into a permanently protected "human" note.
+_LEGACY_SYSTEM_AUTHORED_NOTES = frozenset({
+    "Agent's gRPC/protobuf response includes a field not defined in the A2A schema. "
+    "Align response with the latest A2A spec.",
+})
+
+# System-generated maintainer notes the worker is allowed to keep aligned with
+# task-probe categories. Anything not authored by the registry itself (i.e. a
+# human-written note) is left untouched.
+_SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values()) | _LEGACY_SYSTEM_AUTHORED_NOTES
+
+
+async def refresh_recovery_notes(stored, category: str, agent_repo: "AgentRepository") -> bool:
+    """Keep system-generated notes aligned with the latest task-probe category.
+
+    When a probe category changes but maintainer_notes still contains an old
+    system-authored category note, replace it with the current category's note
+    so displayed guidance cannot contradict task_conformance (#150, #153, #158).
+
+    Human-authored notes are never touched. Returns True if notes were changed.
+    """
+    desired_note = CATEGORY_NOTES.get(category)
+    if desired_note is None:
+        return False
+    current = (stored.maintainer_notes or "").strip()
+    # Only overwrite notes the registry itself wrote. Empty notes need no change;
+    # human notes must be preserved.
+    if not current or current not in _SYSTEM_AUTHORED_NOTES:
+        return False
+    if current == desired_note:
+        return False
+    # Compare-and-set on the note this decision was based on, so a human note
+    # written while a probe was running is never replaced.
+    written = await agent_repo.replace_system_note(stored.id, stored.maintainer_notes, desired_note)
+    if written:
+        logger.info("system_notes_refreshed", agent_id=stored.id, category=category)
+    return written
 
 
 def classify_error(exc: BaseException) -> str:
@@ -70,6 +123,10 @@ def classify_error(exc: BaseException) -> str:
         return "BAD_JSON"
     if "MethodNotFoundError" in name or ("method" in text.lower() and "not found" in text.lower()):
         return "METHOD"
+    if "non-public address" in text or "not publicly reachable" in text:
+        return "BLOCKED"
+    if "InvalidParams" in name:
+        return "INPUT"
     if "InternalError" in name and "authentication_error" in text:
         return "AUTH_BACKEND"
     if "InternalError" in name:
@@ -101,28 +158,33 @@ async def smoke_test(
     start = time.monotonic()
 
     try:
-        async with httpx.AsyncClient(
-            timeout=SMOKE_TEST_TIMEOUT_SECONDS,
-            follow_redirects=True,
-            headers={"User-Agent": user_agent},
-        ) as http_client:
-            factory = ClientFactory(
-                ClientConfig(httpx_client=http_client, streaming=False),
-            )
-            client = await factory.create_from_url(base_url, relative_card_path=card_path)
-            message = Message(
-                message_id=str(uuid.uuid4()),
-                role=Role.ROLE_USER,
-                parts=[Part(text=SMOKE_TEST_MESSAGE)],
-            )
-            request = SendMessageRequest(message=message)
-            saw_event = False
-            async for _ in client.send_message(request):
-                saw_event = True
-            response_ms = int((time.monotonic() - start) * 1000)
-            if not saw_event:
-                return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
-            return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
+        # httpx timeouts are per read; a slow-drip server could hold a probe
+        # open indefinitely, so the whole probe also has a hard deadline.
+        async with asyncio.timeout(SMOKE_TEST_DEADLINE_SECONDS):
+            async with guarded_httpx_client(
+                timeout=SMOKE_TEST_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers={"User-Agent": user_agent},
+            ) as http_client:
+                factory = ClientFactory(
+                    ClientConfig(
+                        httpx_client=http_client, streaming=False, supported_protocol_bindings=SUPPORTED_BINDINGS,
+                    ),
+                )
+                client = await factory.create_from_url(base_url, relative_card_path=card_path)
+                message = Message(
+                    message_id=str(uuid.uuid4()),
+                    role=Role.ROLE_USER,
+                    parts=[Part(text=SMOKE_TEST_MESSAGE)],
+                )
+                request = SendMessageRequest(message=message)
+                saw_event = False
+                async for _ in client.send_message(request):
+                    saw_event = True
+                response_ms = int((time.monotonic() - start) * 1000)
+                if not saw_event:
+                    return "BAD_RESPONSE", CATEGORY_NOTES["BAD_RESPONSE"], response_ms
+                return "WORKING", CATEGORY_NOTES["WORKING"], response_ms
     except Exception as exc:
         response_ms = int((time.monotonic() - start) * 1000)
         category = classify_error(exc)
@@ -137,7 +199,7 @@ async def smoke_test(
 
 
 # Categories that should hard-reject registration (operator must fix the card).
-HARD_REJECT_CATEGORIES: frozenset[str] = frozenset({"NO_TRANSPORTS", "VERSION"})
+HARD_REJECT_CATEGORIES: frozenset[str] = frozenset({"NO_TRANSPORTS", "VERSION", "BLOCKED"})
 
 
 def should_reject(category: str) -> bool:

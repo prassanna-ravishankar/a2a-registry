@@ -256,3 +256,23 @@ async def test_category_counts_match_the_filter_including_secondary(db, repo):
     for slug, n in counts.items():
         listed, total = await repo.list_agents(category=slug, limit=50, offset=0)
         assert total == n
+
+
+async def test_search_matches_card_host_and_endpoint_dedupes_on_trailing_slash(db, repo):
+    created = await repo.create(_agent(30, url="https://agent30.example.com/a2a/"))
+
+    found, _ = await repo.list_agents(search="agent30.example.com", limit=10, offset=0)
+    assert [a.id for a in found] == [created.id]
+    assert (await repo.get_by_endpoint_url("https://agent30.example.com/a2a")).id == created.id
+    await repo.delete(created.id)
+    assert await repo.get_by_endpoint_url("https://agent30.example.com/a2a") is None
+
+
+async def test_system_note_replacement_never_clobbers_a_newer_human_note(db, repo):
+    created = await repo.create(_agent(40))
+    await repo.update_maintainer_notes(created.id, "system 404 note")
+    await repo.update_maintainer_notes(created.id, "Human warning written mid-probe")
+
+    assert not await repo.replace_system_note(created.id, "system 404 note", "system WORKING note")
+    assert await db.fetchval("SELECT maintainer_notes FROM agents WHERE id = $1", created.id) == "Human warning written mid-probe"
+    assert await repo.replace_system_note(created.id, "Human warning written mid-probe", "replaced")

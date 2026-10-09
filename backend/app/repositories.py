@@ -220,6 +220,14 @@ class AgentRepository:
             return None
         return self._row_to_agent(row)
 
+    async def get_by_endpoint_url(self, url: str) -> Optional[AgentInDB]:
+        """A visible agent serving the same A2A endpoint (trailing slash ignored)."""
+        row = await self.db.fetchrow(
+            "SELECT * FROM agents WHERE rtrim(url, '/') = rtrim($1, '/') AND hidden = false LIMIT 1",
+            url,
+        )
+        return self._row_to_agent(row) if row else None
+
     async def get_by_host(self, hostname: str) -> Optional[AgentInDB]:
         """Get an existing agent whose wellKnownURI shares the same hostname."""
         query = """
@@ -297,6 +305,7 @@ class AgentRepository:
         if search:
             where_clauses.append(
                 f"""(name ILIKE ${param_idx} OR description ILIKE ${param_idx} OR author ILIKE ${param_idx}
+                 OR well_known_uri ILIKE ${param_idx} OR url ILIKE ${param_idx}
                  OR EXISTS (
                     SELECT 1 FROM jsonb_array_elements(skills::jsonb) s
                     WHERE s->>'name' ILIKE ${param_idx}
@@ -667,6 +676,15 @@ class AgentRepository:
                 WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
             """
         result = await self.db.execute(query, agent_id, card_sha256)
+        return result == "UPDATE 1"
+
+    async def replace_system_note(self, agent_id: UUID, expected: str | None, notes: str) -> bool:
+        """Replace a registry-written note only if it is still exactly `expected`."""
+        result = await self.db.execute(
+            "UPDATE agents SET maintainer_notes = $1, updated_at = NOW() "
+            "WHERE id = $2 AND hidden = false AND maintainer_notes IS NOT DISTINCT FROM $3",
+            notes, agent_id, expected,
+        )
         return result == "UPDATE 1"
 
     async def update_maintainer_notes(self, agent_id: UUID, notes: str | None) -> bool:

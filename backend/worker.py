@@ -17,7 +17,7 @@ from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.models import AgentCreate, Capabilities
 from app.repositories import AgentRepository, HealthCheckRepository
-from app.smoke_test import CATEGORY_NOTES, TASK_PROBE_USER_AGENT, smoke_test
+from app.smoke_test import TASK_PROBE_USER_AGENT, refresh_recovery_notes, smoke_test
 from app.validators import _normalise_fields, validate_agent_card
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")
@@ -56,17 +56,6 @@ _REFRESHED_FIELDS = (
     "skills",
 )
 
-# Superseded registry-authored wording remains recognizable so a copy update
-# cannot turn yesterday's system note into a permanently protected "human" note.
-_LEGACY_SYSTEM_AUTHORED_NOTES = frozenset({
-    "Agent's gRPC/protobuf response includes a field not defined in the A2A schema. "
-    "Align response with the latest A2A spec.",
-})
-
-# System-generated maintainer notes the worker is allowed to keep aligned with
-# task-probe categories. Anything not authored by the registry itself (i.e. a
-# human-written note) is left untouched.
-_SYSTEM_AUTHORED_NOTES = frozenset(CATEGORY_NOTES.values()) | _LEGACY_SYSTEM_AUTHORED_NOTES
 
 # Coerce candidate URLs the same way the stored record does on read (the `url`
 # column round-trips through AgentBase.url: HttpUrl). Without this, a card URL
@@ -348,30 +337,6 @@ async def refresh_agent_metadata(
             version_change=(stored.version, changed["version"]) if "version" in changed else None,
         )
     return written
-
-
-async def refresh_recovery_notes(stored, category: str, agent_repo: AgentRepository) -> bool:
-    """Keep system-generated notes aligned with the latest task-probe category.
-
-    When a probe category changes but maintainer_notes still contains an old
-    system-authored category note, replace it with the current category's note
-    so displayed guidance cannot contradict task_conformance (#150, #153, #158).
-
-    Human-authored notes are never touched. Returns True if notes were changed.
-    """
-    desired_note = CATEGORY_NOTES.get(category)
-    if desired_note is None:
-        return False
-    current = (stored.maintainer_notes or "").strip()
-    # Only overwrite notes the registry itself wrote. Empty notes need no change;
-    # human notes must be preserved.
-    if not current or current not in _SYSTEM_AUTHORED_NOTES:
-        return False
-    if current == desired_note:
-        return False
-    await agent_repo.update_maintainer_notes(stored.id, desired_note)
-    logger.info("system_notes_refreshed", agent_id=stored.id, category=category)
-    return True
 
 
 async def check_agent_health(

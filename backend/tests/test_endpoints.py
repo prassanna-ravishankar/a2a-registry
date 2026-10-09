@@ -116,6 +116,7 @@ def test_register_agent_success(client):
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.get_by_endpoint_url = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.update_task_conformance = AsyncMock(return_value=None)
@@ -141,6 +142,7 @@ def test_register_agent_smoke_test_rejects_no_transports(client):
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.get_by_endpoint_url = AsyncMock(return_value=None)
 
         response = client.post(
             "/agents/register",
@@ -164,6 +166,7 @@ def test_register_agent_smoke_test_failure_attaches_note(client):
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.get_by_endpoint_url = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.update_task_conformance = AsyncMock(return_value=None)
@@ -1133,6 +1136,7 @@ def _register_with_verdict(client, classify_mock):
         instance.get_by_well_known_uri = AsyncMock(return_value=None)
         instance.get_by_host = AsyncMock(return_value=None)
         instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.get_by_endpoint_url = AsyncMock(return_value=None)
         instance.create = AsyncMock(return_value=_make_agent_in_db())
         instance.update_maintainer_notes = AsyncMock(return_value=True)
         instance.update_task_conformance = AsyncMock(return_value=None)
@@ -1264,3 +1268,42 @@ def test_agent_list_rejects_unknown_category_and_passes_known_ones(client):
         mock_repo.return_value.list_agents = AsyncMock(return_value=([], 0))
         assert client.get("/agents?category=payments").status_code == 200
     assert mock_repo.return_value.list_agents.await_args.kwargs["category"] == "payments"
+
+
+def test_recheck_probes_the_registered_card_and_updates_task_result(client):
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.smoke_test", new=AsyncMock(return_value=("WORKING", "ok", 42))) as probe, \
+         patch("app.main.refresh_recovery_notes", new=AsyncMock(return_value=True)) as notes:
+        instance = mock_repo.return_value
+        instance.get_by_id = AsyncMock(return_value=_make_agent_public())
+        instance.update_task_conformance = AsyncMock()
+        response = client.post(f"/agents/{MOCK_UUID}/recheck")
+
+    assert response.status_code == 200
+    assert response.json()["task_conformance"] == {"category": "WORKING", "passed": True, "response_ms": 42}
+    assert probe.await_args.args[0] == "https://example.com/.well-known/agent.json"
+    instance.update_task_conformance.assert_awaited_once()
+    notes.assert_awaited_once()
+
+
+def test_recheck_unknown_or_held_agent_is_404(client):
+    with patch("app.main.AgentRepository") as mock_repo, patch("app.main.smoke_test", new=AsyncMock()) as probe:
+        mock_repo.return_value.get_by_id = AsyncMock(return_value=None)
+        assert client.post(f"/agents/{MOCK_UUID}/recheck").status_code == 404
+    probe.assert_not_awaited()
+
+
+def test_registration_rejects_a_second_listing_for_the_same_endpoint(client):
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.validate_well_known_uri", return_value=[]), \
+         patch("app.main.fetch_agent_card", return_value=(MOCK_AGENT_CARD, None)), \
+         patch("app.main.smoke_test", new=AsyncMock()) as probe:
+        instance = mock_repo.return_value
+        instance.get_by_well_known_uri = AsyncMock(return_value=None)
+        instance.get_by_host = AsyncMock(return_value=None)
+        instance.get_by_name_and_author = AsyncMock(return_value=None)
+        instance.get_by_endpoint_url = AsyncMock(return_value=_make_agent_in_db())
+        response = client.post("/agents/register", json={"wellKnownURI": "https://moved.example/.well-known/agent.json"})
+
+    assert response.status_code == 409 and "endpoint is already registered" in response.json()["detail"]
+    probe.assert_not_awaited()
