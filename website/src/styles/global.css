@@ -57,6 +57,7 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .registry-filters label { display: grid; gap: .45rem; padding: 1rem; border-right: 1px solid var(--rule); color: var(--muted); font-size: .75rem; }
 .registry-filters label:first-child { padding-left: 0; }
 .registry-filters label:last-child { border-right: 0; }
+.registry-filters input::placeholder, .submit-input-row input::placeholder, .agent-terminal input::placeholder { color: var(--muted); opacity: 1; }
 .registry-filters input, .registry-filters select { width: 100%; min-height: 2.5rem; border: 0; border-bottom: 1px solid var(--rule); background: transparent; color: var(--ink); padding: .4rem 0; }
 .registry-result-line, .ledger-footer { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 0; color: var(--muted); font-size: .75rem; }
 .caveat { color: var(--amber); }
@@ -100,9 +101,13 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .uptime-chart .check-pass { fill: var(--green); }
 .uptime-chart .check-fail { fill: var(--amber); }
 .uptime-key { display: flex; gap: 2rem; justify-content: flex-end; padding-top: .75rem; color: var(--muted); font-size: .75rem; }
+.uptime-key .key-pass::before, .uptime-key .key-fail::before { content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .45rem; background: var(--green); }
+.uptime-key .key-fail::before { background: var(--amber); }
 .skill-register { border-top: 1px solid var(--rule); }
 .skill-register article { display: grid; grid-template-columns: minmax(12rem, .45fr) minmax(0, 1fr); gap: 2rem; padding: 1.2rem 0; border-bottom: 1px solid var(--rule); }
 .skill-register h3, .skill-register p { margin: 0; }
+/* The section's own rule closes these lists; a last-row rule would double it. */
+.sheet-section .datasheet div:last-child, .sheet-section .skill-register article:last-child { border-bottom: 0; }
 .skill-register h3 { font-size: .95rem; font-weight: 500; }
 .skill-register article > div span, .skill-tags { color: var(--muted); font-size: .7rem; }
 .skill-description > p:first-child { font-size: .85rem; line-height: 1.6; }
@@ -112,7 +117,9 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 .copy-tabs__bar { display: flex; gap: 1.25rem; align-items: center; border-bottom: 1px solid var(--ink); }
 .copy-tabs__bar button[aria-pressed="true"] { color: var(--ink); border-bottom: 2px solid var(--ink); }
 .copy-tabs__bar .copy-action { margin-left: auto; }
-.maintainer-note { padding: 1.5rem 0; border-bottom: 1px solid var(--amber); color: var(--amber); }
+.maintainer-note { padding: 1.5rem 0; border-bottom: 1px solid var(--rule); color: var(--ink); }
+.maintainer-note--caveat { border-bottom-color: var(--amber); color: var(--amber); }
+.maintainer-note code { font: .9em var(--mono); }
 .maintainer-note p { margin: .35rem 0 0; }
 .terminal-shell { margin-top: 1.5rem; }
 .agent-terminal { display: flex; flex-direction: column; min-height: 12rem; max-height: 28rem; border: 1px solid var(--rule); font: .75rem/1.5 var(--mono); }
@@ -141,7 +148,7 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
 @media (max-width: 760px) {
   .ledger-shell { width: min(100% - 1.25rem, 88rem); }
   .document-header { display: grid; gap: 1rem; }
-  .document-header nav { justify-content: flex-start; }
+  .document-header nav { justify-content: flex-start; gap: .4rem .75rem; }
   .agent-heading { grid-template-columns: 1fr; gap: 1.5rem; padding: 2.5rem 0; }
   .datasheet div { grid-template-columns: 1fr; padding: .75rem 0; }
   .datasheet dt, .datasheet dd { padding: .15rem 0; }
@@ -152,6 +159,8 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
   .registry-filters label:nth-child(odd) { padding-right: .75rem; }
   .registry-filters label:nth-child(even) { padding-left: .75rem; border-left: 1px solid var(--rule); }
   .registry-search { grid-column: 1 / -1; padding-right: 0 !important; }
+  /* Search and category span the row; conformance and reachability share one. */
+  .registry-filters label:nth-child(2) { grid-column: 1 / -1; padding: .8rem 0; border-left: 0; }
   .agent-table__head { display: none; }
   .agent-row { grid-template-columns: 1fr auto; gap: .6rem 1rem; padding: .75rem 0; }
   .agent-row__identity { grid-column: 1; }
@@ -185,8 +194,4 @@ button, input, select, textarea { font: inherit; border-radius: 0; }
   .submit-preview__head { display: block; }
   .submit-preview__head .evidence-ladder { margin-top: 1rem; }
 }
-@media (max-width: 520px) {
-  .registry-filters { grid-template-columns: 1fr; }
-  .registry-filters label, .registry-filters label:nth-child(odd), .registry-filters label:nth-child(even) { padding: .8rem 0; border-left: 0; }
-  .registry-search { grid-column: auto; }
-}
+
