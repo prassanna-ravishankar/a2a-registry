@@ -35,7 +35,7 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'SoftwareApplicatio
 ---
 <BaseLayout title={`${agent.name} · A2A Registry`} description={description} ogImage={ogImage} ogImageAlt={`${agent.name} evidence record`} ogType="article" jsonLd={jsonLd} bodyClass="ledger-page">
   <main class="ledger-shell agent-sheet">
-    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav><a href="/">Back to register</a><a href="/submit">Submit an agent</a><ThemeToggle client:load /></nav></header>
+    <header class="document-header"><div class="document-title"><a href="/">A2A REGISTRY</a><span>·</span><span>AGENT RECORD</span><span>·</span><span class="mono">{agent.id}</span></div><nav aria-label="Primary"><a href="/">Back to register</a><a href="/submit">Submit an agent</a><a href="https://github.com/prassanna-ravishankar/a2a-registry">GitHub</a><ThemeToggle client:load /></nav></header>
     <section class="agent-heading">
       <div><p class="sheet-label">Provider</p><p>{provider}</p><h1>{agent.name}</h1><p class="agent-summary">{agent.description}</p></div>
       <div class="agent-heading__evidence"><p class="sheet-label">Observed evidence</p><LiveEvidence client:load initialAgent={rowAgent(agent)} />{launchUrl && <a class="launch-link" href={launchUrl} target="_blank" rel="noopener noreferrer">Launch endpoint ↗</a>}</div>
