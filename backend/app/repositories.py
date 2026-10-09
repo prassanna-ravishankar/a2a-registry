@@ -678,6 +678,15 @@ class AgentRepository:
         result = await self.db.execute(query, agent_id, card_sha256)
         return result == "UPDATE 1"
 
+    async def replace_system_note(self, agent_id: UUID, expected: str | None, notes: str) -> bool:
+        """Replace a registry-written note only if it is still exactly `expected`."""
+        result = await self.db.execute(
+            "UPDATE agents SET maintainer_notes = $1, updated_at = NOW() "
+            "WHERE id = $2 AND hidden = false AND maintainer_notes IS NOT DISTINCT FROM $3",
+            notes, agent_id, expected,
+        )
+        return result == "UPDATE 1"
+
     async def update_maintainer_notes(self, agent_id: UUID, notes: str | None) -> bool:
         """Set or clear maintainer notes for an agent."""
         result = await self.db.execute(

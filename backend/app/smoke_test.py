@@ -10,11 +10,12 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
-import httpx
 import structlog
 from a2a.client import ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, SendMessageRequest
 from a2a.utils.constants import TransportProtocol
+
+from .utils import guarded_httpx_client
 
 if TYPE_CHECKING:
     from .repositories import AgentRepository
@@ -51,6 +52,7 @@ CATEGORY_NOTES = {
     "METHOD": "Agent does not implement the `message/send` JSON-RPC method. Add support for this method per the A2A spec.",
     "PARSE": "The official A2A SDK could not parse the `message/send` response because its result does not match the declared protocol schema. For A2A v1.0, return a `SendMessageResponse` containing `task` or `message`, rather than an unwrapped Task object.",
     "AUTH_BACKEND": "Agent endpoint reachable but returns an internal authentication error from a downstream LLM provider (invalid API key on the agent's side). The agent operator needs to fix their backend credentials.",
+    "BLOCKED": "The agent card points at a non-public network address (private, loopback, link-local or metadata). The registry only contacts public endpoints.",
     "INPUT": "Agent endpoint is reachable and validates its input, but rejected the registry's plain-text probe message as invalid params: it expects structured input (for example a data part). The probe cannot exercise this agent's tasks, so task verification is not shown.",
     "INTERNAL": "Agent endpoint reachable but returns an A2A `InternalError` when handling `message/send`. Check server-side error logs.",
     "TIMEOUT": "Agent endpoint did not respond within the smoke-test timeout. Could be transient; will be re-checked by the health worker.",
@@ -90,9 +92,12 @@ async def refresh_recovery_notes(stored, category: str, agent_repo: "AgentReposi
         return False
     if current == desired_note:
         return False
-    await agent_repo.update_maintainer_notes(stored.id, desired_note)
-    logger.info("system_notes_refreshed", agent_id=stored.id, category=category)
-    return True
+    # Compare-and-set on the note this decision was based on, so a human note
+    # written while a probe was running is never replaced.
+    written = await agent_repo.replace_system_note(stored.id, stored.maintainer_notes, desired_note)
+    if written:
+        logger.info("system_notes_refreshed", agent_id=stored.id, category=category)
+    return written
 
 
 def classify_error(exc: BaseException) -> str:
@@ -116,6 +121,8 @@ def classify_error(exc: BaseException) -> str:
         return "BAD_JSON"
     if "MethodNotFoundError" in name or ("method" in text.lower() and "not found" in text.lower()):
         return "METHOD"
+    if "non-public address" in text or "not publicly reachable" in text:
+        return "BLOCKED"
     if "InvalidParams" in name:
         return "INPUT"
     if "InternalError" in name and "authentication_error" in text:
@@ -149,7 +156,7 @@ async def smoke_test(
     start = time.monotonic()
 
     try:
-        async with httpx.AsyncClient(
+        async with guarded_httpx_client(
             timeout=SMOKE_TEST_TIMEOUT_SECONDS,
             follow_redirects=True,
             headers={"User-Agent": user_agent},
@@ -187,7 +194,7 @@ async def smoke_test(
 
 
 # Categories that should hard-reject registration (operator must fix the card).
-HARD_REJECT_CATEGORIES: frozenset[str] = frozenset({"NO_TRANSPORTS", "VERSION"})
+HARD_REJECT_CATEGORIES: frozenset[str] = frozenset({"NO_TRANSPORTS", "VERSION", "BLOCKED"})
 
 
 def should_reject(category: str) -> bool:

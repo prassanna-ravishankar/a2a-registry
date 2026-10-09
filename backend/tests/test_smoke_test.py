@@ -89,10 +89,11 @@ def test_classify_unknown_falls_back_to_other():
     assert classify_error(RuntimeError("something weird happened")) == "OTHER"
 
 
-def test_should_reject_no_transports_and_version():
+def test_should_reject_no_transports_version_and_blocked():
     assert should_reject("NO_TRANSPORTS")
     assert should_reject("VERSION")
-    assert HARD_REJECT_CATEGORIES == frozenset({"NO_TRANSPORTS", "VERSION"})
+    assert should_reject("BLOCKED")
+    assert HARD_REJECT_CATEGORIES == frozenset({"NO_TRANSPORTS", "VERSION", "BLOCKED"})
     for cat in ("WORKING", "404", "405", "401", "DNS", "BAD_RESPONSE", "TIMEOUT", "OTHER"):
         assert not should_reject(cat), f"{cat} should not be hard-rejected"
 
@@ -198,3 +199,53 @@ def test_registry_speaks_http_json_as_well_as_json_rpc():
     from app.smoke_test import SUPPORTED_BINDINGS
 
     assert TransportProtocol.HTTP_JSON in SUPPORTED_BINDINGS and TransportProtocol.JSONRPC in SUPPORTED_BINDINGS
+
+
+async def test_probe_never_reaches_a_private_address():
+    """SSRF guard, end to end: a real local server must receive zero requests."""
+    import asyncio
+
+    from app.smoke_test import smoke_test
+
+    hits = []
+
+    async def handle(reader, writer):
+        hits.append(await reader.read(1024))
+        writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        category, _, _ = await smoke_test(f"http://127.0.0.1:{port}/.well-known/agent-card.json")
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert category == "BLOCKED"
+    assert hits == []
+
+
+async def test_guarded_backend_connects_to_the_checked_address_not_a_fresh_lookup():
+    from unittest.mock import AsyncMock, patch
+
+    from app.utils import _GuardedNetworkBackend
+
+    backend = _GuardedNetworkBackend()
+    backend._inner = type("Inner", (), {"connect_tcp": AsyncMock(return_value="stream")})()
+    public = [{"host": "93.184.216.34", "port": 443}]
+    with patch("app.utils._resolve_public_addresses", new=AsyncMock(return_value=public)):
+        assert await backend.connect_tcp("agent.example", 443) == "stream"
+    assert backend._inner.connect_tcp.await_args.args[0] == "93.184.216.34"
+
+
+async def test_guarded_backend_refuses_loopback_and_internal_names():
+    import pytest
+
+    from app.utils import _GuardedNetworkBackend
+
+    backend = _GuardedNetworkBackend()
+    for host in ("127.0.0.1", "localhost", "metadata.google.internal", "169.254.169.254"):
+        with pytest.raises(ValueError):
+            await backend.connect_tcp(host, 80)

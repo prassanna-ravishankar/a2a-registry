@@ -49,7 +49,7 @@ from .smoke_test import (
     should_reject,
     smoke_test,
 )
-from .utils import fetch_agent_card, track_api_query, verify_well_known_uri
+from .utils import fetch_agent_card, guarded_httpx_client, track_api_query, verify_well_known_uri
 from .validators import validate_agent_card, validate_well_known_uri
 
 limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
@@ -802,7 +802,7 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
             await health_repo.create(agent_id, 502, elapsed_ms, False, detail, source='chat')
             raise HTTPException(status_code=502, detail=detail)
 
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
+        async with guarded_httpx_client(timeout=30.0) as http_client:
             factory = ClientFactory(
                 ClientConfig(
                     httpx_client=http_client, streaming=False, supported_protocol_bindings=SUPPORTED_BINDINGS,

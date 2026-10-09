@@ -9,6 +9,8 @@ from typing import Any, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
+import httpcore
+import httpx
 from aiohttp.abc import AbstractResolver
 
 from .config import settings
@@ -135,6 +137,51 @@ async def _resolve_public_addresses(hostname: str, port: int) -> list[dict[str, 
     if not records:
         raise ValueError(f"Could not resolve host '{hostname}'")
     return records
+
+
+class _GuardedNetworkBackend(httpcore.AsyncNetworkBackend):
+    """httpcore backend that only connects to public addresses, pinned at connect time.
+
+    Every TCP connection, including each redirect hop and whatever transport
+    URL an Agent Card names, is resolved through the same guard as card
+    fetches, and the socket connects to the address that passed, so DNS cannot
+    change between the check and the connection. TLS still uses the request's
+    hostname for SNI and certificate checks.
+    """
+
+    def __init__(self) -> None:
+        self._inner = httpcore.AnyIOBackend()
+
+    async def connect_tcp(self, host, port, timeout=None, local_address=None, socket_options=None):
+        records = await _resolve_public_addresses(host, port)
+        error: Exception | None = None
+        for record in records:
+            try:
+                return await self._inner.connect_tcp(
+                    record["host"], port, timeout=timeout, local_address=local_address, socket_options=socket_options,
+                )
+            except Exception as exc:  # try the next public address
+                error = exc
+        raise error or ValueError(f"Could not connect to '{host}'")
+
+    async def connect_unix_socket(self, path, timeout=None, socket_options=None):
+        raise ValueError("Unix sockets are not allowed")
+
+    async def sleep(self, seconds: float) -> None:
+        await self._inner.sleep(seconds)
+
+
+def guarded_httpx_client(**kwargs: Any) -> httpx.AsyncClient:
+    """An httpx client that can only reach public addresses (see _GuardedNetworkBackend).
+
+    Used wherever the registry talks to an agent through the A2A SDK. Proxy
+    settings from the environment are ignored so they cannot bypass the guard.
+    """
+    transport = httpx.AsyncHTTPTransport()
+    # httpx exposes no public hook for the network backend; the pool reads it
+    # when opening each connection.
+    transport._pool._network_backend = _GuardedNetworkBackend()
+    return httpx.AsyncClient(transport=transport, trust_env=False, **kwargs)
 
 
 async def _guarded_connector_for_url(url: str) -> aiohttp.TCPConnector:

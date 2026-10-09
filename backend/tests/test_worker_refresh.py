@@ -514,33 +514,33 @@ async def test_refresh_v1_interface_missing_nested_values_writes_no_sentinel():
 async def test_recovery_clears_stale_system_failure_note():
     """The #150/#153 stale-notes contradiction: a system 404 note is replaced on recovery."""
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "WORKING", repo)
 
     assert changed is True
-    repo.update_maintainer_notes.assert_awaited_once_with(stored.id, CATEGORY_NOTES["WORKING"])
+    repo.replace_system_note.assert_awaited_once_with(stored.id, stored.maintainer_notes, CATEGORY_NOTES["WORKING"])
 
 
 async def test_recovery_preserves_human_authored_notes():
     """A human-written note must never be overwritten by the worker."""
     stored = _stored_agent(maintainer_notes="Hand-written note from the maintainer.")
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "WORKING", repo)
 
     assert changed is False
-    repo.update_maintainer_notes.assert_not_awaited()
+    repo.replace_system_note.assert_not_awaited()
 
 
 async def test_system_note_tracks_transition_between_failure_categories():
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "401", repo)
 
     assert changed is True
-    repo.update_maintainer_notes.assert_awaited_once_with(stored.id, CATEGORY_NOTES["401"])
+    repo.replace_system_note.assert_awaited_once_with(stored.id, stored.maintainer_notes, CATEGORY_NOTES["401"])
 
 
 async def test_legacy_system_note_updates_to_current_category_wording():
@@ -549,46 +549,46 @@ async def test_legacy_system_note_updates_to_current_category_wording():
         "schema. Align response with the latest A2A spec."
     )
     stored = _stored_agent(maintainer_notes=legacy_note)
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "PARSE", repo)
 
     assert changed is True
-    repo.update_maintainer_notes.assert_awaited_once_with(
-        stored.id, CATEGORY_NOTES["PARSE"]
+    repo.replace_system_note.assert_awaited_once_with(
+        stored.id, legacy_note, CATEGORY_NOTES["PARSE"]
     )
 
 
 async def test_system_note_noop_when_failure_category_matches():
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "404", repo)
 
     assert changed is False
-    repo.update_maintainer_notes.assert_not_awaited()
+    repo.replace_system_note.assert_not_awaited()
 
 
 async def test_recovery_noop_when_already_working_note():
     """No redundant write when the note is already the WORKING note."""
     stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["WORKING"])
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "WORKING", repo)
 
     assert changed is False
-    repo.update_maintainer_notes.assert_not_awaited()
+    repo.replace_system_note.assert_not_awaited()
 
 
 async def test_recovery_noop_when_no_notes():
     """Empty notes need no change."""
     stored = _stored_agent(maintainer_notes=None)
-    repo = SimpleNamespace(update_maintainer_notes=AsyncMock())
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=True))
 
     changed = await worker.refresh_recovery_notes(stored, "WORKING", repo)
 
     assert changed is False
-    repo.update_maintainer_notes.assert_not_awaited()
+    repo.replace_system_note.assert_not_awaited()
 
 
 # ── AgentRepository.update_card_metadata (column-scoped patch) ────────────────
@@ -780,3 +780,15 @@ def test_regenerated_jws_values_do_not_change_the_fingerprint():
     rekeyed = {"name": "x", "signatures": [{"protected": "abd", "signature": "s2", "header": {"kid": "k2"}}]}
     assert card_sha256(review_document({}, card)) == card_sha256(review_document({}, resigned))
     assert card_sha256(review_document({}, card)) != card_sha256(review_document({}, rekeyed))
+
+
+
+async def test_system_note_refresh_reports_a_lost_race_with_a_human_note():
+    """The compare-and-set refuses when the note changed after the probe began."""
+    stored = _stored_agent(maintainer_notes=CATEGORY_NOTES["404"])
+    repo = SimpleNamespace(replace_system_note=AsyncMock(return_value=False))
+
+    changed = await worker.refresh_recovery_notes(stored, "WORKING", repo)
+
+    assert changed is False
+    repo.replace_system_note.assert_awaited_once_with(stored.id, CATEGORY_NOTES["404"], CATEGORY_NOTES["WORKING"])
