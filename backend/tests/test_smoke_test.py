@@ -180,3 +180,21 @@ async def test_smoke_test_response_ms_fits_int32_on_failure(mock_factory_cls):
         "smoke_test() is mixing time.monotonic() and time.time()"
     )
     assert response_ms < 60_000
+
+
+def test_invalid_params_is_classified_as_structured_input_not_other():
+    from app.smoke_test import CATEGORY_NOTES, classify_error
+
+    class InvalidParamsError(Exception):
+        pass
+
+    assert classify_error(InvalidParamsError("message.parts[0] must be type=text")) == "INPUT"
+    assert "structured input" in CATEGORY_NOTES["INPUT"]
+
+
+def test_registry_speaks_http_json_as_well_as_json_rpc():
+    from a2a.utils.constants import TransportProtocol
+
+    from app.smoke_test import SUPPORTED_BINDINGS
+
+    assert TransportProtocol.HTTP_JSON in SUPPORTED_BINDINGS and TransportProtocol.JSONRPC in SUPPORTED_BINDINGS
