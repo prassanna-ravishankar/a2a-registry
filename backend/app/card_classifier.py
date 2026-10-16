@@ -20,12 +20,18 @@ import math
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterator, Optional
 
-from typesafe_sdk import AsyncTypeSafeClient, Choice, Noul, TypeSafeAPIResponseValidationError
+from typesafe_sdk import (
+    AsyncTypeSafeClient,
+    Choice,
+    Noul,
+    RetryPolicy,
+    TypeSafeAPIResponseValidationError,
+)
 
 from .categories import CATEGORIES, CATEGORY_INSTRUCTIONS, CATEGORY_SLUGS, SECONDARY_MIN_PROBABILITY
 from .config import settings
 from .models import AgentBase, AgentCreate
-from .rate_limits import JevBudget, RateLimitError
+from .rate_limits import NOT_SENT, JevBudget
 
 WINDOW_CHARS = 3000
 MAX_PATH_CHARS = 1000
@@ -297,7 +303,12 @@ def _get_client() -> AsyncTypeSafeClient:
     if not settings.jev_api_key:
         raise CardClassifierError("JEV_API_KEY is not configured")
     if _client is None:
-        _client = AsyncTypeSafeClient(api_key=settings.jev_api_key, timeout=settings.jev_timeout_seconds)
+        # No SDK retries: every HTTP attempt must be one the budget reserved.
+        _client = AsyncTypeSafeClient(
+            api_key=settings.jev_api_key,
+            timeout=settings.jev_timeout_seconds,
+            retry=RetryPolicy(max_retries=0),
+        )
     return _client
 
 
@@ -320,7 +331,8 @@ async def classify_card(
     Each request has the client timeout; `deadline` additionally bounds the
     whole card, queueing included, for callers with a person waiting. If any
     window fails, the others are cancelled. `reserve(n)` is awaited before n
-    Jev requests are sent; RateLimitError from it propagates and nothing is sent.
+    Jev requests are sent; its refusal or failure (NOT_SENT) propagates, cancels
+    the card's other requests, and is never reported as a classifier failure.
     """
     try:
         windows = card_windows(document)
@@ -337,7 +349,7 @@ async def classify_card(
                 except TypeSafeAPIResponseValidationError:
                     # The response failed SDK validation; ask moderation alone so a
                     # bad category answer cannot block it. Any failure here is real
-                    # and fails closed, including a refused reservation.
+                    # and fails closed.
                     if reserve:
                         await reserve(1)
                     return await jev.system_one(window, _questions(with_category=False), model=settings.jev_model)
@@ -351,8 +363,14 @@ async def classify_card(
             for name in QUESTIONS:
                 signals[name] = max(signals[name], _probability(response.answers[name].noul))
         model = responses[0].model
-    except (CardClassifierError, RateLimitError):
+    except (CardClassifierError, *NOT_SENT):
         raise
+    except ExceptionGroup as group:
+        # A window's fallback reservation was refused inside the task group.
+        not_sent = group.subgroup(NOT_SENT)
+        if not_sent is not None:
+            raise _first_leaf(not_sent) from group
+        raise CardClassifierError(type(_first_leaf(group)).__name__) from group
     except Exception as exc:
         raise CardClassifierError(f"{type(exc).__name__}") from exc
     # The strongest single signal decides: summing many weak ones (noisy-or)
@@ -367,6 +385,11 @@ async def classify_card(
         category_secondary=category_secondary,
         category_confidence=category_confidence,
     )
+
+
+def _first_leaf(group: BaseExceptionGroup) -> BaseException:
+    exc = group.exceptions[0]
+    return _first_leaf(exc) if isinstance(exc, BaseExceptionGroup) else exc
 
 
 # Review statuses that keep an agent out of public reads. Moderation never
@@ -430,8 +453,9 @@ async def assess(
     `state` holds review_status, jev_card_sha256, review_approved_sha256 and
     review_revision from the same snapshot as the record in `document` ({} for
     a registration). Returns None when this exact content was already scored. Never raises for classifier failures: those fail
-    closed through the returned status. Raises RateLimitError, having sent nothing,
-    when `budget` cannot cover the card; callers neither write nor fall back.
+    closed through the returned status. Raises RateLimitError or
+    BudgetUnavailableError when `budget` refuses or cannot be checked; then no
+    further request is sent and callers neither write nor fall back.
     """
     sha = card_sha256(document)
     current = state.get("review_status")

@@ -300,17 +300,93 @@ async def test_worker_refresh_writes_nothing_when_the_budget_refuses():
     repo.update_card_metadata.assert_not_awaited()
 
 
-async def test_refused_retry_reservation_fails_closed_without_another_jev_request():
+def _validation_error():
     from typesafe_sdk import TypeSafeAPIResponseValidationError
 
-    error = TypeSafeAPIResponseValidationError.__new__(TypeSafeAPIResponseValidationError)
-    jev = SimpleNamespace(system_one=AsyncMock(side_effect=error))
-    budget = SimpleNamespace(reserve=AsyncMock(side_effect=[None, RateLimitError(jev_limits(None)[0], 60)]))
+    return TypeSafeAPIResponseValidationError.__new__(TypeSafeAPIResponseValidationError)
+
+
+@pytest.mark.parametrize("failure", ["exhausted", "limiter_down"])
+def test_budget_failure_during_the_fallback_writes_nothing(api, counters, failure):
+    """The first reservation succeeds; the moderation-only retry's reservation does not."""
+    ceiling = jev_limits(None)[0]
+    original = counters.fetchval
+
+    def break_budget():
+        if failure == "exhausted":
+            counters.exhaust(ceiling)
+        else:
+            async def down(query, *args):
+                if query == TAKE_SQL:
+                    raise TimeoutError
+                return await original(query, *args)
+            counters.fetchval = down
+        raise _validation_error()
+
+    jev = SimpleNamespace(system_one=AsyncMock(side_effect=lambda *a, **k: break_budget()))
+    with ExitStack() as stack:
+        repo, _ = _registration_mocks(stack)
+        stack.enter_context(patch("app.card_classifier.classify_card", new=classify_card))
+        stack.enter_context(patch("app.card_classifier._get_client", return_value=jev))
+        response = _post_register(api, "198.51.100.7")
+
+    assert response.status_code == (429 if failure == "exhausted" else 503)
+    assert "Retry-After" in response.headers
+    assert jev.system_one.await_count == 1, "the refused fallback is never sent"
+    repo.create.assert_not_awaited()
+    repo.update_maintainer_notes.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "refusal",
+    [RateLimitError(Limit("jev", 1, DAY, "m"), 60), TimeoutError()],
+    ids=["exhausted", "limiter_down"],
+)
+async def test_worker_writes_nothing_when_the_fallback_reservation_fails(refusal):
+    import worker
+
+    stored = _make_agent_public()
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(return_value=(stored, {"jev_card_sha256": "old", "review_revision": 1})),
+        update_card_metadata=AsyncMock(),
+    )
+    budget_db = SimpleNamespace(fetchval=AsyncMock(side_effect=[1, refusal]), execute=AsyncMock())
+    if isinstance(refusal, RateLimitError):
+        budget = SimpleNamespace(reserve=AsyncMock(side_effect=[None, refusal]))
+    else:
+        budget = JevBudget(budget_db)
+    jev = SimpleNamespace(system_one=AsyncMock(side_effect=_validation_error()))
     with patch("app.card_classifier.classify_card", new=classify_card), \
-         patch("app.card_classifier._get_client", return_value=jev):
-        review = await assess({}, {"record": {"name": "x"}}, budget=budget, may_grandfather=False)
-    assert review.verdict is None and review.status == "unscored"
+         patch("app.card_classifier._get_client", return_value=jev), \
+         patch("worker.JevBudget", return_value=budget), \
+         patch.object(worker, "_material_changes", return_value=({}, {"name": "x"})), \
+         pytest.raises(rate_limits.NOT_SENT):
+        await worker.refresh_agent_metadata(stored, dict(MOCK_AGENT_CARD), repo, conformance_errors=[], classify=True)
     assert jev.system_one.await_count == 1
+    repo.update_card_metadata.assert_not_awaited()
+
+
+async def test_sdk_retries_are_off_so_each_reserved_request_is_one_http_attempt():
+    import httpx2
+
+    from app import card_classifier
+
+    attempts = []
+
+    def unavailable(request):
+        attempts.append(request)
+        return httpx2.Response(503, json={"error": "unavailable"})
+
+    real = card_classifier.AsyncTypeSafeClient
+    budget = SimpleNamespace(reserve=AsyncMock())
+    with patch("app.card_classifier.classify_card", new=classify_card), \
+         patch("app.card_classifier._client", None), \
+         patch("app.card_classifier.settings.jev_api_key", "k"), \
+         patch("app.card_classifier.AsyncTypeSafeClient",
+               side_effect=lambda **kw: real(**kw, transport=httpx2.MockTransport(unavailable))):
+        review = await assess({}, {"record": {"name": "x"}}, budget=budget, may_grandfather=False)
+    assert review.verdict is None
+    assert len(attempts) == sum(call.args[0] for call in budget.reserve.await_args_list) == 1
 
 
 # --- the SQL against a real Postgres ---------------------------------------

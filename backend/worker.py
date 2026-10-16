@@ -16,7 +16,7 @@ from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.models import AgentCreate, Capabilities
-from app.rate_limits import JevBudget, RateLimitError, prune
+from app.rate_limits import NOT_SENT, JevBudget, prune
 from app.repositories import AgentRepository, HealthCheckRepository
 from app.smoke_test import TASK_PROBE_USER_AGENT, refresh_recovery_notes, smoke_test
 from app.validators import _normalise_fields, validate_agent_card
@@ -440,9 +440,9 @@ async def check_agent_health(
                 await refresh_agent_metadata(
                     agent, card_data, agent_repo, conformance_errors=strict_errors, classify=True,
                 )
-            except RateLimitError:
+            except NOT_SENT as deferred:
                 # Nothing was written; the changed card is classified on a later cycle.
-                bound_logger.info("card_review_deferred", reason="jev_budget")
+                bound_logger.info("card_review_deferred", reason=type(deferred).__name__)
             except Exception as refresh_err:
                 bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))
 

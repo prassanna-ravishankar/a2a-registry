@@ -1,5 +1,7 @@
 """FastAPI application - main entry point"""
 
+import asyncio
+import contextlib
 import ipaddress
 import time
 import uuid
@@ -40,14 +42,17 @@ from .models import (
 from .rate_limits import (
     CHAT,
     FLAG,
+    NOT_SENT,
     PREVIEW,
     RECHECK,
     RECHECK_AGENT,
     SUBMIT,
+    BudgetUnavailableError,
     JevBudget,
     RateLimitError,
     client_key,
     limit_client,
+    prune,
     take,
 )
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
@@ -118,7 +123,7 @@ async def _create_reviewed(
 
     Fails closed: if Jev cannot classify, the agent is stored as unscored and
     held until the worker scores it. If the budget cannot cover it, nothing is
-    stored and RateLimitError propagates.
+    stored and the refusal (NOT_SENT) propagates.
     """
     review = await assess(
         {},
@@ -141,6 +146,16 @@ def _under_review(agent_id) -> JSONResponse:
     )
 
 
+async def _prune_counters():
+    """Delete ended rate-limit windows hourly, so expiry does not depend on the worker."""
+    while True:
+        try:
+            await prune(db)
+        except Exception as exc:
+            logger.warning("rate_limit_prune_failed", error=str(exc))
+        await asyncio.sleep(3600)
+
+
 def _make_mcp_app():
     return mcp.http_app(path="/", stateless_http=True)
 
@@ -153,7 +168,11 @@ async def lifespan(app: FastAPI):
     async with _mcp.lifespan(app):
         await db.connect()
         print("✅ Database connected")
+        pruning = asyncio.create_task(_prune_counters())
         yield
+        pruning.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await pruning
         await db.disconnect()
         print("👋 Database disconnected")
 
@@ -176,6 +195,16 @@ async def rate_limited_handler(request: Request, exc: RateLimitError):
         status_code=429,
         content={"detail": exc.limit.message},
         headers={"Retry-After": str(exc.retry_after)},
+    )
+
+
+@app.exception_handler(BudgetUnavailableError)
+async def budget_unavailable_handler(request: Request, exc: BudgetUnavailableError):
+    logger.error("jev_budget_unavailable", error=str(exc), path=request.url.path)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Submissions are temporarily unavailable. Retry after the time in the Retry-After header."},
+        headers={"Retry-After": "60"},
     )
 
 # CORS middleware
@@ -315,7 +344,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
-    except RateLimitError:
+    except NOT_SENT:
         raise
     except Exception as e:
         logger.error("create_agent_failed", error=str(e), exc_info=e)
@@ -391,7 +420,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
-    except RateLimitError:
+    except NOT_SENT:
         raise
     except Exception as e:
         logger.error("create_agent_failed", error=str(e), exc_info=e)

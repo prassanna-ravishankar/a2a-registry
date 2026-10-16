@@ -7,3 +7,5 @@ CREATE TABLE rate_limit_counters (
     used INTEGER NOT NULL CHECK (used >= 0),
     PRIMARY KEY (scope, window_end)
 );
+
+CREATE INDEX rate_limit_counters_window_end_idx ON rate_limit_counters (window_end);

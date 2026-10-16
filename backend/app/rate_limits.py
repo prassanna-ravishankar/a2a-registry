@@ -51,6 +51,15 @@ class RateLimitError(Exception):
         self.retry_after = retry_after
 
 
+class BudgetUnavailableError(Exception):
+    """The Jev budget could not be checked, so nothing may be sent. The API answers 503."""
+
+
+# Outcomes of a Jev reservation that must stop a classification without any
+# write: neither a classifier failure nor a reason to store "unscored".
+NOT_SENT = (RateLimitError, BudgetUnavailableError)
+
+
 _CLIENT = "Too many requests from this address. Retry after the time in the Retry-After header."
 _CAPACITY = (
     "The registry has reached its review capacity for now, so it is not accepting submissions."
@@ -185,4 +194,9 @@ class JevBudget:
         await ensure_available(self.db, self.limits)
 
     async def reserve(self, requests: int) -> None:
-        await take(self.db, self.limits, requests)
+        try:
+            await take(self.db, self.limits, requests)
+        except RateLimitError:
+            raise
+        except Exception as exc:
+            raise BudgetUnavailableError(type(exc).__name__) from exc
