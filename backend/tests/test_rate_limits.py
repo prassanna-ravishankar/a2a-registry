@@ -26,6 +26,7 @@ from app.rate_limits import (
     RateLimitError,
     client_key,
     jev_limits,
+    registration_limits,
     take,
 )
 
@@ -264,6 +265,44 @@ def test_registration_reserves_one_request_per_card_window(api, counters):
     assert response.status_code == 201 and sent >= 1
     for scope in ("jev", "jev-submissions", "jev-submissions-hour", "jev-client:198.51.100.7"):
         assert counters.used(scope) == sent
+
+
+@pytest.mark.parametrize("path", ["/agents/register", "/agents"])
+def test_registrations_are_capped_service_wide_before_any_fetch(api, counters, clean_jev_verdict, path):
+    hourly = next(limit for limit in registration_limits() if limit.name == "registrations-hour")
+    with ExitStack() as stack:
+        repo, fetch = _registration_mocks(stack)
+        verify = stack.enter_context(patch("app.main.verify_well_known_uri", new=AsyncMock(return_value=(True, ""))))
+        # One registration per client, so no per-client limit is involved.
+        codes = [_post_register(api, f"198.51.100.{n}", path).status_code for n in range(hourly.count)]
+        outbound = fetch.call_count + verify.await_count
+        refused = _post_register(api, "198.51.101.1", path)
+
+        assert codes == [201] * hourly.count
+        assert refused.status_code == 429
+        assert fetch.call_count + verify.await_count == outbound, "the refused registration fetches nothing"
+    assert repo.create.await_count == hourly.count
+
+
+def test_duplicates_do_not_use_the_global_registration_allowance(api, counters):
+    with ExitStack() as stack:
+        repo, fetch = _registration_mocks(stack)
+        repo.get_by_well_known_uri = AsyncMock(return_value=_make_agent_public())
+        codes = {_post_register(api, f"198.51.100.{n}").status_code for n in range(40)}
+    assert codes == {409}
+    assert counters.used("registrations") == 0 and counters.used("registrations-hour") == 0
+    fetch.assert_not_called()
+
+
+def test_exhausted_daily_registrations_answer_with_the_capacity_message(api, counters):
+    counters.exhaust(next(limit for limit in registration_limits() if limit.name == "registrations"))
+    with ExitStack() as stack:
+        _, fetch = _registration_mocks(stack)
+        response = _post_register(api, "198.51.100.7")
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) >= 1
+    assert "review capacity" in response.json()["detail"]
+    fetch.assert_not_called()
 
 
 def test_a_busy_worker_day_never_refuses_submitters(api, counters):

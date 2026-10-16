@@ -53,6 +53,7 @@ from .rate_limits import (
     client_key,
     limit_client,
     prune,
+    registration_limits,
     take,
 )
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
@@ -307,6 +308,9 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
                 detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
             )
 
+    # Counted service-wide before any outbound work.
+    await take(db, registration_limits())
+
     # Fetch the agent card from the wellKnownURI
     agent_card, error = await fetch_agent_card(well_known_uri)
     if error:
@@ -392,6 +396,9 @@ async def register_agent_full(agent: AgentCreate, request: Request):
             detail=f"An agent with name '{agent.name}' by '{agent.author}' is already registered (id={card_duplicate.id}). Use PUT /agents/{card_duplicate.id} to update it.",
         )
     _reject_duplicate_endpoint(await agent_repo.get_by_endpoint_url(str(agent.url)))
+
+    # Counted service-wide before any outbound work.
+    await take(db, registration_limits())
 
     # Verify ownership via wellKnownURI
     verified, message = await verify_well_known_uri(agent)

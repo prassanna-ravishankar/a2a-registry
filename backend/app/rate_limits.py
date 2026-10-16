@@ -77,6 +77,19 @@ FLAG = (Limit("flag", 5, HOUR, _CLIENT),)
 CHAT = (Limit("chat", 30, 60, _CLIENT),)
 
 
+def registration_limits() -> tuple[Limit, ...]:
+    """Service-wide registration attempts across both register endpoints.
+
+    Counted after the cheap checks (URI format, duplicates) and before the first
+    card fetch or probe, so junk cannot use up everyone's allowance but anything
+    that costs outbound work or a classification does.
+    """
+    return (
+        Limit("registrations-hour", settings.registration_hourly_limit, HOUR, _CAPACITY),
+        Limit("registrations", settings.registration_daily_limit, DAY, _CAPACITY),
+    )
+
+
 def jev_limits(client: Optional[str]) -> tuple[Limit, ...]:
     """Jev requests one classification may draw on, counted per request (card window).
 

@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     jev_threshold: float = 0.45
     jev_timeout_seconds: float = 20.0  # per Jev request
     jev_deadline_seconds: float = 45.0  # whole card at registration/PUT, including queueing
+    # Service-wide registration attempts that reach a card fetch, both register
+    # endpoints together. Sized from Sep-Oct 2026: about 8 registrations a day,
+    # a busiest legitimate day of 26 (17 in one hour); a 101-a-day burst (80 in
+    # one hour) is what this stops. See rate_limits.registration_limits.
+    registration_daily_limit: int = 60
+    registration_hourly_limit: int = 25
+
     # Hard ceilings on Jev requests (one per card window, about 6.2k input
     # tokens each). Sized from October 2026 usage: the worker re-scores about 60
     # changed cards a day at about 7.4 requests each (about 450 requests), new
