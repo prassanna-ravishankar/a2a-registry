@@ -1307,3 +1307,46 @@ def test_registration_rejects_a_second_listing_for_the_same_endpoint(client):
 
     assert response.status_code == 409 and "endpoint is already registered" in response.json()["detail"]
     probe.assert_not_awaited()
+
+
+MIRROR_URI = "https://a2aregistry.org/api/agents/30c4def8-ebf4-4755-ad70-b389ad9387e8"
+
+
+def test_full_registration_refuses_a_card_url_on_the_registry_itself(client):
+    """POST /agents validates the URI too, before any lookup or fetch (the mirror listings)."""
+    payload = {
+        "protocolVersion": "0.3.0", "name": "Swarm Foundry Preflight", "description": "d",
+        "author": "INJECTED-AUTHOR", "url": "https://example.com/a2a", "version": "1.0.0",
+        "capabilities": {}, "skills": [], "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"], "wellKnownURI": MIRROR_URI,
+    }
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.verify_well_known_uri") as verify, \
+         patch("app.main.fetch_agent_card") as fetch:
+        response = client.post("/agents", json=payload)
+    assert response.status_code == 400
+    assert "registry itself" in response.json()["detail"]
+    mock_repo.return_value.get_by_well_known_uri.assert_not_called()
+    verify.assert_not_called()
+    fetch.assert_not_called()
+
+
+def test_full_registration_requires_an_agent_card_path(client):
+    payload = {
+        "protocolVersion": "0.3.0", "name": "x", "description": "d", "author": "a",
+        "url": "https://example.com/a2a", "version": "1.0.0", "capabilities": {}, "skills": [],
+        "defaultInputModes": ["text/plain"], "defaultOutputModes": ["text/plain"],
+        "wellKnownURI": "https://example.com/some/record.json",
+    }
+    with patch("app.main.verify_well_known_uri") as verify:
+        response = client.post("/agents", json=payload)
+    assert response.status_code == 400
+    verify.assert_not_called()
+
+
+def test_simple_registration_refuses_a_card_url_on_the_registry_itself(client):
+    with patch("app.main.fetch_agent_card") as fetch:
+        response = client.post("/agents/register", json={"wellKnownURI": MIRROR_URI})
+    assert response.status_code == 400
+    assert "registry itself" in response.json()["detail"]
+    fetch.assert_not_called()

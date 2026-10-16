@@ -366,8 +366,12 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     budget = await _submission_budget(request)
     track_api_query("POST /agents", author=agent.author)
 
-    # Check if already exists (exact URI match)
     well_known_uri = str(agent.wellKnownURI)
+    uri_errors = validate_well_known_uri(well_known_uri)
+    if uri_errors:
+        raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+
+    # Check if already exists (exact URI match)
     agent_repo = AgentRepository(db)
     existing = await agent_repo.get_by_well_known_uri(well_known_uri)
     if existing:

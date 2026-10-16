@@ -8,6 +8,7 @@ Falls back to manual validation if the SDK is not available.
 """
 
 from typing import Any
+from urllib.parse import urlparse
 
 from .models import (
     MAX_AGENT_DESCRIPTION_CHARS,
@@ -304,6 +305,13 @@ def _validate_skills(skills: list[dict[str, Any]]) -> list[str]:
 # Well-known URI validation (unchanged)
 # ---------------------------------------------------------------------------
 
+# Hosts that serve the registry itself. Every path on them is registry-generated
+# (the site and its API's records of other agents), never an agent's own card;
+# a listing pointing here mirrors another agent. hello.a2aregistry.org is a real
+# agent and is not listed.
+REGISTRY_HOSTS = frozenset({"a2aregistry.org", "www.a2aregistry.org"})
+
+
 def validate_well_known_uri(uri: str) -> list[str]:
     """
     Validate that a wellKnownURI has the correct format.
@@ -326,6 +334,11 @@ def validate_well_known_uri(uri: str) -> list[str]:
 
     if not (uri.startswith("http://") or uri.startswith("https://")):
         errors.append("wellKnownURI must be an absolute URL starting with http:// or https://.")
+        return errors
+
+    host = (urlparse(uri).hostname or "").rstrip(".")
+    if host in REGISTRY_HOSTS:
+        errors.append("wellKnownURI must be the agent's own card URL, not a page or record on the registry itself.")
         return errors
 
     standard_paths = ("/.well-known/agent.json", "/.well-known/agent-card.json")
