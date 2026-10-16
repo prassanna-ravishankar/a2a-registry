@@ -312,8 +312,18 @@ def _validate_skills(skills: list[dict[str, Any]]) -> list[str]:
 REGISTRY_HOSTS = frozenset({"a2aregistry.org", "www.a2aregistry.org"})
 
 
+REGISTRY_URL_ERROR = "wellKnownURI must be the agent's own card URL, not a page or record on the registry itself."
+
+
 def is_registry_url(url: str) -> bool:
-    return (urlparse(url).hostname or "").rstrip(".") in REGISTRY_HOSTS
+    """True if `url` lands on the registry itself, however its host is spelled
+    (case, trailing dot, full-width or other IDNA-equivalent characters)."""
+    host = urlparse(url).hostname or ""
+    try:
+        host = host.encode("idna").decode("ascii")
+    except UnicodeError:
+        pass
+    return host.lower().rstrip(".") in REGISTRY_HOSTS
 
 
 def validate_well_known_uri(uri: str) -> list[str]:
@@ -341,7 +351,7 @@ def validate_well_known_uri(uri: str) -> list[str]:
         return errors
 
     if is_registry_url(uri):
-        errors.append("wellKnownURI must be the agent's own card URL, not a page or record on the registry itself.")
+        errors.append(REGISTRY_URL_ERROR)
         return errors
 
     standard_paths = ("/.well-known/agent.json", "/.well-known/agent-card.json")

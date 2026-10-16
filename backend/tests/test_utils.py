@@ -346,3 +346,75 @@ def test_redirects_elsewhere_still_work():
     assert _redirect_url("https://agent.example.com/.well-known/agent.json", "/v2/agent.json") == \
         "https://agent.example.com/v2/agent.json"
     assert _redirect_url("https://a.example/x", "https://hello.a2aregistry.org/.well-known/agent-card.json")
+
+
+class _FakeResponse:
+    def __init__(self, status, headers=None, body=b""):
+        self.status, self.headers, self._body = status, headers or {}, body
+        self.content_length = len(body)
+        self.content = self
+
+    async def iter_chunked(self, _size):
+        yield self._body
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+def _fake_session(routes, requested):
+    class Session:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def get(self, url, **kwargs):
+            requested.append(url)
+            return routes[url]
+
+    return Session
+
+
+async def _fetch_through(routes):
+    from unittest.mock import AsyncMock, patch
+
+    from app.utils import fetch_agent_card
+
+    requested: list[str] = []
+    with patch("app.utils._guarded_connector_for_url", new=AsyncMock(return_value=None)), \
+         patch("app.utils.aiohttp.ClientSession", _fake_session(routes, requested)):
+        result = await fetch_agent_card("https://agent.example.com/.well-known/agent.json")
+    return result, requested
+
+
+async def test_a_redirect_to_the_registry_is_refused_before_it_is_requested():
+    routes = {"https://agent.example.com/.well-known/agent.json": _FakeResponse(
+        302, {"Location": "https://a2aregistry.org/api/agents/30c4def8-ebf4-4755-ad70-b389ad9387e8"})}
+    (card, error), requested = await _fetch_through(routes)
+    assert card is None and "registry itself" in error
+    assert requested == ["https://agent.example.com/.well-known/agent.json"]
+
+
+async def test_a_redirect_to_the_hello_world_agent_is_followed():
+    import json as _json
+
+    card = {
+        "protocolVersion": "0.3.0", "name": "Hello", "description": "d", "url": "https://hello.a2aregistry.org/a2a",
+        "version": "1.0.0", "capabilities": {}, "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"], "skills": [],
+    }
+    hello = "https://hello.a2aregistry.org/.well-known/agent-card.json"
+    routes = {
+        "https://agent.example.com/.well-known/agent.json": _FakeResponse(302, {"Location": hello}),
+        hello: _FakeResponse(200, body=_json.dumps(card).encode()),
+    }
+    (fetched, error), requested = await _fetch_through(routes)
+    assert error is None and fetched["name"] == "Hello"
+    assert requested == ["https://agent.example.com/.well-known/agent.json", hello]
