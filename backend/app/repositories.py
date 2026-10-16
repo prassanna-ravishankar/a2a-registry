@@ -634,7 +634,9 @@ class AgentRepository:
             return None
         state = {
             key: row[key]
-            for key in ("review_status", "jev_card_sha256", "review_approved_sha256", "review_revision")
+            for key in (
+                "review_status", "jev_card_sha256", "review_approved_sha256", "review_revision", "jev_checked_at",
+            )
         }
         return self._row_to_agent(row), state
 

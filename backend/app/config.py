@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     registration_daily_limit: int = 60
     registration_hourly_limit: int = 25
 
+    # The worker re-scores a changed card at once unless it was scored within
+    # this many hours; repeat changes inside the window wait, with no write.
+    # Registrations and admin updates never wait.
+    rescore_cooldown_hours: float = 6.0
+
     # Hard ceilings on Jev requests (one per card window, about 6.2k input
     # tokens each). Sized from October 2026 usage: the worker re-scores about 60
     # changed cards a day at about 7.4 requests each (about 450 requests), new

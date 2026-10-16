@@ -55,9 +55,13 @@ class BudgetUnavailableError(Exception):
     """The Jev budget could not be checked, so nothing may be sent. The API answers 503."""
 
 
-# Outcomes of a Jev reservation that must stop a classification without any
-# write: neither a classifier failure nor a reason to store "unscored".
-NOT_SENT = (RateLimitError, BudgetUnavailableError)
+class RescoreCooldownError(Exception):
+    """A changed card was scored too recently; the worker re-scores it later."""
+
+
+# Outcomes that must stop a classification without any write: neither a
+# classifier failure nor a reason to store "unscored".
+NOT_SENT = (RateLimitError, BudgetUnavailableError, RescoreCooldownError)
 
 
 _CLIENT = "Too many requests from this address. Retry after the time in the Retry-After header."

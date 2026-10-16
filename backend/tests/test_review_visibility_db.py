@@ -183,6 +183,16 @@ async def test_full_update_is_refused_when_review_state_moved(db, repo):
     assert (await repo.get_by_id(created.id)).name == "Unique Review Agent 9"
 
 
+@pytest.fixture
+def no_rescore_cooldown():
+    """For tests about snapshot pairing, not timing: the agents here were scored seconds ago."""
+    from unittest.mock import patch
+
+    with patch("worker.settings.rescore_cooldown_hours", 0):
+        yield
+
+
+@pytest.mark.usefixtures("no_rescore_cooldown")
 async def test_worker_never_pairs_a_stale_record_with_fresh_review_state(db, repo):
     """Codex re-review #2: the worker holds clean A from the start of the cycle while a
     concurrent PUT stores malicious B as pending. The worker must diff and classify the
@@ -276,3 +286,13 @@ async def test_system_note_replacement_never_clobbers_a_newer_human_note(db, rep
     assert not await repo.replace_system_note(created.id, "system 404 note", "system WORKING note")
     assert await db.fetchval("SELECT maintainer_notes FROM agents WHERE id = $1", created.id) == "Human warning written mid-probe"
     assert await repo.replace_system_note(created.id, "Human warning written mid-probe", "replaced")
+
+
+async def test_snapshot_carries_the_last_score_time_for_the_rescore_cooldown(db, repo):
+    from datetime import datetime, timedelta, timezone
+
+    created = await repo.create(_agent(91), review=_review(CLEAN, "sha-cooldown", None))
+    _, state = await repo.get_review_snapshot(created.id)
+    checked_at = state["jev_checked_at"]
+    assert checked_at.tzinfo is not None, "compared against an aware now() in assess"
+    assert datetime.now(timezone.utc) - checked_at < timedelta(minutes=5)

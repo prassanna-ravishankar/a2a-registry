@@ -18,6 +18,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Iterator, Optional
 
 from typesafe_sdk import (
@@ -31,7 +32,7 @@ from typesafe_sdk import (
 from .categories import CATEGORIES, CATEGORY_INSTRUCTIONS, CATEGORY_SLUGS, SECONDARY_MIN_PROBABILITY
 from .config import settings
 from .models import AgentBase, AgentCreate
-from .rate_limits import NOT_SENT, JevBudget
+from .rate_limits import NOT_SENT, JevBudget, RescoreCooldownError
 
 WINDOW_CHARS = 3000
 MAX_PATH_CHARS = 1000
@@ -447,6 +448,7 @@ async def assess(
     budget: JevBudget,
     may_grandfather: bool,
     deadline: Optional[float] = None,
+    cooldown: Optional[timedelta] = None,
 ) -> Optional[ReviewWrite]:
     """Classify `document` unless it is exactly what was last scored.
 
@@ -454,14 +456,20 @@ async def assess(
     review_revision from the same snapshot as the record in `document` ({} for
     a registration). Returns None when this exact content was already scored. Never raises for classifier failures: those fail
     closed through the returned status. Raises RateLimitError or
-    BudgetUnavailableError when `budget` refuses or cannot be checked; then no
-    further request is sent and callers neither write nor fall back.
+    BudgetUnavailableError when `budget` refuses or cannot be checked, and
+    RescoreCooldownError when `cooldown` is set and the last successful score
+    (jev_checked_at) is more recent than that, unless the agent is unscored.
+    In each case no further request is sent and callers neither write nor
+    fall back.
     """
     sha = card_sha256(document)
     current = state.get("review_status")
     scored_sha = state.get("jev_card_sha256")
     if scored_sha == sha and current != "unscored":
         return None
+    checked_at = state.get("jev_checked_at")
+    if cooldown and checked_at and current != "unscored" and datetime.now(timezone.utc) - checked_at < cooldown:
+        raise RescoreCooldownError(checked_at.isoformat())
     try:
         verdict: Optional[CardVerdict] = await classify_card(document, deadline=deadline, reserve=budget.reserve)
     except CardClassifierError:
