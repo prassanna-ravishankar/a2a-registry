@@ -126,7 +126,7 @@ async def test_a_deferred_change_leaves_the_listing_in_its_last_reviewed_state(s
     repo.update_card_metadata.assert_not_awaited()
 
 
-@pytest.mark.parametrize(("hours_ago", "waits"), [(5.99, True), (6.0, False)], ids=["inside", "at-boundary"])
+@pytest.mark.parametrize(("hours_ago", "waits"), [(5.99, True), (6.0, False)], ids=["just-inside", "just-past"])
 async def test_the_window_boundary(hours_ago, waits):
     state = {"jev_card_sha256": "old", "jev_checked_at": _ago(hours_ago)}
     if waits:
