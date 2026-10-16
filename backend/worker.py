@@ -4,6 +4,7 @@
 import asyncio
 import json
 import time
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -316,6 +317,7 @@ async def refresh_agent_metadata(
         # pre-existing content. New registrations and PUTs never take this path.
         review = await assess(
             state, review_document(candidate, card_data), budget=JevBudget(db), may_grandfather=True,
+            cooldown=timedelta(hours=settings.rescore_cooldown_hours),
         )
     if not changed and review is None:
         return False
