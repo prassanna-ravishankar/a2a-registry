@@ -33,6 +33,7 @@ from .conftest import MOCK_AGENT_CARD
 from .test_endpoints import _make_agent_in_db, _make_agent_public
 
 GOOGLE_FRONTEND = "35.191.10.20"
+CEILING = next(limit for limit in jev_limits(None) if limit.name == "jev")
 CLOUDFLARE_EDGE = "172.70.1.2"
 REGISTER = {"wellKnownURI": "https://example.com/.well-known/agent.json"}
 
@@ -232,7 +233,7 @@ def test_exhausted_global_budget_refuses_every_client_before_any_work(api, count
 def test_budget_exhausted_mid_flight_never_calls_jev_and_stores_nothing(api, counters):
     """The pre-check passed, then other submissions took the last of the budget."""
     jev = SimpleNamespace(system_one=AsyncMock())
-    ceiling = jev_limits(None)[0]
+    ceiling = CEILING
     with ExitStack() as stack:
         repo, _ = _registration_mocks(stack)
         stack.enter_context(patch("app.card_classifier.classify_card", new=classify_card))
@@ -265,8 +266,33 @@ def test_registration_reserves_one_request_per_card_window(api, counters):
         assert counters.used(scope) == sent
 
 
+def test_a_busy_worker_day_never_refuses_submitters(api, counters):
+    background = next(limit for limit in jev_limits(None) if limit.name == "jev-background")
+    counters.exhaust(background)
+    with ExitStack() as stack:
+        _registration_mocks(stack)
+        response = _post_register(api, "198.51.100.7")
+    assert response.status_code == 201
+
+
+async def test_a_submission_flood_never_starves_the_worker():
+    db = CounterDb(MagicMock())
+    db.exhaust(next(limit for limit in jev_limits("x") if limit.name == "jev-submissions"))
+    await JevBudget(db).reserve(5)
+    with pytest.raises(RateLimitError):
+        await JevBudget(db, "198.51.100.7").reserve(1)
+    assert db.used("jev-background") == 5 and db.used("jev") == 5
+
+
+def test_the_shares_partition_the_ceiling():
+    background = next(limit for limit in jev_limits(None) if limit.name == "jev-background")
+    submissions = next(limit for limit in jev_limits("x") if limit.name == "jev-submissions")
+    assert background.count + submissions.count == CEILING.count
+    assert CEILING in jev_limits(None) and CEILING in jev_limits("x")
+
+
 def test_admin_update_stops_at_the_ceiling(api, counters, clean_jev_verdict):
-    counters.exhaust(jev_limits(None)[0])
+    counters.exhaust(CEILING)
     with patch("app.main.settings") as settings, patch("app.main.fetch_agent_card") as fetch:
         settings.admin_api_key = "k"
         response = api.put(f"/agents/{_make_agent_public().id}", headers={"X-Admin-Key": "k"})
@@ -277,7 +303,7 @@ def test_admin_update_stops_at_the_ceiling(api, counters, clean_jev_verdict):
 
 async def test_worker_defers_a_changed_card_when_the_ceiling_is_reached():
     jev = SimpleNamespace(system_one=AsyncMock())
-    budget = SimpleNamespace(reserve=AsyncMock(side_effect=RateLimitError(jev_limits(None)[0], 60)))
+    budget = SimpleNamespace(reserve=AsyncMock(side_effect=RateLimitError(CEILING, 60)))
     with patch("app.card_classifier.classify_card", new=classify_card), \
          patch("app.card_classifier._get_client", return_value=jev), \
          pytest.raises(RateLimitError):
@@ -293,7 +319,7 @@ async def test_worker_refresh_writes_nothing_when_the_budget_refuses():
         get_review_snapshot=AsyncMock(return_value=(stored, {"jev_card_sha256": "old", "review_revision": 1})),
         update_card_metadata=AsyncMock(),
     )
-    with patch("worker.assess", new=AsyncMock(side_effect=RateLimitError(jev_limits(None)[0], 60))), \
+    with patch("worker.assess", new=AsyncMock(side_effect=RateLimitError(CEILING, 60))), \
          patch.object(worker, "_material_changes", return_value=({}, {})), \
          pytest.raises(RateLimitError):
         await worker.refresh_agent_metadata(stored, dict(MOCK_AGENT_CARD), repo, conformance_errors=[], classify=True)
@@ -309,7 +335,7 @@ def _validation_error():
 @pytest.mark.parametrize("failure", ["exhausted", "limiter_down"])
 def test_budget_failure_during_the_fallback_writes_nothing(api, counters, failure):
     """The first reservation succeeds; the moderation-only retry's reservation does not."""
-    ceiling = jev_limits(None)[0]
+    ceiling = CEILING
     original = counters.fetchval
 
     def break_budget():
@@ -350,7 +376,8 @@ async def test_worker_writes_nothing_when_the_fallback_reservation_fails(refusal
         get_review_snapshot=AsyncMock(return_value=(stored, {"jev_card_sha256": "old", "review_revision": 1})),
         update_card_metadata=AsyncMock(),
     )
-    budget_db = SimpleNamespace(fetchval=AsyncMock(side_effect=[1, refusal]), execute=AsyncMock())
+    # The first reservation takes both worker counters; the fallback's first take fails.
+    budget_db = SimpleNamespace(fetchval=AsyncMock(side_effect=[1, 1, refusal]), execute=AsyncMock())
     if isinstance(refusal, RateLimitError):
         budget = SimpleNamespace(reserve=AsyncMock(side_effect=[None, refusal]))
     else:

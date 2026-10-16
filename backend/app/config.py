@@ -65,12 +65,14 @@ class Settings(BaseSettings):
     jev_threshold: float = 0.45
     jev_timeout_seconds: float = 20.0  # per Jev request
     jev_deadline_seconds: float = 45.0  # whole card at registration/PUT, including queueing
-    # Hard ceilings on Jev requests (one per card window, about 3.6 per card,
-    # about 6.2k input tokens each). Sized from October 2026 usage: about 250
-    # requests on a normal day, about 850 at peak. The daily ceiling covers every
-    # caller (a full re-score, about 2.2k requests, finishes over about 3 days);
-    # public submissions get their own share of it. See rate_limits.py.
-    jev_daily_requests: int = 750
+    # Hard ceilings on Jev requests (one per card window, about 6.2k input
+    # tokens each). Sized from October 2026 usage: the worker re-scores about 60
+    # changed cards a day at about 7.4 requests each (about 450 requests), new
+    # registrations add about 40; the busiest day was about 1.7k. The daily
+    # ceiling is split: submissions get jev_submission_daily_requests, the worker
+    # and admin get the rest, and a re-score wave spills into later days.
+    # See rate_limits.py.
+    jev_daily_requests: int = 1200
     jev_submission_daily_requests: int = 200
     jev_submission_hourly_requests: int = 60
     jev_client_daily_requests: int = 60
