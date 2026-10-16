@@ -19,9 +19,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from .agent_card import agent_create_from_card
 from .card_classifier import HELD_STATUSES, assess, card_record, review_document
@@ -40,6 +37,19 @@ from .models import (
     RegistryStats,
     UptimeMetrics,
 )
+from .rate_limits import (
+    CHAT,
+    FLAG,
+    PREVIEW,
+    RECHECK,
+    RECHECK_AGENT,
+    SUBMIT,
+    JevBudget,
+    RateLimitError,
+    client_key,
+    limit_client,
+    take,
+)
 from .repositories import AgentRepository, FlagRepository, HealthCheckRepository, StatsRepository
 from .smoke_test import (
     SUPPORTED_BINDINGS,
@@ -51,8 +61,6 @@ from .smoke_test import (
 )
 from .utils import fetch_agent_card, guarded_httpx_client, track_api_query, verify_well_known_uri
 from .validators import validate_agent_card, validate_well_known_uri
-
-limiter = Limiter(key_func=get_remote_address, enabled=settings.rate_limit_enabled)
 
 
 def _agent_create_from_card(
@@ -95,15 +103,27 @@ def _reject_duplicate_endpoint(existing) -> None:
 UNDER_REVIEW_MESSAGE = "Registered. This listing is held for review before it appears in the registry."
 
 
-async def _create_reviewed(agent_repo: AgentRepository, agent_data: AgentCreate, live_card: dict[str, Any]):
+async def _submission_budget(request: Request) -> JevBudget:
+    """Refuse a submission before any fetch or probe if it could not be classified."""
+    await limit_client(db, request, SUBMIT)
+    budget = JevBudget(db, client_key(request))
+    await budget.ensure_available()
+    return budget
+
+
+async def _create_reviewed(
+    agent_repo: AgentRepository, agent_data: AgentCreate, live_card: dict[str, Any], budget: JevBudget,
+):
     """Classify the record and live card before inserting, in the same INSERT.
 
     Fails closed: if Jev cannot classify, the agent is stored as unscored and
-    held until the worker scores it.
+    held until the worker scores it. If the budget cannot cover it, nothing is
+    stored and RateLimitError propagates.
     """
     review = await assess(
         {},
         review_document(card_record(agent_data), live_card),
+        budget=budget,
         may_grandfather=False,
         deadline=settings.jev_deadline_seconds,
     )
@@ -147,8 +167,16 @@ app = FastAPI(
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RateLimitError)
+async def rate_limited_handler(request: Request, exc: RateLimitError):
+    logger.info("rate_limited", scope=exc.limit.name.split(":", 1)[0], path=request.url.path)
+    return JSONResponse(
+        status_code=429,
+        content={"detail": exc.limit.message},
+        headers={"Retry-After": str(exc.retry_after)},
+    )
 
 # CORS middleware
 app.add_middleware(
@@ -190,9 +218,9 @@ async def health_check():
 
 
 @router.post("/agents/preview")
-@limiter.limit("30/hour")
 async def preview_agent(registration: AgentRegister, request: Request):
     """Fetch and validate an Agent Card without registering it."""
+    await limit_client(db, request, PREVIEW)
     well_known_uri = str(registration.wellKnownURI)
     uri_errors = validate_well_known_uri(well_known_uri)
     if uri_errors:
@@ -215,7 +243,6 @@ async def preview_agent(registration: AgentRegister, request: Request):
 
 
 @router.post("/agents/register", response_model=AgentPublic, status_code=201)
-@limiter.limit("10/hour")
 async def register_agent_simple(registration: AgentRegister, request: Request):
     """
     Register an agent by its wellKnownURI.
@@ -223,6 +250,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     Just provide the wellKnownURI and we'll fetch the agent card automatically.
     The agent card must be accessible and contain valid A2A Protocol fields.
     """
+    budget = await _submission_budget(request)
     well_known_uri = str(registration.wellKnownURI)
     track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
 
@@ -280,20 +308,21 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     # Create agent, then attach smoke-test result as initial maintainer note
     # AND as the first task_conformance datapoint.
     try:
-        created_agent, review_status = await _create_reviewed(agent_repo, agent_data, agent_card)
+        created_agent, review_status = await _create_reviewed(agent_repo, agent_data, agent_card, budget)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
         await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
         if review_status in HELD_STATUSES:
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
+    except RateLimitError:
+        raise
     except Exception as e:
         logger.error("create_agent_failed", error=str(e), exc_info=e)
         raise HTTPException(status_code=500, detail="Failed to create agent")
 
 
 @router.post("/agents", response_model=AgentPublic, status_code=201)
-@limiter.limit("10/hour")
 async def register_agent_full(agent: AgentCreate, request: Request):
     """
     Register a new agent with full payload.
@@ -301,6 +330,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     Validates ownership by fetching wellKnownURI and comparing key fields.
     For a simpler flow, use POST /agents/register with just the wellKnownURI.
     """
+    budget = await _submission_budget(request)
     track_api_query("POST /agents", author=agent.author)
 
     # Check if already exists (exact URI match)
@@ -353,7 +383,7 @@ async def register_agent_full(agent: AgentCreate, request: Request):
     # Create agent, then attach smoke-test result as initial maintainer note
     # AND as the first task_conformance datapoint.
     try:
-        created_agent, review_status = await _create_reviewed(agent_repo, agent, live_card)
+        created_agent, review_status = await _create_reviewed(agent_repo, agent, live_card, budget)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
         await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
         logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category, review=review_status)
@@ -361,6 +391,8 @@ async def register_agent_full(agent: AgentCreate, request: Request):
             return _under_review(created_agent.id)
         result = await agent_repo.get_by_id(created_agent.id)
         return result
+    except RateLimitError:
+        raise
     except Exception as e:
         logger.error("create_agent_failed", error=str(e), exc_info=e)
         raise HTTPException(status_code=500, detail="Failed to create agent")
@@ -470,7 +502,6 @@ async def get_agent(agent_id: UUID):
 
 
 @router.post("/agents/{agent_id}/recheck")
-@limiter.limit("5/hour")
 async def recheck_agent(agent_id: UUID, request: Request):
     """Re-run the A2A `message/send` probe for a listed agent now.
 
@@ -480,11 +511,16 @@ async def recheck_agent(agent_id: UUID, request: Request):
     URL or content. Card metadata already refreshes from the live card every
     health cycle (30 min).
     """
+    await limit_client(db, request, RECHECK)
     track_api_query("POST /agents/{id}/recheck", agent_id=str(agent_id))
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+    # Per agent as well, so rotating addresses cannot turn the registry into a
+    # stream of probes at one third-party endpoint.
+    if settings.rate_limit_enabled:
+        await take(db, [RECHECK_AGENT.of(str(agent_id))])
     category, note, response_ms = await smoke_test(str(agent.wellKnownURI), user_agent=TASK_PROBE_USER_AGENT)
     await agent_repo.update_task_conformance(agent_id, category, response_ms)
     await refresh_recovery_notes(agent, category, agent_repo)
@@ -512,6 +548,9 @@ async def update_agent(
     """
     _require_admin(x_admin_key)
     track_api_query("PUT /agents/{id}", agent_id=str(agent_id))
+    # Admin updates skip per-client limits but still count against the Jev ceiling.
+    budget = JevBudget(db)
+    await budget.ensure_available()
 
     agent_repo = AgentRepository(db)
     existing = await agent_repo.get_by_id(agent_id, include_held=True)
@@ -571,6 +610,7 @@ async def update_agent(
     review = await assess(
         state,
         review_document(card_record(agent_data), agent_card),
+        budget=budget,
         may_grandfather=False,
         deadline=settings.jev_deadline_seconds,
     )
@@ -669,12 +709,12 @@ async def get_registry_stats():
 
 
 @router.post("/agents/{agent_id}/flag", status_code=201)
-@limiter.limit("5/hour")
 async def flag_agent(agent_id: UUID, flag: AgentFlag, request: Request):
     """Community flag/report an agent"""
+    await limit_client(db, request, FLAG)
     track_api_query("POST /agents/{id}/flag", agent_id=str(agent_id))
 
-    client_ip = request.client.host if request.client else None
+    client_ip = client_key(request)
 
     flag_repo = FlagRepository(db)
     await flag_repo.create_flag(agent_id, flag.reason.value, client_ip, flag.details)
@@ -764,9 +804,9 @@ def _extract_text(result) -> str:
 
 
 @router.post("/agents/{agent_id}/chat")
-@limiter.limit("30/minute")
 async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
     """Proxy a chat message to an agent via the a2a-sdk."""
+    await limit_client(db, request, CHAT)
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(agent_id)
     if not agent:

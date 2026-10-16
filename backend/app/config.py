@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     jev_threshold: float = 0.45
     jev_timeout_seconds: float = 20.0  # per Jev request
     jev_deadline_seconds: float = 45.0  # whole card at registration/PUT, including queueing
+    # Hard ceilings on Jev requests (one per card window, about 3 per card).
+    # The daily ceiling covers every caller and fits a full re-score of the
+    # registry; public submissions get their own share of it. See rate_limits.py.
+    jev_daily_requests: int = 3000
+    jev_submission_daily_requests: int = 600
+    jev_submission_hourly_requests: int = 150
+    jev_client_daily_requests: int = 150
 
     # Logging
     log_json: bool = True

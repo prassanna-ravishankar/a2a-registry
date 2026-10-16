@@ -18,13 +18,14 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
-from typing import Any, Iterator, Optional
+from typing import Any, Awaitable, Callable, Iterator, Optional
 
 from typesafe_sdk import AsyncTypeSafeClient, Choice, Noul, TypeSafeAPIResponseValidationError
 
 from .categories import CATEGORIES, CATEGORY_INSTRUCTIONS, CATEGORY_SLUGS, SECONDARY_MIN_PROBABILITY
 from .config import settings
 from .models import AgentBase, AgentCreate
+from .rate_limits import JevBudget, RateLimitError
 
 WINDOW_CHARS = 3000
 MAX_PATH_CHARS = 1000
@@ -312,18 +313,22 @@ async def classify_card(
     client: Optional[AsyncTypeSafeClient] = None,
     *,
     deadline: Optional[float] = None,
+    reserve: Optional[Callable[[int], Awaitable[None]]] = None,
 ) -> CardVerdict:
     """Score a document. Raises CardClassifierError on any failure or malformed answer.
 
     Each request has the client timeout; `deadline` additionally bounds the
     whole card, queueing included, for callers with a person waiting. If any
-    window fails, the others are cancelled.
+    window fails, the others are cancelled. `reserve(n)` is awaited before n
+    Jev requests are sent; RateLimitError from it propagates and nothing is sent.
     """
     try:
         windows = card_windows(document)
         if not windows:
             return CardVerdict(score=0.0, signals={}, model=settings.jev_model)
         jev = client or _get_client()
+        if reserve:
+            await reserve(len(windows))
 
         async def ask(window: str):
             async with _inflight:
@@ -332,7 +337,9 @@ async def classify_card(
                 except TypeSafeAPIResponseValidationError:
                     # The response failed SDK validation; ask moderation alone so a
                     # bad category answer cannot block it. Any failure here is real
-                    # and fails closed.
+                    # and fails closed, including a refused reservation.
+                    if reserve:
+                        await reserve(1)
                     return await jev.system_one(window, _questions(with_category=False), model=settings.jev_model)
 
         async with asyncio.timeout(deadline):
@@ -344,7 +351,7 @@ async def classify_card(
             for name in QUESTIONS:
                 signals[name] = max(signals[name], _probability(response.answers[name].noul))
         model = responses[0].model
-    except CardClassifierError:
+    except (CardClassifierError, RateLimitError):
         raise
     except Exception as exc:
         raise CardClassifierError(f"{type(exc).__name__}") from exc
@@ -411,14 +418,20 @@ class ReviewWrite:
 
 
 async def assess(
-    state: dict, document: dict[str, Any], *, may_grandfather: bool, deadline: Optional[float] = None,
+    state: dict,
+    document: dict[str, Any],
+    *,
+    budget: JevBudget,
+    may_grandfather: bool,
+    deadline: Optional[float] = None,
 ) -> Optional[ReviewWrite]:
     """Classify `document` unless it is exactly what was last scored.
 
     `state` holds review_status, jev_card_sha256, review_approved_sha256 and
     review_revision from the same snapshot as the record in `document` ({} for
     a registration). Returns None when this exact content was already scored. Never raises for classifier failures: those fail
-    closed through the returned status.
+    closed through the returned status. Raises RateLimitError, having sent nothing,
+    when `budget` cannot cover the card; callers neither write nor fall back.
     """
     sha = card_sha256(document)
     current = state.get("review_status")
@@ -426,7 +439,7 @@ async def assess(
     if scored_sha == sha and current != "unscored":
         return None
     try:
-        verdict: Optional[CardVerdict] = await classify_card(document, deadline=deadline)
+        verdict: Optional[CardVerdict] = await classify_card(document, deadline=deadline, reserve=budget.reserve)
     except CardClassifierError:
         verdict = None
     status = next_review_status(
