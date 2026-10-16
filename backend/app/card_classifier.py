@@ -17,6 +17,7 @@ import asyncio
 import hashlib
 import json
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Iterator, Optional
 
@@ -149,10 +150,55 @@ class CardVerdict:
         return self.score >= settings.jev_threshold
 
 
+def _sha256(value: Any) -> str:
+    canonical = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+# A string that is exactly an ISO-8601 date-time and nothing else. Cards stamp
+# these (generated_at, last_pulse, updated) on every response; a value of only
+# this shape carries no readable text, so it is masked from the fingerprint.
+_DATETIME = re.compile(
+    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}(:?\d{2})?)?", re.ASCII,
+)
+
+
+def _mask_datetimes(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _mask_datetimes(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask_datetimes(v) for v in value]
+    if isinstance(value, str) and _DATETIME.fullmatch(value):
+        return "<datetime>"
+    return value
+
+
+def _fingerprint_view(document: dict[str, Any]) -> dict[str, Any]:
+    """What the fingerprint compares: the document with provably volatile
+    variation removed. Whole-value date-times are masked, and the record's and
+    card's top-level `skills` are compared as a set, because some cards rotate
+    skill order per response. Every other change, including numbers, ids and
+    any other list's order, still changes the fingerprint. The classifier
+    always reads the real document."""
+    view = _mask_datetimes(document)
+    for part in view.values():
+        if isinstance(part, dict) and isinstance(part.get("skills"), list):
+            part["skills"] = sorted(part["skills"], key=_sha256)
+    return view
+
+
 def card_sha256(document: dict[str, Any]) -> str:
     """Stable fingerprint of the material under review, used to re-score only on change."""
-    canonical = json.dumps(document, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
+    return _sha256(_fingerprint_view(document))
+
+
+def legacy_card_sha256(document: dict[str, Any]) -> str:
+    """The exact-content fingerprint stored before _fingerprint_view existed.
+
+    Accepted as "unchanged" so that introducing the stable fingerprint does not
+    re-score, or re-hold, every agent at once; rescoring writes the new one.
+    """
+    return _sha256(document)
 
 
 # Card-derived columns a stored record publishes. Registry-computed conformance is excluded.
@@ -460,7 +506,7 @@ async def assess(
     sha = card_sha256(document)
     current = state.get("review_status")
     scored_sha = state.get("jev_card_sha256")
-    if scored_sha == sha and current != "unscored":
+    if scored_sha in (sha, legacy_card_sha256(document)) and current != "unscored":
         return None
     try:
         verdict: Optional[CardVerdict] = await classify_card(document, deadline=deadline, reserve=budget.reserve)
