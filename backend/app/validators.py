@@ -312,6 +312,10 @@ def _validate_skills(skills: list[dict[str, Any]]) -> list[str]:
 REGISTRY_HOSTS = frozenset({"a2aregistry.org", "www.a2aregistry.org"})
 
 
+def is_registry_url(url: str) -> bool:
+    return (urlparse(url).hostname or "").rstrip(".") in REGISTRY_HOSTS
+
+
 def validate_well_known_uri(uri: str) -> list[str]:
     """
     Validate that a wellKnownURI has the correct format.
@@ -336,8 +340,7 @@ def validate_well_known_uri(uri: str) -> list[str]:
         errors.append("wellKnownURI must be an absolute URL starting with http:// or https://.")
         return errors
 
-    host = (urlparse(uri).hostname or "").rstrip(".")
-    if host in REGISTRY_HOSTS:
+    if is_registry_url(uri):
         errors.append("wellKnownURI must be the agent's own card URL, not a page or record on the registry itself.")
         return errors
 

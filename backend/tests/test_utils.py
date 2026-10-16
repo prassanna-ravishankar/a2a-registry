@@ -322,3 +322,27 @@ def test_track_event_uses_the_posthog_keyword_api():
     client.capture.assert_called_once_with(
         "api_query", distinct_id="api_user", properties={"endpoint": "GET /agents", "limit": 5}
     )
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "https://a2aregistry.org/api/agents/30c4def8-ebf4-4755-ad70-b389ad9387e8",
+        "https://WWW.a2aregistry.org./api/agents/x",
+        "//a2aregistry.org/api/agents/x",
+    ],
+    ids=["absolute", "case-and-dot", "scheme-relative"],
+)
+def test_redirects_to_the_registry_itself_are_refused(location):
+    from app.utils import _redirect_url
+
+    with pytest.raises(ValueError, match="registry itself"):
+        _redirect_url("https://agent.example.com/.well-known/agent.json", location)
+
+
+def test_redirects_elsewhere_still_work():
+    from app.utils import _redirect_url
+
+    assert _redirect_url("https://agent.example.com/.well-known/agent.json", "/v2/agent.json") == \
+        "https://agent.example.com/v2/agent.json"
+    assert _redirect_url("https://a.example/x", "https://hello.a2aregistry.org/.well-known/agent-card.json")
