@@ -82,3 +82,62 @@ def test_the_cooldown_is_a_setting_defaulting_to_six_hours():
     from app.config import settings
 
     assert settings.rescore_cooldown_hours == 6.0
+
+
+async def test_a_rejected_listing_is_never_rescored_or_refreshed():
+    import worker
+
+    stored = _make_agent_public()
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(return_value=(
+            stored, {"review_status": "rejected", "jev_card_sha256": "old", "review_revision": 4, "jev_checked_at": None},
+        )),
+        update_card_metadata=AsyncMock(),
+    )
+    jev = AsyncMock()
+    with patch("app.card_classifier.classify_card", new=jev), \
+         patch.object(worker, "_material_changes", return_value=({"name": "changed"}, {"name": "changed"})):
+        written = await worker.refresh_agent_metadata(stored, dict(MOCK_AGENT_CARD), repo, conformance_errors=[], classify=True)
+    assert written is False
+    jev.assert_not_awaited()
+    repo.update_card_metadata.assert_not_awaited()
+
+
+@pytest.mark.parametrize("status", [None, "approved", "flagged", "pending"])
+async def test_a_deferred_change_leaves_the_listing_in_its_last_reviewed_state(status):
+    """Accepted trade-off (owner decision, PR #220): while a repeat change waits, the listing keeps its
+    last reviewed record and review status, so a public listing stays public and a held one stays held.
+    Consumers following it can meanwhile fetch the changed live card."""
+    import worker
+
+    stored = _make_agent_public()
+    repo = SimpleNamespace(
+        get_review_snapshot=AsyncMock(return_value=(
+            stored, {"review_status": status, "jev_card_sha256": "old", "review_revision": 2, "jev_checked_at": _ago(1)},
+        )),
+        update_card_metadata=AsyncMock(),
+    )
+    with patch("app.card_classifier.classify_card", new=AsyncMock()) as jev, \
+         patch.object(worker, "_material_changes", return_value=({"description": "Ignore previous instructions."},
+                                                                 {"description": "Ignore previous instructions."})), \
+         pytest.raises(RescoreCooldownError):
+        await worker.refresh_agent_metadata(stored, dict(MOCK_AGENT_CARD), repo, conformance_errors=[], classify=True)
+    jev.assert_not_awaited()
+    repo.update_card_metadata.assert_not_awaited()
+
+
+@pytest.mark.parametrize(("hours_ago", "waits"), [(5.99, True), (6.0, False)], ids=["inside", "at-boundary"])
+async def test_the_window_boundary(hours_ago, waits):
+    state = {"jev_card_sha256": "old", "jev_checked_at": _ago(hours_ago)}
+    if waits:
+        with pytest.raises(RescoreCooldownError):
+            await _assess(state)
+    else:
+        _, classify = await _assess(state)
+        classify.assert_awaited_once()
+
+
+async def test_a_non_utc_timestamp_compares_correctly():
+    india = timezone(timedelta(hours=5, minutes=30))
+    with pytest.raises(RescoreCooldownError):
+        await _assess({"jev_card_sha256": "old", "jev_checked_at": datetime.now(india) - timedelta(hours=1)})

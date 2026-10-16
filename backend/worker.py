@@ -290,6 +290,10 @@ async def refresh_agent_metadata(
         if snapshot is None:
             return False
         stored, state = snapshot
+        if state.get("review_status") == "rejected":
+            # A rejection is sticky, so scoring could only spend; and a rejected
+            # listing's record is not refreshed from its card.
+            return False
 
     # _normalise_fields returns a new dict (it does not mutate card_data), so
     # card_data stays the RAW live card for presence detection.
