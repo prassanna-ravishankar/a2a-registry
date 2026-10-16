@@ -80,13 +80,15 @@ CHAT = (Limit("chat", 30, 60, _CLIENT),)
 def jev_limits(client: Optional[str]) -> tuple[Limit, ...]:
     """Jev requests one classification may draw on, counted per request (card window).
 
-    Every Jev request counts against the daily ceiling. Public submissions also
-    draw on a per-client allowance and on a share of the ceiling of their own, so
-    a flood cannot use the worker's headroom for changed cards.
+    Every Jev request counts against the daily ceiling, which is split into two
+    shares: public submissions (with a per-client allowance inside it) and the
+    worker plus admin. Neither can use the other's share, so a flood cannot
+    starve changed-card reviews and a busy worker day cannot refuse submitters.
     """
     ceiling = Limit("jev", settings.jev_daily_requests, DAY, _CAPACITY)
     if client is None:
-        return (ceiling,)
+        background = settings.jev_daily_requests - settings.jev_submission_daily_requests
+        return (Limit("jev-background", background, DAY, _CAPACITY), ceiling)
     return (
         Limit("jev-client", settings.jev_client_daily_requests, DAY, _CLIENT).of(client),
         Limit("jev-submissions-hour", settings.jev_submission_hourly_requests, HOUR, _CAPACITY),
