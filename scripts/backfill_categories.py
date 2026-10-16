@@ -10,6 +10,10 @@ Each agent is classified on exactly what the worker would classify (its stored
 record, refreshed from the live card, plus that card), and only the category
 fields are written, guarded by the review revision. Review status, score and
 fingerprint are never touched, so no agent's visibility can change.
+
+Every Jev request, dry run included, counts against the service-wide Jev ceiling
+(app/rate_limits.py). Agents left over when the ceiling is reached are reported as
+"budget" and can be finished by rerunning after the window resets.
 """
 
 import asyncio
@@ -21,6 +25,7 @@ import worker
 from app import card_classifier
 from app.card_classifier import CardClassifierError, classify_card, review_document
 from app.database import db
+from app.rate_limits import NOT_SENT, JevBudget
 from app.repositories import AgentRepository
 from app.validators import _normalise_fields, validate_agent_card
 
@@ -67,9 +72,12 @@ async def one(
         if not isinstance(card, dict):
             return ("unreachable", None)
         try:
-            verdict = await classify_card(worker_document(stored, card))
+            document = worker_document(stored, card)
+            verdict = await classify_card(document, reserve=JevBudget(db).reserve)
         except CardClassifierError:
             return ("jev_error", None)
+        except NOT_SENT:
+            return ("budget", None)
         if not APPLY:
             return ("would set", verdict.category)
         written = await repo.set_category(agent_id, verdict, state["review_revision"])

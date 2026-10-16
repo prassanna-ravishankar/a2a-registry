@@ -16,6 +16,7 @@ from app.config import settings
 from app.database import db
 from app.logging_config import configure_logging, get_logger
 from app.models import AgentCreate, Capabilities
+from app.rate_limits import NOT_SENT, JevBudget, prune
 from app.repositories import AgentRepository, HealthCheckRepository
 from app.smoke_test import TASK_PROBE_USER_AGENT, refresh_recovery_notes, smoke_test
 from app.validators import _normalise_fields, validate_agent_card
@@ -313,7 +314,9 @@ async def refresh_agent_metadata(
         # refresh sees changes: provider/skills comparisons can report drift on
         # every cycle for an unchanged card, so "no changes" cannot identify
         # pre-existing content. New registrations and PUTs never take this path.
-        review = await assess(state, review_document(candidate, card_data), may_grandfather=True)
+        review = await assess(
+            state, review_document(candidate, card_data), budget=JevBudget(db), may_grandfather=True,
+        )
     if not changed and review is None:
         return False
 
@@ -437,6 +440,9 @@ async def check_agent_health(
                 await refresh_agent_metadata(
                     agent, card_data, agent_repo, conformance_errors=strict_errors, classify=True,
                 )
+            except NOT_SENT as deferred:
+                # Nothing was written; the changed card is classified on a later cycle.
+                bound_logger.info("card_review_deferred", reason=type(deferred).__name__)
             except Exception as refresh_err:
                 bound_logger.warning("metadata_refresh_failed", error=str(refresh_err))
 
@@ -569,6 +575,11 @@ async def health_check_cycle():
 
     agent_repo = AgentRepository(db)
     health_repo = HealthCheckRepository(db)
+
+    try:
+        await prune(db)
+    except Exception as prune_err:
+        logger.warning("rate_limit_prune_failed", error=str(prune_err))
 
     # Get all active agents
     try:

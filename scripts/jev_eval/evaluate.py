@@ -11,6 +11,10 @@ Cards are fetched live through the audit script's SSRF-guarded fetcher and cache
 answers are cached per config, so re-evaluating costs nothing. Labels come from
 labels.json (owner decisions and adjudicated reviews); unlabelled cards count as accept.
 Cards are split into dev/hold by a stable hash: tune on dev, judge on hold.
+
+Jev requests made here are deliberately NOT counted against the service-wide Jev
+ceiling (app/rate_limits.py): this is a manual, operator-run tool. Run it knowing
+it spends outside that budget.
 """
 
 import argparse

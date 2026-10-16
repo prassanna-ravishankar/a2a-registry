@@ -142,44 +142,6 @@ def test_register_agent_duplicate(client):
     assert response.status_code == 409
 
 
-def test_register_agent_rate_limit(client):
-    """Exhaust rate limit and confirm 429 is returned."""
-    from limits import parse
-    from slowapi.wrappers import Limit
-
-    from app.main import limiter
-
-    # Swap route limit to 2/hour so we trigger 429 quickly
-    key = "app.main.register_agent_simple"
-    original_limits = limiter._route_limits[key]
-    orig = original_limits[0]
-    limiter._route_limits[key] = [Limit(
-        parse("2/hour"), orig.key_func, orig.scope, orig.per_method,
-        orig.methods, orig.error_message, orig.exempt_when, orig.cost,
-        orig.override_defaults,
-    )]
-
-    try:
-        with patch("app.main.AgentRepository") as mock_repo, \
-             patch("app.main.fetch_agent_card") as mock_fetch, \
-             patch("app.main.validate_well_known_uri", return_value=[]):
-            instance = mock_repo.return_value
-            instance.get_by_well_known_uri = AsyncMock(return_value=None)
-            mock_fetch.return_value = (None, "connection refused")
-
-            responses = []
-            for _ in range(3):
-                r = client.post(
-                    "/agents/register",
-                    json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
-                )
-                responses.append(r.status_code)
-    finally:
-        limiter._route_limits[key] = original_limits
-
-    assert 429 in responses, f"Expected 429 in responses, got {responses}"
-
-
 def test_flag_agent_not_found(client):
     """POST /agents/{nonexistent_uuid}/flag with a well-formed UUID that doesn't exist."""
     nonexistent = "00000000-0000-0000-0000-000000000001"

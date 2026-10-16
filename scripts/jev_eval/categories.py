@@ -10,6 +10,10 @@ Cards come from evaluate.py's cache (run it with --refetch to refresh). Accuracy
 is "strict" (Jev's top category is the labelled one) and "lenient" (also counts
 the label's acceptable alternatives), with the dev/hold split shown so wording
 is tuned on dev and judged on hold. Answers are cached per window and variant.
+
+Jev requests made here are deliberately NOT counted against the service-wide Jev
+ceiling (app/rate_limits.py): this is a manual, operator-run tool. Run it knowing
+it spends outside that budget.
 """
 
 import asyncio
