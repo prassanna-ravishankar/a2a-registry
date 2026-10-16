@@ -15,7 +15,7 @@ from aiohttp.abc import AbstractResolver
 
 from .config import settings
 from .models import AgentCreate
-from .validators import _normalise_fields, validate_agent_card
+from .validators import _normalise_fields, is_registry_url, validate_agent_card
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +206,9 @@ def _redirect_url(current_url: str, location: str | None) -> str:
     parsed = urlparse(next_url)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("Redirect target must use http or https")
+    if is_registry_url(next_url):
+        # A card URL elsewhere must not bounce to the registry's own records.
+        raise ValueError("Redirect target must not be the registry itself")
     return next_url
 
 

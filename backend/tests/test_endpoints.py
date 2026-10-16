@@ -5,6 +5,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+import pytest
+
 from app.card_classifier import CardClassifierError, CardVerdict
 from app.main import _is_private_url
 from app.models import AgentInDB, AgentPublic, Capabilities
@@ -1307,3 +1309,88 @@ def test_registration_rejects_a_second_listing_for_the_same_endpoint(client):
 
     assert response.status_code == 409 and "endpoint is already registered" in response.json()["detail"]
     probe.assert_not_awaited()
+
+
+MIRROR_URI = "https://a2aregistry.org/api/agents/30c4def8-ebf4-4755-ad70-b389ad9387e8"
+
+
+def test_full_registration_refuses_a_card_url_on_the_registry_itself(client):
+    """POST /agents validates the URI too, before any lookup or fetch (the mirror listings)."""
+    payload = {
+        "protocolVersion": "0.3.0", "name": "Swarm Foundry Preflight", "description": "d",
+        "author": "INJECTED-AUTHOR", "url": "https://example.com/a2a", "version": "1.0.0",
+        "capabilities": {}, "skills": [], "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"], "wellKnownURI": MIRROR_URI,
+    }
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.verify_well_known_uri") as verify, \
+         patch("app.main.fetch_agent_card") as fetch:
+        response = client.post("/agents", json=payload)
+    assert response.status_code == 400
+    assert "registry itself" in response.json()["detail"]
+    mock_repo.return_value.get_by_well_known_uri.assert_not_called()
+    verify.assert_not_called()
+    fetch.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "uri", ["https://example.com/custom-card.json", "https://example.com/agent.json?version=1"],
+)
+def test_full_registration_still_accepts_any_card_path(client, uri):
+    """POST /agents applies only the registry-host rule, not /register's filename policy."""
+    payload = {
+        "protocolVersion": "0.3.0", "name": "x", "description": "d", "author": "a",
+        "url": "https://example.com/a2a", "version": "1.0.0", "capabilities": {}, "skills": [],
+        "defaultInputModes": ["text/plain"], "defaultOutputModes": ["text/plain"], "wellKnownURI": uri,
+    }
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.verify_well_known_uri", new=AsyncMock(return_value=(False, "mismatch"))) as verify:
+        repo = mock_repo.return_value
+        for name in ("get_by_well_known_uri", "get_by_host", "get_by_name_and_author", "get_by_endpoint_url"):
+            setattr(repo, name, AsyncMock(return_value=None))
+        response = client.post("/agents", json=payload)
+    assert response.status_code == 400 and "Ownership verification failed" in response.json()["detail"]
+    verify.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://evil@a2aregistry.org/api/agents/x",
+        "https://%61%32aregistry.org/api/agents/x",
+        "https://ａ２ａregistry。org/api/agents/x",
+    ],
+    ids=["userinfo", "percent-encoded-host", "fullwidth-host"],
+)
+@pytest.mark.parametrize("path", ["/agents/register", "/agents"])
+def test_registration_refuses_registry_host_spellings(client, uri, path):
+    body = {"wellKnownURI": uri} if path == "/agents/register" else {
+        "protocolVersion": "0.3.0", "name": "x", "description": "d", "author": "a",
+        "url": "https://example.com/a2a", "version": "1.0.0", "capabilities": {}, "skills": [],
+        "defaultInputModes": ["text/plain"], "defaultOutputModes": ["text/plain"], "wellKnownURI": uri,
+    }
+    with patch("app.main.fetch_agent_card") as fetch, patch("app.main.verify_well_known_uri") as verify:
+        response = client.post(path, json=body)
+    assert response.status_code == 400 and "registry itself" in response.json()["detail"]
+    fetch.assert_not_called()
+    verify.assert_not_called()
+
+
+def test_update_refuses_moving_a_listing_onto_the_registry(client):
+    existing = _make_agent_public()
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card") as fetch, \
+         patch("app.main.settings") as settings:
+        settings.admin_api_key = "k"
+        mock_repo.return_value.get_by_id = AsyncMock(return_value=existing)
+        response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "k"}, json={"wellKnownURI": MIRROR_URI})
+    assert response.status_code == 400 and "registry itself" in response.json()["detail"]
+    fetch.assert_not_called()
+
+
+def test_simple_registration_refuses_a_card_url_on_the_registry_itself(client):
+    with patch("app.main.fetch_agent_card") as fetch:
+        response = client.post("/agents/register", json={"wellKnownURI": MIRROR_URI})
+    assert response.status_code == 400
+    assert "registry itself" in response.json()["detail"]
+    fetch.assert_not_called()

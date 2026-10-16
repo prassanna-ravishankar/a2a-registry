@@ -1,5 +1,7 @@
 """Unit tests for app/validators.py"""
 
+import pytest
+
 from app.models import MAX_AGENT_DESCRIPTION_CHARS, MAX_SKILLS_PER_AGENT
 from app.validators import _normalise_fields, validate_agent_card, validate_well_known_uri
 
@@ -397,3 +399,33 @@ def test_normalise_v1_security_and_extended_card_fields():
 
     assert result["security"] == [{"apiKey": []}]
     assert result["supportsAuthenticatedExtendedCard"] is True
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://a2aregistry.org/api/agents/30c4def8-ebf4-4755-ad70-b389ad9387e8",
+        "https://www.a2aregistry.org/api/agents/829c3c1c-33bb-4c67-be23-215624038ddf",
+        "https://a2aregistry.org/.well-known/agent.json",
+        "https://WWW.A2ARegistry.org/agent-card.json",
+        "https://a2aregistry.org./.well-known/agent-card.json",
+        "https://a2aregistry.org:443/.well-known/agent.json",
+    ],
+    ids=["api-record", "www-api-record", "well-known", "case", "trailing-dot", "port"],
+)
+def test_registry_hosts_are_refused(uri):
+    errors = validate_well_known_uri(uri)
+    assert errors and "registry itself" in errors[0]
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://hello.a2aregistry.org/.well-known/agent-card.json",
+        "https://a2aregistry.org.example.com/.well-known/agent.json",
+        "https://example.com/a2aregistry.org/.well-known/agent.json",
+    ],
+    ids=["hello-world-agent", "lookalike-suffix", "registry-in-path"],
+)
+def test_other_hosts_are_not_refused(uri):
+    assert validate_well_known_uri(uri) == []
