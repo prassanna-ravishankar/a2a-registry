@@ -670,8 +670,9 @@ class AgentRepository:
         `card_sha256` must match the stored jev_card_sha256, the content the
         admin reviewed; if the card was re-scored in the meantime the decision
         is refused. Approval applies only to a queued (pending or flagged)
-        agent. Rejection applies to any agent not already rejected, including
-        one Jev scored clean or an admin approved. Only the review status
+        agent. Rejection applies to any agent with a scored fingerprint that is
+        not already rejected, including one Jev scored clean or an admin
+        approved. A never-scored agent (no jev_card_sha256) cannot be decided. Only the review status
         changes: `hidden` (deletion, dead agents) is never touched.
         """
         if approve:

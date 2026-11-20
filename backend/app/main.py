@@ -1020,7 +1020,8 @@ async def decide_review(agent_id: UUID, body: ReviewDecision, x_admin_key: Optio
 
     Approval covers the scored content named by `card_sha256`; a later change
     is classified again. Unscored agents cannot be approved. Rejection works on
-    any agent not already rejected, including one Jev scored clean. Every
+    any agent with a scored fingerprint that is not already rejected,
+    including one Jev scored clean. Every
     decision is recorded in admin_actions.
     """
     _require_admin(x_admin_key)
