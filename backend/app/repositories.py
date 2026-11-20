@@ -665,25 +665,43 @@ class AgentRepository:
         ]
 
     async def decide_review(self, agent_id: UUID, approve: bool, card_sha256: str) -> bool:
-        """Admin decision on a scored, queued agent.
+        """Admin decision on an agent, recorded in admin_actions in the same statement.
 
-        `card_sha256` must match the content the admin reviewed; if the card
-        was re-scored in the meantime the decision is refused. Only the review
-        status changes: `hidden` (deletion, dead agents) is never touched.
+        `card_sha256` must match the stored jev_card_sha256, the content the
+        admin reviewed; if the card was re-scored in the meantime the decision
+        is refused. Approval applies only to a queued (pending or flagged)
+        agent. Rejection applies to any agent not already rejected, including
+        one Jev scored clean or an admin approved. Only the review status
+        changes: `hidden` (deletion, dead agents) is never touched.
         """
         if approve:
-            query = """
-                UPDATE agents SET review_status = 'approved', review_approved_sha256 = jev_card_sha256,
-                       review_revision = review_revision + 1
-                WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
-            """
+            eligible = "prev.review_status IN ('pending', 'flagged')"
+            update = "review_status = 'approved', review_approved_sha256 = a.jev_card_sha256"
         else:
-            query = """
-                UPDATE agents SET review_status = 'rejected', review_revision = review_revision + 1
-                WHERE id = $1 AND jev_card_sha256 = $2 AND review_status IN ('pending', 'flagged')
-            """
-        result = await self.db.execute(query, agent_id, card_sha256)
-        return result == "UPDATE 1"
+            eligible = "prev.review_status IS DISTINCT FROM 'rejected'"
+            update = "review_status = 'rejected'"
+        query = f"""
+            WITH prev AS (
+                SELECT id, review_status FROM agents WHERE id = $1 FOR UPDATE
+            ), decided AS (
+                UPDATE agents a SET {update}, review_revision = a.review_revision + 1
+                FROM prev
+                WHERE a.id = prev.id AND a.jev_card_sha256 = $2 AND {eligible}
+                RETURNING a.id, prev.review_status AS previous_status
+            )
+            INSERT INTO admin_actions (agent_id, action, previous_status, card_sha256)
+            SELECT id, $3, previous_status, $2 FROM decided
+            RETURNING agent_id
+        """
+        return await self.db.fetchval(query, agent_id, card_sha256, "approve" if approve else "reject") is not None
+
+    async def get_admin_review(self, agent_id: UUID) -> Optional[dict]:
+        """Review state of any agent, held or not, for an admin decision."""
+        row = await self.db.fetchrow(
+            "SELECT id, review_status, jev_card_sha256, review_revision FROM agents WHERE id = $1 AND hidden = false",
+            agent_id,
+        )
+        return dict(row) if row else None
 
     async def replace_system_note(self, agent_id: UUID, expected: str | None, notes: str) -> bool:
         """Replace a registry-written note only if it is still exactly `expected`."""

@@ -1016,19 +1016,38 @@ async def list_review_queue(x_admin_key: Optional[str] = Header(default=None)):
 
 @router.post("/admin/agents/{agent_id}/review")
 async def decide_review(agent_id: UUID, body: ReviewDecision, x_admin_key: Optional[str] = Header(default=None)):
-    """Approve (publish) or reject (keep hidden) a queued agent (admin only).
+    """Approve (publish) a queued agent, or reject (hide) any agent (admin only).
 
     Approval covers the scored content named by `card_sha256`; a later change
-    is classified again. Unscored agents cannot be approved.
+    is classified again. Unscored agents cannot be approved. Rejection works on
+    any agent not already rejected, including one Jev scored clean. Every
+    decision is recorded in admin_actions.
     """
     _require_admin(x_admin_key)
-    decided = await AgentRepository(db).decide_review(agent_id, body.decision == "approve", body.card_sha256)
+    approve = body.decision == "approve"
+    decided = await AgentRepository(db).decide_review(agent_id, approve, body.card_sha256)
     if not decided:
         raise HTTPException(
             status_code=409,
-            detail="Agent is not awaiting a decision, is unscored, or its card changed since this review",
+            detail="Agent cannot take this decision (already decided, not queued for approval, or unscored), "
+            "or its card changed since this review",
         )
-    return {"id": str(agent_id), "review_status": "approved" if body.decision == "approve" else "rejected"}
+    logger.info("admin_review_decision", agent_id=str(agent_id), decision=body.decision)
+    return {"id": str(agent_id), "review_status": "approved" if approve else "rejected"}
+
+
+@router.get("/admin/agents/{agent_id}/review")
+async def get_admin_review(agent_id: UUID, x_admin_key: Optional[str] = Header(default=None)):
+    """Review status and fingerprint of one agent, held or not (admin only).
+
+    Gives the `card_sha256` a decision needs for agents outside the queue.
+    """
+    _require_admin(x_admin_key)
+    state = await AgentRepository(db).get_admin_review(agent_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"id": str(state["id"]), "review_status": state["review_status"],
+            "card_sha256": state["jev_card_sha256"], "review_revision": state["review_revision"]}
 
 
 # ============================================================================

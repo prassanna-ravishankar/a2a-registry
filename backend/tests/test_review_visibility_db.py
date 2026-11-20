@@ -331,3 +331,43 @@ async def test_a_chat_failure_older_than_a_week_is_not_reported(db, repo):
     created = await repo.create(_agent(93), review=_review(CLEAN, "sha-chat-old", None))
     await _chat_failure(db, created.id, hours_ago=24 * 8)
     assert not _chat_note(await repo.get_by_id(created.id))
+
+
+async def _audit(db, agent_id):
+    return [tuple(r) for r in await db.fetch(
+        "SELECT action, previous_status, card_sha256 FROM admin_actions WHERE agent_id = $1 ORDER BY id", agent_id,
+    )]
+
+
+async def test_admin_can_reject_a_listing_jev_scored_clean_and_it_is_recorded(db, repo):
+    """#221: a clean-scored public listing can be rejected through the API path."""
+    created = await repo.create(_agent(94), review=_review(CLEAN, "sha-clean", None))
+    assert await _publicly_visible(db, repo, created.id)
+
+    assert not await repo.decide_review(created.id, approve=False, card_sha256="other-content")
+    assert await repo.decide_review(created.id, approve=False, card_sha256="sha-clean")
+    assert not await _publicly_visible(db, repo, created.id)
+    assert await _audit(db, created.id) == [("reject", None, "sha-clean")]
+
+    assert not await repo.decide_review(created.id, approve=False, card_sha256="sha-clean"), "already rejected"
+    assert len(await _audit(db, created.id)) == 1, "a refused decision is not recorded"
+
+
+async def test_approval_still_requires_a_queued_agent(db, repo):
+    clean = await repo.create(_agent(95), review=_review(CLEAN, "sha-c", None))
+    assert not await repo.decide_review(clean.id, approve=True, card_sha256="sha-c")
+    assert await _audit(db, clean.id) == []
+
+    queued = await repo.create(_agent(96), review=_review(FLAGGED, "sha-q", "pending"))
+    assert await repo.decide_review(queued.id, approve=True, card_sha256="sha-q")
+    assert await _audit(db, queued.id) == [("approve", "pending", "sha-q")]
+
+    assert await repo.decide_review(queued.id, approve=False, card_sha256="sha-q"), "an approval can be revoked"
+    assert await _audit(db, queued.id) == [("approve", "pending", "sha-q"), ("reject", "approved", "sha-q")]
+    assert not await _publicly_visible(db, repo, queued.id)
+
+
+async def test_admin_review_lookup_covers_held_and_clean_agents(db, repo):
+    held = await repo.create(_agent(97), review=_review(FLAGGED, "sha-h", "pending"))
+    state = await repo.get_admin_review(held.id)
+    assert state["review_status"] == "pending" and state["jev_card_sha256"] == "sha-h"
