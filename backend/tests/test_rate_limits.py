@@ -283,14 +283,21 @@ def test_registrations_are_capped_service_wide_before_any_fetch(api, counters, c
     assert repo.create.await_count == hourly.count
 
 
-def test_duplicates_do_not_use_the_global_registration_allowance(api, counters):
+def test_refreshes_use_their_own_budget_not_the_registration_allowance(api, counters):
+    """#208: re-registering a listed agent is a refresh, counted per listing and against
+    the refresh budget, never against new registrations."""
+    listed = _make_agent_public()
     with ExitStack() as stack:
         repo, fetch = _registration_mocks(stack)
-        repo.get_by_well_known_uri = AsyncMock(return_value=_make_agent_public())
-        codes = {_post_register(api, f"198.51.100.{n}").status_code for n in range(40)}
-    assert codes == {409}
+        repo.get_by_well_known_uri = AsyncMock(return_value=listed)
+        repo.get_review_state = AsyncMock(return_value={"review_status": "rejected"})
+        codes = [_post_register(api, f"198.51.100.{n}").status_code for n in range(6)]
+
+    per_listing = rate_limits.refresh_limits(str(listed.id))[0]
+    assert codes[: per_listing.count] == [409] * per_listing.count, "rejected listings are not refreshed"
+    assert codes[per_listing.count:] == [429] * (6 - per_listing.count), "per-listing refresh cap"
     assert counters.used("registrations") == 0 and counters.used("registrations-hour") == 0
-    fetch.assert_not_called()
+    assert counters.used("refreshes") == per_listing.count
 
 
 def test_exhausted_daily_registrations_answer_with_the_capacity_message(api, counters):

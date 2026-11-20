@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     # one hour) is what this stops. See rate_limits.registration_limits.
     registration_daily_limit: int = 60
     registration_hourly_limit: int = 25
+    # Self-service refreshes of listed agents (#208): their own budget, not the
+    # registration allowance. The worker refreshes every listing every 30 min
+    # anyway, so these only make that happen sooner.
+    refresh_daily_limit: int = 100
+    refresh_agent_daily_limit: int = 4
 
     # The worker re-scores a changed card at once unless it was scored within
     # this many hours; repeat changes inside the window wait, with no write.

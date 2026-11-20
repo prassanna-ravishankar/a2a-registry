@@ -53,6 +53,7 @@ from .rate_limits import (
     client_key,
     limit_client,
     prune,
+    refresh_limits,
     registration_limits,
     take,
 )
@@ -96,19 +97,6 @@ def _agent_create_from_card(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-def _reject_duplicate_endpoint(existing) -> None:
-    """One A2A endpoint is one agent: a new card URL for the same endpoint is a
-    move, not a second listing (#192)."""
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"An agent with this endpoint is already registered: '{existing.name}' (id={existing.id}). "
-                "If its card moved, open an issue to update the listing's wellKnownURI."
-            ),
-        )
 
 
 UNDER_REVIEW_MESSAGE = "Registered. This listing is held for review before it appears in the registry."
@@ -277,6 +265,92 @@ async def preview_agent(registration: AgentRegister, request: Request):
     }
 
 
+async def _apply_card(agent_repo: AgentRepository, existing, well_known_uri: str, agent_card: dict, budget):
+    """Write a freshly fetched card over an existing listing (and move it to
+    `well_known_uri` if that differs). Shared by admin PUT and self-service
+    re-registration, so both go through the same classification and guard."""
+    agent_id = existing.id
+    agent_data = _agent_create_from_card(
+        agent_card, well_known_uri, author_fallback=existing.author,
+    )
+
+    # Classify the new content first, then write it and its review in one
+    # statement guarded by the revision read here, so changed content is never
+    # public unscored and a concurrent write is never overwritten.
+    state = await agent_repo.get_review_state(agent_id) or {}
+    review = await assess(
+        state,
+        review_document(card_record(agent_data), agent_card),
+        budget=budget,
+        may_grandfather=False,
+        deadline=settings.jev_deadline_seconds,
+    )
+    review_status = review.status if review else state.get("review_status")
+    if review is None:
+        # Byte-identical to the content already scored: nothing to write.
+        if review_status in HELD_STATUSES:
+            return _under_review(agent_id)
+        return await agent_repo.get_by_id(agent_id)
+    try:
+        updated = await agent_repo.update(agent_id, agent_data, review=review)
+    except Exception as e:
+        logger.error("update_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to update agent")
+    if updated is None:
+        raise HTTPException(status_code=409, detail="Agent changed while it was being reviewed; retry")
+    if review_status in HELD_STATUSES:
+        return _under_review(agent_id)
+    try:
+        return await agent_repo.get_by_id(agent_id)
+    except Exception as e:
+        logger.error("update_agent_failed", error=str(e), exc_info=e)
+        raise HTTPException(status_code=500, detail="Failed to update agent")
+
+
+async def _serves_same_agent(old_uri: str, new_card: dict, new_uri: str) -> bool:
+    """Continuity proof for moving a listing: the URL it is registered at still
+    serves (or redirects to) a card describing exactly the same agent record as
+    the new URL. Whoever controls the registered URL controls the listing."""
+    old_card, error = await fetch_agent_card(old_uri)
+    if error or old_card is None:
+        return False
+    try:
+        old = agent_create_from_card(old_card, new_uri)
+        new = agent_create_from_card(new_card, new_uri)
+    except ValueError:
+        return False
+    return card_record(old) == card_record(new)
+
+
+def _refreshed(result):
+    """A self-service refresh answers 200 (or 202 while held), not 201 Created."""
+    if isinstance(result, JSONResponse):
+        return result
+    return JSONResponse(status_code=200, content=jsonable_encoder(result, by_alias=True))
+
+
+async def _self_service(agent_repo: AgentRepository, existing, well_known_uri: str, agent_card: dict, budget):
+    """Re-registration of a listed agent: refresh it from its registered card,
+    or move it to a new card URL when continuity is proven (#208)."""
+    state = await agent_repo.get_review_state(existing.id) or {}
+    if existing.hidden or state.get("review_status") == "rejected":
+        # Deleted and rejected listings stay as they are.
+        raise HTTPException(status_code=409, detail="This listing cannot be refreshed through registration.")
+    current_uri = str(existing.wellKnownURI)
+    if well_known_uri != current_uri and not await _serves_same_agent(current_uri, agent_card, well_known_uri):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"This agent is already listed (id={existing.id}) with wellKnownURI {current_uri}. To move the listing "
+                "to the new URL, make the registered URL serve the same card as the new one, or redirect it there, "
+                "then register again. Otherwise open an issue."
+            ),
+        )
+    logger.info("agent_self_service", agent_id=str(existing.id),
+                kind="refresh" if well_known_uri == current_uri else "move")
+    return _refreshed(await _apply_card(agent_repo, existing, well_known_uri, agent_card, budget))
+
+
 async def _register(request: Request, well_known_uri: str, author_claim: Optional[str], *, card_path_rule: bool):
     """Register an agent from its live card. Every stored field comes from the
     card the registry fetched; the submitter supplies only the card URL and an
@@ -291,27 +365,17 @@ async def _register(request: Request, well_known_uri: str, author_claim: Optiona
         # POST /agents has always accepted any card path; only the host rule applies.
         raise HTTPException(status_code=400, detail=REGISTRY_URL_ERROR)
 
-    # Check if already exists (exact URI match)
+    # An agent already listed at this URL, or on this host, is refreshed or
+    # moved rather than registered twice (#208).
     agent_repo = AgentRepository(db)
-    existing = await agent_repo.get_by_well_known_uri(well_known_uri)
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Agent already registered (id={existing.id}). Use PUT /agents/{existing.id} to update.",
-        )
-
-    # Check for duplicate by hostname (catches agent.json vs agent-card.json on same host)
+    listed = await agent_repo.get_by_well_known_uri(well_known_uri)
     hostname = urlparse(well_known_uri).hostname or ""
-    if hostname:
-        host_duplicate = await agent_repo.get_by_host(hostname)
-        if host_duplicate:
-            raise HTTPException(
-                status_code=409,
-                detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
-            )
+    if listed is None and hostname:
+        listed = await agent_repo.get_by_host(hostname)
 
-    # Counted service-wide before any outbound work.
-    await take(db, registration_limits())
+    # Counted before any outbound work: a refresh of a listed agent against its
+    # own budget, anything else as a new registration.
+    await take(db, refresh_limits(str(listed.id)) if listed else registration_limits())
 
     # Fetch the agent card from the wellKnownURI
     agent_card, error = await fetch_agent_card(well_known_uri)
@@ -322,15 +386,24 @@ async def _register(request: Request, well_known_uri: str, author_claim: Optiona
 
     agent_data = _agent_create_from_card(agent_card, well_known_uri, author_override=author_claim)
 
-    # Card-content dedup: catches the same card being re-registered under different
-    # hostnames (e.g. one card served from many parked domains).
-    card_duplicate = await agent_repo.get_by_name_and_author(agent_data.name, agent_data.author)
-    if card_duplicate:
+    # The same agent may already be listed under another card URL: same
+    # endpoint (#192), or the same card served from another host.
+    matches = {
+        match.id: match
+        for match in (
+            listed,
+            await agent_repo.get_by_endpoint_url(str(agent_data.url)),
+            await agent_repo.get_by_name_and_author(agent_data.name, agent_data.author),
+        )
+        if match is not None
+    }
+    if len(matches) > 1:
         raise HTTPException(
             status_code=409,
-            detail=f"An agent with name '{agent_data.name}' by '{agent_data.author}' is already registered (id={card_duplicate.id}). Use PUT /agents/{card_duplicate.id} to update it.",
+            detail="This card matches more than one existing listing; open an issue so a maintainer can resolve it.",
         )
-    _reject_duplicate_endpoint(await agent_repo.get_by_endpoint_url(str(agent_data.url)))
+    if matches:
+        return await _self_service(agent_repo, next(iter(matches.values())), well_known_uri, agent_card, budget)
 
     # Smoke test: send a real `message/send` to confirm the card actually leads
     # to a working endpoint. Hard-reject categories that indicate a broken card.
@@ -583,41 +656,7 @@ async def update_agent(
     if agent_card is None:
         raise HTTPException(status_code=500, detail="Internal error: agent card fetch returned no data")
 
-    agent_data = _agent_create_from_card(
-        agent_card, well_known_uri, author_fallback=existing.author,
-    )
-
-    # Classify the new content first, then write it and its review in one
-    # statement guarded by the revision read here, so changed content is never
-    # public unscored and a concurrent write is never overwritten.
-    state = await agent_repo.get_review_state(agent_id) or {}
-    review = await assess(
-        state,
-        review_document(card_record(agent_data), agent_card),
-        budget=budget,
-        may_grandfather=False,
-        deadline=settings.jev_deadline_seconds,
-    )
-    review_status = review.status if review else state.get("review_status")
-    if review is None:
-        # Byte-identical to the content already scored: nothing to write.
-        if review_status in HELD_STATUSES:
-            return _under_review(agent_id)
-        return await agent_repo.get_by_id(agent_id)
-    try:
-        updated = await agent_repo.update(agent_id, agent_data, review=review)
-    except Exception as e:
-        logger.error("update_agent_failed", error=str(e), exc_info=e)
-        raise HTTPException(status_code=500, detail="Failed to update agent")
-    if updated is None:
-        raise HTTPException(status_code=409, detail="Agent changed while it was being reviewed; retry")
-    if review_status in HELD_STATUSES:
-        return _under_review(agent_id)
-    try:
-        return await agent_repo.get_by_id(agent_id)
-    except Exception as e:
-        logger.error("update_agent_failed", error=str(e), exc_info=e)
-        raise HTTPException(status_code=500, detail="Failed to update agent")
+    return await _apply_card(agent_repo, existing, well_known_uri, agent_card, budget)
 
 
 @router.delete("/agents/{agent_id}", status_code=204)

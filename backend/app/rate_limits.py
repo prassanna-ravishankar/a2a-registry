@@ -96,6 +96,17 @@ def registration_limits() -> tuple[Limit, ...]:
     )
 
 
+def refresh_limits(agent_id: str) -> tuple[Limit, ...]:
+    """Self-service refreshes and moves of listed agents (#208): their own
+    service-wide budget, so refreshing existing listings can never use up the
+    allowance for new registrations, and a per-listing cap."""
+    return (
+        Limit("refresh-agent", settings.refresh_agent_daily_limit, DAY,
+              "This listing was refreshed recently. Retry after the time in the Retry-After header.").of(agent_id),
+        Limit("refreshes", settings.refresh_daily_limit, DAY, _CAPACITY),
+    )
+
+
 def jev_limits(client: Optional[str]) -> tuple[Limit, ...]:
     """Jev requests one classification may draw on, counted per request (card window).
 
