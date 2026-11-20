@@ -65,7 +65,7 @@ from .smoke_test import (
     should_reject,
     smoke_test,
 )
-from .utils import fetch_agent_card, guarded_httpx_client, track_api_query, verify_well_known_uri
+from .utils import fetch_agent_card, guarded_httpx_client, track_api_query
 from .validators import (
     REGISTRY_URL_ERROR,
     is_registry_url,
@@ -277,22 +277,19 @@ async def preview_agent(registration: AgentRegister, request: Request):
     }
 
 
-@router.post("/agents/register", response_model=AgentPublic, status_code=201)
-async def register_agent_simple(registration: AgentRegister, request: Request):
-    """
-    Register an agent by its wellKnownURI.
-
-    Just provide the wellKnownURI and we'll fetch the agent card automatically.
-    The agent card must be accessible and contain valid A2A Protocol fields.
-    """
+async def _register(request: Request, well_known_uri: str, author_claim: Optional[str], *, card_path_rule: bool):
+    """Register an agent from its live card. Every stored field comes from the
+    card the registry fetched; the submitter supplies only the card URL and an
+    author claim, which the card's own provider overrides."""
     budget = await _submission_budget(request)
-    well_known_uri = str(registration.wellKnownURI)
-    track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
 
-    # Validate wellKnownURI format
-    uri_errors = validate_well_known_uri(well_known_uri)
-    if uri_errors:
-        raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+    if card_path_rule:
+        uri_errors = validate_well_known_uri(well_known_uri)
+        if uri_errors:
+            raise HTTPException(status_code=400, detail="; ".join(uri_errors))
+    elif is_registry_url(well_known_uri):
+        # POST /agents has always accepted any card path; only the host rule applies.
+        raise HTTPException(status_code=400, detail=REGISTRY_URL_ERROR)
 
     # Check if already exists (exact URI match)
     agent_repo = AgentRepository(db)
@@ -323,9 +320,7 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
     if agent_card is None:
         raise HTTPException(status_code=500, detail="Internal error: agent card fetch returned no data")
 
-    agent_data = _agent_create_from_card(
-        agent_card, well_known_uri, author_override=registration.author,
-    )
+    agent_data = _agent_create_from_card(agent_card, well_known_uri, author_override=author_claim)
 
     # Card-content dedup: catches the same card being re-registered under different
     # hostnames (e.g. one card served from many parked domains).
@@ -349,98 +344,42 @@ async def register_agent_simple(registration: AgentRegister, request: Request):
         created_agent, review_status = await _create_reviewed(agent_repo, agent_data, agent_card, budget)
         await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
         await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
+        logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category, review=review_status)
         if review_status in HELD_STATUSES:
             return _under_review(created_agent.id)
-        result = await agent_repo.get_by_id(created_agent.id)
-        return result
+        return await agent_repo.get_by_id(created_agent.id)
     except NOT_SENT:
         raise
     except Exception as e:
         logger.error("create_agent_failed", error=str(e), exc_info=e)
         raise HTTPException(status_code=500, detail="Failed to create agent")
+
+
+@router.post("/agents/register", response_model=AgentPublic, status_code=201)
+async def register_agent_simple(registration: AgentRegister, request: Request):
+    """
+    Register an agent by its wellKnownURI.
+
+    Just provide the wellKnownURI and we'll fetch the agent card automatically.
+    The agent card must be accessible and contain valid A2A Protocol fields.
+    """
+    well_known_uri = str(registration.wellKnownURI)
+    track_api_query("POST /agents/register", wellKnownURI=well_known_uri)
+    return await _register(request, well_known_uri, registration.author, card_path_rule=True)
 
 
 @router.post("/agents", response_model=AgentPublic, status_code=201)
 async def register_agent_full(agent: AgentCreate, request: Request):
     """
-    Register a new agent with full payload.
+    Register an agent, accepting a full card payload for compatibility.
 
-    Validates ownership by fetching wellKnownURI and comparing key fields.
-    For a simpler flow, use POST /agents/register with just the wellKnownURI.
+    Only `wellKnownURI` and `author` are taken from the payload. Every stored
+    field comes from the card fetched from `wellKnownURI`, exactly as with
+    POST /agents/register, so a payload cannot publish content its card does
+    not declare.
     """
-    budget = await _submission_budget(request)
     track_api_query("POST /agents", author=agent.author)
-
-    well_known_uri = str(agent.wellKnownURI)
-    # Only the registry-host rule: this endpoint has always accepted any card path.
-    if is_registry_url(well_known_uri):
-        raise HTTPException(status_code=400, detail=REGISTRY_URL_ERROR)
-
-    # Check if already exists (exact URI match)
-    agent_repo = AgentRepository(db)
-    existing = await agent_repo.get_by_well_known_uri(well_known_uri)
-    if existing:
-        logger.info("agent_duplicate", well_known_uri=well_known_uri)
-        raise HTTPException(
-            status_code=409,
-            detail=f"Agent already registered (id={existing.id}). Use PUT /agents/{existing.id} to update.",
-        )
-
-    # Check for duplicate by hostname
-    hostname = urlparse(well_known_uri).hostname or ""
-    if hostname:
-        host_duplicate = await agent_repo.get_by_host(hostname)
-        if host_duplicate:
-            raise HTTPException(
-                status_code=409,
-                detail=f"An agent from this host is already registered: '{host_duplicate.name}' (id={host_duplicate.id}). Use PUT /agents/{host_duplicate.id} to update it instead.",
-            )
-
-    # Card-content dedup: catches the same card being re-registered under different
-    # hostnames (e.g. one card served from many parked domains).
-    card_duplicate = await agent_repo.get_by_name_and_author(agent.name, agent.author)
-    if card_duplicate:
-        raise HTTPException(
-            status_code=409,
-            detail=f"An agent with name '{agent.name}' by '{agent.author}' is already registered (id={card_duplicate.id}). Use PUT /agents/{card_duplicate.id} to update it.",
-        )
-    _reject_duplicate_endpoint(await agent_repo.get_by_endpoint_url(str(agent.url)))
-
-    # Counted service-wide before any outbound work.
-    await take(db, registration_limits())
-
-    # Verify ownership via wellKnownURI
-    verified, message = await verify_well_known_uri(agent)
-    if not verified:
-        raise HTTPException(status_code=400, detail=f"Ownership verification failed: {message}")
-
-    # Smoke test the live endpoint and hard-reject obviously broken cards.
-    smoke_category, smoke_note, smoke_ms = await smoke_test(well_known_uri)
-    if should_reject(smoke_category):
-        raise HTTPException(status_code=400, detail=rejection_message(smoke_category) or "Agent failed smoke test")
-
-    # The stored record comes from the submitted payload, while callers read
-    # the live card, so both go to the classifier.
-    live_card, error = await fetch_agent_card(well_known_uri)
-    if error or live_card is None:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch agent card: {error}")
-
-    # Create agent, then attach smoke-test result as initial maintainer note
-    # AND as the first task_conformance datapoint.
-    try:
-        created_agent, review_status = await _create_reviewed(agent_repo, agent, live_card, budget)
-        await agent_repo.update_maintainer_notes(created_agent.id, smoke_note)
-        await agent_repo.update_task_conformance(created_agent.id, smoke_category, smoke_ms)
-        logger.info("agent_registered", well_known_uri=well_known_uri, smoke=smoke_category, review=review_status)
-        if review_status in HELD_STATUSES:
-            return _under_review(created_agent.id)
-        result = await agent_repo.get_by_id(created_agent.id)
-        return result
-    except NOT_SENT:
-        raise
-    except Exception as e:
-        logger.error("create_agent_failed", error=str(e), exc_info=e)
-        raise HTTPException(status_code=500, detail="Failed to create agent")
+    return await _register(request, str(agent.wellKnownURI), agent.author, card_path_rule=False)
 
 
 @router.get("/agents", response_model=PaginatedAgents)

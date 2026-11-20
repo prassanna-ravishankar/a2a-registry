@@ -272,15 +272,14 @@ def test_registrations_are_capped_service_wide_before_any_fetch(api, counters, c
     hourly = next(limit for limit in registration_limits() if limit.name == "registrations-hour")
     with ExitStack() as stack:
         repo, fetch = _registration_mocks(stack)
-        verify = stack.enter_context(patch("app.main.verify_well_known_uri", new=AsyncMock(return_value=(True, ""))))
         # One registration per client, so no per-client limit is involved.
         codes = [_post_register(api, f"198.51.100.{n}", path).status_code for n in range(hourly.count)]
-        outbound = fetch.call_count + verify.await_count
+        outbound = fetch.call_count
         refused = _post_register(api, "198.51.101.1", path)
 
         assert codes == [201] * hourly.count
         assert refused.status_code == 429
-        assert fetch.call_count + verify.await_count == outbound, "the refused registration fetches nothing"
+        assert fetch.call_count == outbound, "the refused registration fetches nothing"
     assert repo.create.await_count == hourly.count
 
 
