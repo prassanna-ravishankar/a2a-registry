@@ -999,12 +999,14 @@ def test_chat_targets_card_url_not_well_known_host(client):
          patch("app.main.ClientFactory") as mock_factory_cls:
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
+        instance.record_chat_success = AsyncMock()
         mock_factory_cls.return_value.create = fake_create
 
         response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
 
     assert response.status_code == 200, response.text
     assert response.json()["response"] == "hi from worker"
+    instance.record_chat_success.assert_awaited_once()
     # The card was refetched from the agent's stored wellKnownURI, not request input.
     mock_fetch.assert_called_once_with("https://cesaryague.es/.well-known/agent.json")
     # Crisp old-vs-new signal: the fix builds the client via factory.create(card).

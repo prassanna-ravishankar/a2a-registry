@@ -950,6 +950,7 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent returned an unexpected error", source='chat')
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
+    await agent_repo.record_chat_success(agent_id)
     return {"response": response_text, "context_id": context_id}
 
 

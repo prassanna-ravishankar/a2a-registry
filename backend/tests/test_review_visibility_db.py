@@ -310,17 +310,21 @@ def _chat_note(agent) -> bool:
     return any(note.startswith("Returning errors when contacted by users") for note in agent.status_notes)
 
 
-async def test_a_chat_failure_is_superseded_by_a_later_working_task_probe(db, repo):
-    """#226: one old chat error must not label an agent that answers its task probe today."""
+async def test_a_chat_failure_is_superseded_only_by_a_later_successful_chat(db, repo):
+    """#226: one old chat error must not label an agent that answers users today. A passing
+    task probe is not chat-path evidence, so only a successful /chat supersedes."""
     created = await repo.create(_agent(92), review=_review(CLEAN, "sha-chat", None))
     await _chat_failure(db, created.id, hours_ago=48)
-    assert _chat_note(await repo.get_by_id(created.id)), "an unexplained recent failure is still reported"
+    assert _chat_note(await repo.get_by_id(created.id)), "an unexplained recent failure is reported"
 
     await repo.update_task_conformance(created.id, "WORKING", 120)
+    assert _chat_note(await repo.get_by_id(created.id)), "a passing task probe does not clear a chat failure"
+
+    await repo.record_chat_success(created.id)
     assert not _chat_note(await repo.get_by_id(created.id))
 
-    await _chat_failure(db, created.id, hours_ago=0)
-    assert _chat_note(await repo.get_by_id(created.id)), "a failure after the probe is reported again"
+    await _chat_failure(db, created.id, hours_ago=-0.01)
+    assert _chat_note(await repo.get_by_id(created.id)), "a failure after the success is reported again"
 
 
 async def test_a_chat_failure_older_than_a_week_is_not_reported(db, repo):
