@@ -104,8 +104,14 @@ def test_a_copy_of_someones_card_on_another_host_cannot_move_their_listing(clien
         ("https://new.example.org/.well-known/agent-card.json?v=1", (MOVED_CARD, None), 400),
         ("https://new.example.org:8443/.well-known/agent-card.json", (MOVED_CARD, None), 409),
         (NEW_URI, ({**MOVED_CARD, "url": "http://new.example.org/a2a"}, None), 409),
+        # #232 review: a service on another port of the host may have another operator.
+        (NEW_URI, ({**MOVED_CARD, "url": "https://new.example.org:8443/tenant/a2a"}, None), 409),
+        # #232 review: credentials could select tenant content at a shared root.
+        ("https://tenant:secret@new.example.org/.well-known/agent-card.json", (MOVED_CARD, None), 409),
+        (NEW_URI, ({**MOVED_CARD, "url": "https://user@new.example.org/a2a"}, None), 409),
     ],
-    ids=["registered-url-dead", "non-root-path", "query", "non-default-port", "plain-http-endpoint"],
+    ids=["registered-url-dead", "non-root-path", "query", "non-default-port", "plain-http-endpoint",
+         "endpoint-on-another-port", "destination-credentials", "endpoint-credentials"],
 )
 def test_a_move_without_continuity_is_refused(client, new_uri, old, code):
     response, repo, _, _ = _register(client, new_uri, cards={new_uri: (MOVED_CARD, None), OLD_URI: old},

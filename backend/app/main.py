@@ -323,6 +323,16 @@ def _host(url: str) -> str:
     return host.lower().rstrip(".")
 
 
+def _plain_https_origin(url) -> bool:
+    """HTTPS on the default port with no credentials: an origin whose root is
+    one operator's, not one selected by a port or by Basic-auth userinfo."""
+    try:
+        port = url.port
+    except ValueError:
+        return False
+    return url.scheme == "https" and port in (None, 443) and url.username is None and url.password is None
+
+
 async def _registered_card_names(registered_uri: str, new_uri: str) -> bool:
     """Continuity proof for moving a listing (#208): the card served at the
     URL the listing is registered at names an endpoint, and the new card URL is
@@ -331,9 +341,13 @@ async def _registered_card_names(registered_uri: str, new_uri: str) -> bool:
     Only the agent's operator controls the root of the host its own card points
     to (on a multi-tenant platform the root belongs to the platform), so a copy
     of someone else's card served elsewhere cannot move their listing.
+
+    This delegates to whoever runs that origin's root; it is not a general
+    proof of ownership. A platform operator could move its tenants' listings,
+    as it already controls their endpoints.
     """
     new = urlparse(new_uri)
-    if new.scheme != "https" or new.port not in (None, 443) or new.query or new.path not in _ROOT_CARD_PATHS:
+    if not _plain_https_origin(new) or new.query or new.path not in _ROOT_CARD_PATHS:
         return False
     registered_card, error = await fetch_agent_card(registered_uri)
     if error or registered_card is None:
@@ -342,7 +356,9 @@ async def _registered_card_names(registered_uri: str, new_uri: str) -> bool:
         endpoint = extract_agent_url(registered_card)
     except (KeyError, ValueError):
         return False
-    return bool(endpoint) and urlparse(endpoint).scheme == "https" and _host(endpoint) == _host(new_uri)
+    # Same origin, not just the same host name: a service on another port of
+    # the host may have another operator.
+    return bool(endpoint) and _plain_https_origin(urlparse(endpoint)) and _host(endpoint) == _host(new_uri)
 
 
 def _refreshed(result):
