@@ -290,11 +290,13 @@ def test_refreshes_use_their_own_budget_not_the_registration_allowance(api, coun
     with ExitStack() as stack:
         repo, fetch = _registration_mocks(stack)
         repo.get_by_well_known_uri = AsyncMock(return_value=listed)
-        repo.get_review_state = AsyncMock(return_value={"review_status": "rejected"})
+        repo.get_review_snapshot = AsyncMock(return_value=(listed, {"review_status": None, "review_revision": 1}))
+        repo.get_review_state = AsyncMock(return_value={"review_status": None, "review_revision": 1})
+        repo.update = AsyncMock(return_value=_make_agent_in_db())
         codes = [_post_register(api, f"198.51.100.{n}").status_code for n in range(6)]
 
     per_listing = rate_limits.refresh_limits(str(listed.id))[0]
-    assert codes[: per_listing.count] == [409] * per_listing.count, "rejected listings are not refreshed"
+    assert codes[: per_listing.count] == [200] * per_listing.count, "refreshes of a listed agent"
     assert codes[per_listing.count:] == [429] * (6 - per_listing.count), "per-listing refresh cap"
     assert counters.used("registrations") == 0 and counters.used("registrations-hour") == 0
     assert counters.used("refreshes") == per_listing.count
