@@ -1438,3 +1438,21 @@ def test_chat_without_a_real_answer_does_not_count_as_success(client, extracted)
     response, record = _chat_with(client, extracted)
     assert response.status_code == 200
     record.assert_not_awaited()
+
+
+def test_admin_review_lookup_requires_the_admin_key(client):
+    with patch("app.main.AgentRepository") as mock_repo:
+        response = client.get(f"/admin/agents/{MOCK_UUID}/review")
+    assert response.status_code == 403
+    mock_repo.assert_not_called()
+
+
+def test_admin_review_lookup_returns_only_status_and_fingerprint(client):
+    """It feeds a public workflow log, so it must never carry Jev scores or signals."""
+    state = {"id": MOCK_UUID, "review_status": "pending", "jev_card_sha256": "a" * 64, "review_revision": 3}
+    with patch("app.main.AgentRepository") as mock_repo, patch("app.main.settings") as settings:
+        settings.admin_api_key = "k"
+        mock_repo.return_value.get_admin_review = AsyncMock(return_value=state)
+        response = client.get(f"/admin/agents/{MOCK_UUID}/review", headers={"X-Admin-Key": "k"})
+    assert response.status_code == 200
+    assert set(response.json()) == {"id", "review_status", "card_sha256", "review_revision"}

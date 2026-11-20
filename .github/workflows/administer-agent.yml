@@ -12,12 +12,19 @@ on:
         options:
           - refresh-card
           - clear-maintainer-notes
+          - inspect
+          - approve
+          - reject
       agent_id:
         description: Agent UUID
         required: true
         type: string
       well_known_uri:
         description: HTTPS Agent Card URL (required for refresh-card)
+        required: false
+        type: string
+      card_sha256:
+        description: Fingerprint the decision is about, from inspect (required for approve)
         required: false
         type: string
 
@@ -36,6 +43,8 @@ env:
 jobs:
   administer:
     name: Administer agent
+    # Moderation runs only when the repository owner dispatches it.
+    if: github.actor == github.repository_owner && github.triggering_actor == github.repository_owner
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,6 +56,7 @@ jobs:
       OPERATOR_ACTION: ${{ inputs.action }}
       AGENT_ID: ${{ inputs.agent_id }}
       WELL_KNOWN_URI: ${{ inputs.well_known_uri }}
+      REVIEWED_SHA256: ${{ inputs.card_sha256 }}
     steps:
       - uses: google-github-actions/auth@v3
         with:
@@ -73,7 +83,12 @@ jobs:
               echo "refresh-card requires an HTTPS Agent Card URL without whitespace" >&2
               exit 1
             fi
-          elif [[ "$OPERATOR_ACTION" != "clear-maintainer-notes" ]]; then
+          elif [[ "$OPERATOR_ACTION" == "approve" ]]; then
+            if [[ ! "$REVIEWED_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "approve requires the card_sha256 printed by inspect" >&2
+              exit 1
+            fi
+          elif [[ "$OPERATOR_ACTION" != "clear-maintainer-notes" && "$OPERATOR_ACTION" != "inspect" && "$OPERATOR_ACTION" != "reject" ]]; then
             echo "Unsupported action" >&2
             exit 1
           fi
@@ -107,6 +122,40 @@ jobs:
               --output "$RUNNER_TEMP/operator-response.json" \
               --write-out '%{http_code}' \
               "$API_BASE_URL/agents/$AGENT_ID")"
+          elif [[ "$OPERATOR_ACTION" == "inspect" ]]; then
+            # Status and fingerprint only. Nothing about why an agent was
+            # flagged is fetched or printed: these logs are public.
+            http_status="$(curl --silent --show-error --retry 2 \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/admin/agents/$AGENT_ID/review")"
+          elif [[ "$OPERATOR_ACTION" == "approve" || "$OPERATOR_ACTION" == "reject" ]]; then
+            # Approval is about specific content, so it binds to the fingerprint
+            # the owner inspected and the API refuses it if the card changed.
+            # Rejection hides the listing whatever it now says, so it binds to
+            # the current fingerprint.
+            if [[ "$OPERATOR_ACTION" == "approve" ]]; then
+              card_sha256="$REVIEWED_SHA256"
+            else
+              card_sha256="$(curl --fail --silent --show-error --retry 2 \
+                --header "X-Admin-Key: $ADMIN_API_KEY" \
+                "$API_BASE_URL/admin/agents/$AGENT_ID/review" | jq --raw-output '.card_sha256 // empty')"
+              if [[ -z "$card_sha256" ]]; then
+                echo "Agent has no scored fingerprint to decide on" >&2
+                exit 1
+              fi
+            fi
+            request_body="$(jq --null-input --arg d "$OPERATOR_ACTION" --arg sha "$card_sha256" \
+              '{decision: $d, card_sha256: $sha}')"
+            http_status="$(curl --silent --show-error \
+              --request POST \
+              --header "Content-Type: application/json" \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
+              --data "$request_body" \
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/admin/agents/$AGENT_ID/review")"
           else
             http_status="$(curl --silent --show-error --retry 2 \
               --request PATCH \
@@ -125,9 +174,24 @@ jobs:
           fi
 
       - name: Verify public record
+        if: inputs.action != 'inspect'
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 \
-            "$API_BASE_URL/agents/$AGENT_ID" |
-            jq '{id, name, wellKnownURI, maintainer_notes, updated_at}'
+          public_status="$(curl --silent --output "$RUNNER_TEMP/public.json" --write-out '%{http_code}' \
+            --retry 2 "$API_BASE_URL/agents/$AGENT_ID")"
+          echo "Public record: HTTP $public_status"
+          operator_status="$(jq --raw-output '.status // empty' "$RUNNER_TEMP/operator-response.json")"
+          case "$OPERATOR_ACTION" in
+            reject) expected_status=404 ;;
+            approve) expected_status=200 ;;
+            # A held agent stays out of public reads; anything else must be readable.
+            *) if [[ "$operator_status" == "under_review" ]]; then expected_status=404; else expected_status=200; fi ;;
+          esac
+          if [[ "$public_status" != "$expected_status" ]]; then
+            echo "Expected public HTTP $expected_status, got $public_status" >&2
+            exit 1
+          fi
+          if [[ "$public_status" == "200" ]]; then
+            jq '{id, name, wellKnownURI, maintainer_notes, updated_at}' "$RUNNER_TEMP/public.json"
+          fi
