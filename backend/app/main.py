@@ -47,8 +47,8 @@ from .rate_limits import (
     RECHECK,
     RECHECK_AGENT,
     SUBMIT,
-    BudgetUnavailableError,
     JevBudget,
+    LimitsUnavailableError,
     RateLimitError,
     client_key,
     limit_client,
@@ -204,12 +204,12 @@ async def rate_limited_handler(request: Request, exc: RateLimitError):
     )
 
 
-@app.exception_handler(BudgetUnavailableError)
-async def budget_unavailable_handler(request: Request, exc: BudgetUnavailableError):
-    logger.error("jev_budget_unavailable", error=str(exc), path=request.url.path)
+@app.exception_handler(LimitsUnavailableError)
+async def limits_unavailable_handler(request: Request, exc: LimitsUnavailableError):
+    logger.error("rate_limits_unavailable", error=str(exc), path=request.url.path)
     return JSONResponse(
         status_code=503,
-        content={"detail": "Submissions are temporarily unavailable. Retry after the time in the Retry-After header."},
+        content={"detail": "Temporarily unavailable. Retry after the time in the Retry-After header."},
         headers={"Retry-After": "60"},
     )
 

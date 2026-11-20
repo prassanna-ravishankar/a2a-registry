@@ -196,8 +196,14 @@ class AgentRepository:
             LEFT JOIN LATERAL (
                 SELECT array_agg(error_message ORDER BY checked_at DESC) as chat_errors
                 FROM (
+                    -- Only recent failures that no later successful task probe
+                    -- has superseded: one old error must not label a working agent.
                     SELECT error_message, checked_at FROM health_checks
                     WHERE agent_id = a.id AND source = 'chat' AND success = false
+                      AND checked_at > NOW() - INTERVAL '7 days'
+                      AND (a.task_conformance_passed IS NOT TRUE
+                           OR a.task_conformance_checked_at IS NULL
+                           OR checked_at > a.task_conformance_checked_at)
                     ORDER BY checked_at DESC LIMIT 10
                 ) ce
             ) ce ON true
