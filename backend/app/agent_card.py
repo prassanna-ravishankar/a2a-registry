@@ -41,6 +41,13 @@ def extract_protocol_version(card: dict[str, Any]) -> str:
     return "unknown"
 
 
+def card_author(agent_card: dict[str, Any]) -> Optional[str]:
+    """The organisation the card itself names as its provider, if any."""
+    provider = agent_card.get("provider")
+    organization = provider.get("organization") if isinstance(provider, dict) else None
+    return organization.strip() if isinstance(organization, str) and organization.strip() else None
+
+
 def agent_create_from_card(
     agent_card: dict[str, Any],
     well_known_uri: str,
@@ -51,6 +58,10 @@ def agent_create_from_card(
     """Build an AgentCreate from a fetched agent card dict.
 
     Supports both v0.3 and v1.0 A2A Protocol agent card formats.
+
+    `author` is the card's provider organisation when it names one, so a
+    listing cannot claim an author its own card contradicts (#218, #228).
+    Otherwise it is the submitter's `author_override`, then `author_fallback`.
 
     Raises ValueError if the card is missing required fields or is otherwise
     malformed. Callers in HTTP context map this to a 400; the worker logs and
@@ -68,7 +79,7 @@ def agent_create_from_card(
             protocolVersion=extract_protocol_version(agent_card),
             name=agent_card["name"],
             description=agent_card.get("description", ""),
-            author=author_override or (agent_card.get("provider") or {}).get("organization", author_fallback),
+            author=card_author(agent_card) or author_override or author_fallback,
             wellKnownURI=well_known_uri,
             url=extract_agent_url(agent_card),
             version=agent_card.get("version", "1.0.0"),

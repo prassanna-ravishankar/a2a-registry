@@ -14,7 +14,6 @@ import httpx
 from aiohttp.abc import AbstractResolver
 
 from .config import settings
-from .models import AgentCreate
 from .validators import _normalise_fields, is_registry_url, validate_agent_card
 
 logger = logging.getLogger(__name__)
@@ -260,55 +259,6 @@ async def _get_guarded_json(url: str, *, user_agent: str) -> Tuple[Optional[dict
                     return None, f"Invalid JSON in agent card: {e}"
 
     return None, "Too many redirects while fetching agent card"
-
-
-async def verify_well_known_uri(agent_data: AgentCreate) -> Tuple[bool, str]:
-    """
-    Verify agent ownership by fetching wellKnownURI and comparing key fields.
-
-    Args:
-        agent_data: Agent data to verify
-
-    Returns:
-        Tuple of (verified: bool, message: str)
-    """
-    well_known_uri = str(agent_data.wellKnownURI)
-
-    try:
-        remote_agent, error = await _get_guarded_json(
-            well_known_uri,
-            user_agent="A2A-Registry-Backend/1.0",
-        )
-        if error:
-            return False, error
-        if remote_agent is None:
-            return False, "Internal error: well-known fetch returned no data"
-
-        # Compare key fields
-        mismatches = []
-        for field in ["name", "description"]:
-            local_val = getattr(agent_data, field)
-            remote_val = remote_agent.get(field)
-            if local_val != remote_val:
-                mismatches.append(
-                    f"{field}: local='{local_val}' vs remote='{remote_val}'"
-                )
-
-        if mismatches:
-            return (
-                False,
-                "Field mismatches found:\n  " + "\n  ".join(mismatches),
-            )
-
-        return True, "Ownership verified successfully"
-
-    except ValueError as e:
-        return False, str(e)
-    except aiohttp.ClientError as e:
-        return False, f"Network error accessing {well_known_uri}: {e}"
-    except Exception:
-        logger.exception("well_known_fetch_unexpected_error", extra={"uri": well_known_uri})
-        return False, "Unexpected error while fetching the well-known URI"
 
 
 async def fetch_agent_card(well_known_uri: str) -> Tuple[Optional[dict[str, Any]], Optional[str]]:
