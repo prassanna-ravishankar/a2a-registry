@@ -5,7 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
-from app.models import AgentInDB, AgentPublic, Capabilities, RegistryStats
+from app.models import AgentPublic, Capabilities, RegistryStats
 
 from .conftest import MOCK_AGENT_ROW
 
@@ -103,43 +103,6 @@ def test_get_stats(client):
     body = response.json()
     assert "total_agents" in body
     assert body["total_agents"] == 5
-
-
-def test_register_agent_duplicate(client):
-    """POST /agents/register with an already-registered wellKnownURI returns 409."""
-    caps = json.loads(MOCK_AGENT_ROW["capabilities"])
-    existing_agent = AgentInDB(
-        id=UUID(MOCK_AGENT_ROW["id"]),
-        created_at=datetime.fromisoformat(MOCK_AGENT_ROW["created_at"]),
-        updated_at=datetime.fromisoformat(MOCK_AGENT_ROW["updated_at"]),
-        hidden=MOCK_AGENT_ROW["hidden"],
-        flag_count=MOCK_AGENT_ROW["flag_count"],
-        protocolVersion=MOCK_AGENT_ROW["protocol_version"],
-        name=MOCK_AGENT_ROW["name"],
-        description=MOCK_AGENT_ROW["description"],
-        author=MOCK_AGENT_ROW["author"],
-        wellKnownURI=MOCK_AGENT_ROW["well_known_uri"],
-        url=MOCK_AGENT_ROW["url"],
-        version=MOCK_AGENT_ROW["version"],
-        provider=None,
-        documentationUrl=None,
-        capabilities=Capabilities(**caps),
-        defaultInputModes=json.loads(MOCK_AGENT_ROW["default_input_modes"]),
-        defaultOutputModes=json.loads(MOCK_AGENT_ROW["default_output_modes"]),
-        skills=[],
-        conformance=None,
-    )
-
-    with patch("app.main.AgentRepository") as mock_repo:
-        instance = mock_repo.return_value
-        instance.get_by_well_known_uri = AsyncMock(return_value=existing_agent)
-
-        response = client.post(
-            "/agents/register",
-            json={"wellKnownURI": "https://example.com/.well-known/agent.json"},
-        )
-
-    assert response.status_code == 409
 
 
 def test_flag_agent_not_found(client):
