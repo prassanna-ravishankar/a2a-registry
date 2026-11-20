@@ -920,6 +920,8 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
                     response_text = _extract_text(event.task)
                 elif event.HasField("message"):
                     response_text = _extract_text(event.message)
+            # Real text from the agent, not a bare task state or nothing at all.
+            answered = bool(response_text) and not response_text.startswith("Task TASK_STATE_")
             response_text = response_text or "No response"
     except httpx.TimeoutException:
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -950,7 +952,13 @@ async def chat_with_agent(agent_id: UUID, body: ChatRequest, request: Request):
         await health_repo.create(agent_id, 502, elapsed_ms, False, "Agent returned an unexpected error", source='chat')
         raise HTTPException(status_code=502, detail="Agent returned an unexpected error")
 
-    await agent_repo.record_chat_success(agent_id)
+    if answered:
+        # Best effort: the agent has already answered (and may have acted), so a
+        # failed bookkeeping write must never turn that into an error.
+        try:
+            await agent_repo.record_chat_success(agent_id)
+        except Exception as exc:
+            logger.warning("chat_success_record_failed", agent_id=str(agent_id), error=type(exc).__name__)
     return {"response": response_text, "context_id": context_id}
 
 
