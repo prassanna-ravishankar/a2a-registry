@@ -196,8 +196,13 @@ class AgentRepository:
             LEFT JOIN LATERAL (
                 SELECT array_agg(error_message ORDER BY checked_at DESC) as chat_errors
                 FROM (
+                    -- Only failures from the last week that no later successful
+                    -- user chat has superseded: one old error must not label an
+                    -- agent that answers users today.
                     SELECT error_message, checked_at FROM health_checks
                     WHERE agent_id = a.id AND source = 'chat' AND success = false
+                      AND checked_at > NOW() - INTERVAL '7 days'
+                      AND (a.last_chat_success_at IS NULL OR checked_at > a.last_chat_success_at)
                     ORDER BY checked_at DESC LIMIT 10
                 ) ce
             ) ce ON true
@@ -697,6 +702,9 @@ class AgentRepository:
             agent_id,
         )
         return result == "UPDATE 1"
+
+    async def record_chat_success(self, agent_id: UUID) -> None:
+        await self.db.execute("UPDATE agents SET last_chat_success_at = NOW() WHERE id = $1", agent_id)
 
     async def update_task_conformance(
         self,

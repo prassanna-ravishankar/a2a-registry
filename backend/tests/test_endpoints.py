@@ -999,12 +999,14 @@ def test_chat_targets_card_url_not_well_known_host(client):
          patch("app.main.ClientFactory") as mock_factory_cls:
         instance = mock_repo.return_value
         instance.get_by_id = AsyncMock(return_value=existing)
+        instance.record_chat_success = AsyncMock()
         mock_factory_cls.return_value.create = fake_create
 
         response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
 
     assert response.status_code == 200, response.text
     assert response.json()["response"] == "hi from worker"
+    instance.record_chat_success.assert_awaited_once()
     # The card was refetched from the agent's stored wellKnownURI, not request input.
     mock_fetch.assert_called_once_with("https://cesaryague.es/.well-known/agent.json")
     # Crisp old-vs-new signal: the fix builds the client via factory.create(card).
@@ -1394,3 +1396,45 @@ def test_simple_registration_refuses_a_card_url_on_the_registry_itself(client):
     assert response.status_code == 400
     assert "registry itself" in response.json()["detail"]
     fetch.assert_not_called()
+
+
+def _chat_with(client, extracted, record=None):
+    """Run /chat against a fake agent whose reply extracts to `extracted`."""
+    from unittest.mock import MagicMock
+
+    card = {**MOCK_AGENT_CARD, "url": "https://agent.example.com/a2a"}
+
+    async def _events():
+        ev = MagicMock()
+        ev.HasField = lambda f: f == "message"
+        ev.message = MagicMock()
+        yield ev
+
+    fake_client = MagicMock()
+    fake_client.send_message = MagicMock(return_value=_events())
+    fake_client._transport = MagicMock(url="https://agent.example.com/a2a")
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.fetch_agent_card", return_value=(card, None)), \
+         patch("app.main._extract_text", return_value=extracted), \
+         patch("app.main.ClientFactory") as factory:
+        repo = mock_repo.return_value
+        repo.get_by_id = AsyncMock(return_value=_make_agent_public(url="https://agent.example.com/a2a"))
+        repo.record_chat_success = record or AsyncMock()
+        factory.return_value.create = lambda _card: fake_client
+        response = client.post(f"/agents/{MOCK_UUID}/chat", json={"message": "hi"})
+    return response, repo.record_chat_success
+
+
+def test_chat_answer_survives_a_failed_success_record(client):
+    """#226 review: the agent already answered; bookkeeping must not turn that into a 500."""
+    response, record = _chat_with(client, "the answer", record=AsyncMock(side_effect=TimeoutError))
+    assert response.status_code == 200
+    assert response.json()["response"] == "the answer"
+    record.assert_awaited_once()
+
+
+@pytest.mark.parametrize("extracted", ["", "Task TASK_STATE_FAILED"], ids=["no-response", "bare-task-state"])
+def test_chat_without_a_real_answer_does_not_count_as_success(client, extracted):
+    response, record = _chat_with(client, extracted)
+    assert response.status_code == 200
+    record.assert_not_awaited()

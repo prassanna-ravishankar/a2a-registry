@@ -456,7 +456,7 @@ async def assess(
     review_revision from the same snapshot as the record in `document` ({} for
     a registration). Returns None when this exact content was already scored. Never raises for classifier failures: those fail
     closed through the returned status. Raises RateLimitError or
-    BudgetUnavailableError when `budget` refuses or cannot be checked, and
+    LimitsUnavailableError when `budget` refuses or cannot be checked, and
     RescoreCooldownError when `cooldown` is set and the last successful score
     (jev_checked_at) is more recent than that, unless the agent is unscored.
     In each case no further request is sent and callers neither write nor

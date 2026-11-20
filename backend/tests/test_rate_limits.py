@@ -491,3 +491,57 @@ async def test_jev_budget_against_postgres(pg):
     rows = dict(await pg.fetch("SELECT scope, used FROM rate_limit_counters"))
     assert rows == {limit.name: 3 for limit in jev_limits("198.51.100.7")}
     await budget.ensure_available()
+
+
+
+@pytest.mark.parametrize("failing", [TAKE_SQL, USED_SQL], ids=["per-client-take", "jev-precheck"])
+def test_unreachable_counters_answer_503_before_any_work(api, counters, failing):
+    """#211: a counter failure in the pre-checks is a 503 with Retry-After, not a 500."""
+    original = counters.fetchval
+
+    async def broken(query, *args):
+        if query == failing:
+            raise TimeoutError
+        return await original(query, *args)
+
+    counters.fetchval = broken
+    with ExitStack() as stack:
+        repo, fetch = _registration_mocks(stack)
+        response = _post_register(api, "198.51.100.7")
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "60"
+    fetch.assert_not_called()
+    repo.create.assert_not_awaited()
+
+
+def test_unreachable_counters_answer_503_on_other_limited_endpoints(api, counters):
+    async def broken(query, *args):
+        raise TimeoutError
+
+    counters.fetchval = broken
+    agent_id = str(_make_agent_public().id)
+    response = api.post(f"/agents/{agent_id}/flag", json={"agent_id": agent_id, "reason": "spam"},
+                        headers=_via_cloudflare("198.51.100.7"))
+    assert response.status_code == 503
+
+
+
+def test_a_failed_refund_after_a_refusal_is_a_503_with_no_outbound_work(api, counters):
+    """The hourly submit counter is taken, the daily one refuses, and giving the hourly
+    one back fails: fail closed (503), never proceed; the hourly count stays charged."""
+    counters.exhaust(SUBMIT[1].of("198.51.100.7"))
+    original = counters.execute
+
+    async def refund_fails(query, *args):
+        if query == GIVE_BACK_SQL:
+            raise TimeoutError
+        return await original(query, *args)
+
+    counters.execute = refund_fails
+    with ExitStack() as stack:
+        repo, fetch = _registration_mocks(stack)
+        response = _post_register(api, "198.51.100.7")
+    assert response.status_code == 503
+    fetch.assert_not_called()
+    repo.create.assert_not_awaited()
+    assert counters.used(SUBMIT[0].of("198.51.100.7").name) == 1

@@ -296,3 +296,38 @@ async def test_snapshot_carries_the_last_score_time_for_the_rescore_cooldown(db,
     checked_at = state["jev_checked_at"]
     assert checked_at.tzinfo is not None, "compared against an aware now() in assess"
     assert datetime.now(timezone.utc) - checked_at < timedelta(minutes=5)
+
+
+async def _chat_failure(db, agent_id, hours_ago):
+    await db.execute(
+        "INSERT INTO health_checks (agent_id, status_code, response_time_ms, success, error_message, source, checked_at) "
+        "VALUES ($1, 502, 10, false, 'Agent returned an unexpected error', 'chat', NOW() - make_interval(hours => $2))",
+        agent_id, hours_ago,
+    )
+
+
+def _chat_note(agent) -> bool:
+    return any(note.startswith("Returning errors when contacted by users") for note in agent.status_notes)
+
+
+async def test_a_chat_failure_is_superseded_only_by_a_later_successful_chat(db, repo):
+    """#226: one old chat error must not label an agent that answers users today. A passing
+    task probe is not chat-path evidence, so only a successful /chat supersedes."""
+    created = await repo.create(_agent(92), review=_review(CLEAN, "sha-chat", None))
+    await _chat_failure(db, created.id, hours_ago=48)
+    assert _chat_note(await repo.get_by_id(created.id)), "an unexplained recent failure is reported"
+
+    await repo.update_task_conformance(created.id, "WORKING", 120)
+    assert _chat_note(await repo.get_by_id(created.id)), "a passing task probe does not clear a chat failure"
+
+    await repo.record_chat_success(created.id)
+    assert not _chat_note(await repo.get_by_id(created.id))
+
+    await _chat_failure(db, created.id, hours_ago=-0.01)
+    assert _chat_note(await repo.get_by_id(created.id)), "a failure after the success is reported again"
+
+
+async def test_a_chat_failure_older_than_a_week_is_not_reported(db, repo):
+    created = await repo.create(_agent(93), review=_review(CLEAN, "sha-chat-old", None))
+    await _chat_failure(db, created.id, hours_ago=24 * 8)
+    assert not _chat_note(await repo.get_by_id(created.id))

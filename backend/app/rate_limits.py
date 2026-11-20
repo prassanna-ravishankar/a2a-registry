@@ -8,6 +8,7 @@ any counter past its limit is refused with the seconds until that window ends.
 import ipaddress
 import math
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Optional, Sequence
 
@@ -51,8 +52,9 @@ class RateLimitError(Exception):
         self.retry_after = retry_after
 
 
-class BudgetUnavailableError(Exception):
-    """The Jev budget could not be checked, so nothing may be sent. The API answers 503."""
+class LimitsUnavailableError(Exception):
+    """The counters could not be read or written, so the request is refused
+    rather than let through unmetered. The API answers 503."""
 
 
 class RescoreCooldownError(Exception):
@@ -61,7 +63,7 @@ class RescoreCooldownError(Exception):
 
 # Outcomes that must stop a classification without any write: neither a
 # classifier failure nor a reason to store "unscored".
-NOT_SENT = (RateLimitError, BudgetUnavailableError, RescoreCooldownError)
+NOT_SENT = (RateLimitError, LimitsUnavailableError, RescoreCooldownError)
 
 
 _CLIENT = "Too many requests from this address. Retry after the time in the Retry-After header."
@@ -169,8 +171,24 @@ def _refusal(limit: Limit, now: float) -> RateLimitError:
     return RateLimitError(limit, max(1, math.ceil(_window_end(limit, now) - now)))
 
 
+@contextmanager
+def _counters():
+    """Any failure other than a refusal means the counters are unavailable."""
+    try:
+        yield
+    except RateLimitError:
+        raise
+    except Exception as exc:
+        raise LimitsUnavailableError(type(exc).__name__) from exc
+
+
 async def take(db, limits: Sequence[Limit], cost: int = 1) -> None:
     """Count `cost` against every limit, or against none and raise RateLimitError."""
+    with _counters():
+        await _take(db, limits, cost)
+
+
+async def _take(db, limits: Sequence[Limit], cost: int) -> None:
     now = time.time()
     taken: list[Limit] = []
     for limit in limits:
@@ -187,10 +205,11 @@ async def take(db, limits: Sequence[Limit], cost: int = 1) -> None:
 async def ensure_available(db, limits: Sequence[Limit]) -> None:
     """Raise RateLimitError if any limit is already used up, without counting."""
     now = time.time()
-    for limit in limits:
-        used = await db.fetchval(USED_SQL, limit.name, _window_end(limit, now)) or 0
-        if used >= limit.count:
-            raise _refusal(limit, now)
+    with _counters():
+        for limit in limits:
+            used = await db.fetchval(USED_SQL, limit.name, _window_end(limit, now)) or 0
+            if used >= limit.count:
+                raise _refusal(limit, now)
 
 
 async def limit_client(db, request: Request, limits: Sequence[Limit]) -> None:
@@ -213,9 +232,4 @@ class JevBudget:
         await ensure_available(self.db, self.limits)
 
     async def reserve(self, requests: int) -> None:
-        try:
-            await take(self.db, self.limits, requests)
-        except RateLimitError:
-            raise
-        except Exception as exc:
-            raise BudgetUnavailableError(type(exc).__name__) from exc
+        await take(self.db, self.limits, requests)
