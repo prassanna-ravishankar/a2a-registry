@@ -371,3 +371,17 @@ async def test_admin_review_lookup_covers_held_and_clean_agents(db, repo):
     held = await repo.create(_agent(97), review=_review(FLAGGED, "sha-h", "pending"))
     state = await repo.get_admin_review(held.id)
     assert state["review_status"] == "pending" and state["jev_card_sha256"] == "sha-h"
+
+
+async def test_restore_unhides_only_hidden_agents_and_keeps_moderation(db, repo):
+    """#233: restore flips hidden back; a held agent still stays out of public reads."""
+    clean = await repo.create(_agent(98), review=_review(CLEAN, "sha-r1", None))
+    held = await repo.create(_agent(99), review=_review(FLAGGED, "sha-r2", "pending"))
+    assert not await repo.restore(clean.id), "not hidden, nothing to restore"
+    for agent in (clean, held):
+        await repo.delete(agent.id)
+        assert await repo.get_hidden_card_uri(agent.id) == str(agent.wellKnownURI)
+        assert await repo.restore(agent.id)
+        assert await repo.get_hidden_card_uri(agent.id) is None
+    assert await _publicly_visible(db, repo, clean.id)
+    assert not await _publicly_visible(db, repo, held.id)

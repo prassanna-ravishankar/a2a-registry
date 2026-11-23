@@ -731,6 +731,33 @@ async def delete_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(defau
     return JSONResponse(status_code=204, content={})
 
 
+@router.post("/admin/agents/{agent_id}/restore")
+async def restore_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(default=None)):
+    """Un-hide an agent that was deleted or auto-hidden as dead (admin only).
+
+    The card must be reachable now. That fetch is recorded as a successful
+    health check, so the dead-agent rule, which needs a week of nothing but
+    failures, does not hide it again before the worker's next check.
+    Moderation is unchanged: a held or rejected agent stays out of public reads.
+    """
+    _require_admin(x_admin_key)
+    agent_repo = AgentRepository(db)
+    well_known_uri = await agent_repo.get_hidden_card_uri(agent_id)
+    if well_known_uri is None:
+        raise HTTPException(status_code=404, detail="No hidden agent with this id")
+    start = time.monotonic()
+    agent_card, error = await fetch_agent_card(well_known_uri)
+    if error or agent_card is None:
+        raise HTTPException(status_code=409, detail=f"The agent's card is not reachable, so it stays hidden: {error}")
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    await HealthCheckRepository(db).create(agent_id, 200, elapsed_ms, True, None, source="admin")
+    if not await agent_repo.restore(agent_id):
+        raise HTTPException(status_code=409, detail="Agent changed while it was being restored; retry")
+    logger.info("admin_agent_restored", agent_id=str(agent_id))
+    status = (await agent_repo.get_review_state(agent_id) or {}).get("review_status")
+    return {"id": str(agent_id), "hidden": False, "public": status not in HELD_STATUSES}
+
+
 # ============================================================================
 # Health Check Endpoints
 # ============================================================================

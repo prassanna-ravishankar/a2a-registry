@@ -579,6 +579,17 @@ class AgentRepository:
         result = await self.db.execute(query, agent_id)
         return result == "UPDATE 1"
 
+    async def get_hidden_card_uri(self, agent_id: UUID) -> Optional[str]:
+        """The card URL of a hidden (deleted or auto-hidden) agent, or None."""
+        return await self.db.fetchval(
+            "SELECT well_known_uri FROM agents WHERE id = $1 AND hidden = true", agent_id,
+        )
+
+    async def restore(self, agent_id: UUID) -> bool:
+        """Un-hide an agent. Moderation is untouched: a held or rejected agent stays out of public reads."""
+        result = await self.db.execute("UPDATE agents SET hidden = false WHERE id = $1 AND hidden = true", agent_id)
+        return result == "UPDATE 1"
+
     async def set_category(self, agent_id: UUID, verdict: CardVerdict, expect_revision: int) -> bool:
         """Write only the category fields (one-off backfill), guarded by the review revision.
 
