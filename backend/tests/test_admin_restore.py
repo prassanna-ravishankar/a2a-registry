@@ -59,7 +59,8 @@ def test_an_unreachable_card_stays_hidden_and_nothing_is_recorded(client):
 
 @pytest.mark.parametrize(
     ("state_status", "public"),
-    [(None, True), ("approved", True), ("flagged", True), ("pending", False), ("unscored", False), ("rejected", False)],
+    # Unscored is absent: real assess always re-classifies unscored content.
+    [(None, True), ("approved", True), ("flagged", True), ("pending", False), ("rejected", False)],
 )
 def test_unchanged_content_is_restored_as_it_was(client, state_status, public):
     response, repo, health, fetch, _, order = _restore(client, review=None, state_status=state_status)
@@ -81,12 +82,14 @@ def test_a_card_changed_while_hidden_is_reviewed_before_it_can_be_public(client,
     same statement that un-hides it; a flagged or unscorable card comes back held."""
     verdict = CardVerdict(score=0.9 if verdict_status else 0.1, signals={}, model="jev-test")
     review = ReviewWrite(verdict=verdict, sha="new", status=verdict_status, expect_revision=5)
-    response, repo, _, _, assess, _ = _restore(client, review=review)
+    response, repo, _, _, assess, order = _restore(client, review=review)
     assert response.status_code == 200 and response.json()["public"] is public
     assess.assert_awaited_once()
     repo.update.assert_awaited_once()
     assert repo.update.await_args.kwargs == {"review": review, "unhide": True}
     repo.restore.assert_not_awaited()
+    calls = [name for name, *_ in order.mock_calls if name in ("health", "restore", "update")]
+    assert calls == ["health", "update"], "success recorded before un-hiding"
 
 
 @pytest.mark.parametrize("path", ["unchanged", "changed"])
@@ -97,3 +100,30 @@ def test_a_retire_in_between_wins(client, path):
     )
     response, _, _, _, _, _ = _restore(client, review=review, restored=False, updated=False)
     assert response.status_code == 409 and "changed while it was being restored" in response.json()["detail"]
+
+
+
+def test_a_changed_card_that_cannot_be_classified_comes_back_held(client):
+    """Real assess: a classifier failure fails closed, so the restored agent is unscored and held."""
+    from app.card_classifier import CardClassifierError
+
+    stored = _make_agent_in_db(wellKnownURI=URI)
+    state = {"review_status": None, "review_revision": 5, "jev_card_sha256": "an-older-card"}
+    with patch("app.main.AgentRepository") as mock_repo, \
+         patch("app.main.HealthCheckRepository") as mock_health, \
+         patch("app.main.fetch_agent_card", new=AsyncMock(return_value=(MOCK_AGENT_CARD, None))), \
+         patch("app.card_classifier.classify_card", new=AsyncMock(side_effect=CardClassifierError("down"))), \
+         patch("app.main.settings") as settings:
+        settings.admin_api_key = "k"
+        settings.jev_deadline_seconds = 45
+        repo = mock_repo.return_value
+        repo.get_hidden_snapshot = AsyncMock(return_value=(stored, state))
+        repo.update = AsyncMock(return_value=_make_agent_in_db())
+        repo.restore = AsyncMock()
+        mock_health.return_value.create = AsyncMock()
+        response = client.post(f"/admin/agents/{AGENT}/restore", headers={"X-Admin-Key": "k"})
+    assert response.status_code == 200 and response.json()["public"] is False
+    review = repo.update.await_args.kwargs["review"]
+    assert review.status == "unscored" and review.verdict is None
+    assert repo.update.await_args.kwargs["unhide"] is True
+    repo.restore.assert_not_awaited()

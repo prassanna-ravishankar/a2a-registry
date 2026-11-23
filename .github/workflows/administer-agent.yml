@@ -126,7 +126,8 @@ jobs:
               --write-out '%{http_code}' \
               "$API_BASE_URL/agents/$AGENT_ID")"
           elif [[ "$OPERATOR_ACTION" == "restore" ]]; then
-            # Un-hide only if the card is reachable now; moderation is unchanged.
+            # Un-hide only if the card is reachable now; a card that changed while
+            # hidden is re-reviewed first and may come back held.
             http_status="$(curl --silent --show-error \
               --request POST \
               --header "X-Admin-Key: $ADMIN_API_KEY" \

@@ -741,7 +741,7 @@ async def restore_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(defa
     statement that un-hides it, so a card that changed while hidden is never
     published unreviewed. The fetch is recorded as a successful health check
     so the dead-agent rule does not hide it again before the next worker check.
-    Every step is guarded by the snapshot's revision, so a retire in between wins.
+    The final write is guarded by the snapshot's revision, so a retire in between wins.
     """
     _require_admin(x_admin_key)
     agent_repo = AgentRepository(db)
