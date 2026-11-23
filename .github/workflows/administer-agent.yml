@@ -15,6 +15,8 @@ on:
           - inspect
           - approve
           - reject
+          - restore
+          - retire
       agent_id:
         description: Agent UUID
         required: true
@@ -88,7 +90,8 @@ jobs:
               echo "approve requires the card_sha256 printed by inspect" >&2
               exit 1
             fi
-          elif [[ "$OPERATOR_ACTION" != "clear-maintainer-notes" && "$OPERATOR_ACTION" != "inspect" && "$OPERATOR_ACTION" != "reject" ]]; then
+          elif [[ "$OPERATOR_ACTION" != "clear-maintainer-notes" && "$OPERATOR_ACTION" != "inspect" && "$OPERATOR_ACTION" != "reject" \
+                && "$OPERATOR_ACTION" != "restore" && "$OPERATOR_ACTION" != "retire" ]]; then
             echo "Unsupported action" >&2
             exit 1
           fi
@@ -119,6 +122,23 @@ jobs:
               --header "Content-Type: application/json" \
               --header "X-Admin-Key: $ADMIN_API_KEY" \
               --data "$request_body" \
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/agents/$AGENT_ID")"
+          elif [[ "$OPERATOR_ACTION" == "restore" ]]; then
+            # Un-hide only if the card is reachable now; a card that changed while
+            # hidden is re-reviewed first and may come back held.
+            http_status="$(curl --silent --show-error \
+              --request POST \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
+              --output "$RUNNER_TEMP/operator-response.json" \
+              --write-out '%{http_code}' \
+              "$API_BASE_URL/admin/agents/$AGENT_ID/restore")"
+          elif [[ "$OPERATOR_ACTION" == "retire" ]]; then
+            # Soft delete (hidden), e.g. a listing whose card URL is permanently dead.
+            http_status="$(curl --silent --show-error \
+              --request DELETE \
+              --header "X-Admin-Key: $ADMIN_API_KEY" \
               --output "$RUNNER_TEMP/operator-response.json" \
               --write-out '%{http_code}' \
               "$API_BASE_URL/agents/$AGENT_ID")"
@@ -183,7 +203,8 @@ jobs:
           echo "Public record: HTTP $public_status"
           operator_status="$(jq --raw-output '.status // empty' "$RUNNER_TEMP/operator-response.json")"
           case "$OPERATOR_ACTION" in
-            reject) expected_status=404 ;;
+            reject|retire) expected_status=404 ;;
+            restore) if [[ "$(jq --raw-output '.public' "$RUNNER_TEMP/operator-response.json")" == "true" ]]; then expected_status=200; else expected_status=404; fi ;;
             approve) expected_status=200 ;;
             # A held agent stays out of public reads; anything else must be readable.
             *) if [[ "$operator_status" == "under_review" ]]; then expected_status=404; else expected_status=200; fi ;;

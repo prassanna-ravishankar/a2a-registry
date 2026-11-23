@@ -515,12 +515,15 @@ class AgentRepository:
         agent: AgentCreate,
         review: Optional[ReviewWrite] = None,
         expect_revision: Optional[int] = None,
+        unhide: bool = False,
     ) -> Optional[AgentInDB]:
         """Update an existing agent's metadata from a re-fetched agent card.
 
         With `review` (or `expect_revision`), the write is guarded by the
         snapshot revision and the new content's classification lands in the
         same statement. Returns None if the agent is gone or changed since.
+        With `unhide`, the agent must be hidden and is restored in the same
+        statement (admin restore of changed content, #233).
         """
         query = """
             UPDATE agents SET
@@ -541,14 +544,17 @@ class AgentRepository:
                 supports_authenticated_extended_card = $15,
                 security_requirements = $16,
                 security_schemes = $17,
-                updated_at = NOW(){review_set}
-            WHERE id = $18 AND hidden = false{guard}
+                updated_at = NOW(){unhide_set}{review_set}
+            WHERE id = $18 AND hidden = {hidden}{guard}
             RETURNING *
         """
         review_sets, guard, review_params = self._guarded_review(review, expect_revision, 19)
         review_set = "".join(f", {fragment}" for fragment in review_sets)
         row = await self.db.fetchrow(
-            query.format(review_set=review_set, guard=guard),
+            query.format(
+                review_set=review_set, guard=guard,
+                unhide_set=", hidden = false" if unhide else "", hidden="true" if unhide else "false",
+            ),
             str(agent.wellKnownURI),
             agent.protocolVersion,
             agent.name,
@@ -575,8 +581,34 @@ class AgentRepository:
 
     async def delete(self, agent_id: UUID) -> bool:
         """Delete an agent (soft delete by marking hidden)"""
-        query = "UPDATE agents SET hidden = true WHERE id = $1"
+        # Advances review_revision so an in-flight restore or guarded write
+        # based on an earlier snapshot is refused.
+        query = "UPDATE agents SET hidden = true, review_revision = review_revision + 1 WHERE id = $1"
         result = await self.db.execute(query, agent_id)
+        return result == "UPDATE 1"
+
+    async def get_hidden_snapshot(self, agent_id: UUID) -> Optional[tuple[AgentInDB, dict]]:
+        """A hidden agent's record and review state, read together (for restore)."""
+        row = await self.db.fetchrow("SELECT * FROM agents WHERE id = $1 AND hidden = true", agent_id)
+        if not row:
+            return None
+        state = {
+            key: row[key]
+            for key in (
+                "review_status", "jev_card_sha256", "review_approved_sha256", "review_revision", "jev_checked_at",
+            )
+        }
+        return self._row_to_agent(row), state
+
+    async def restore(self, agent_id: UUID, expect_revision: int) -> bool:
+        """Un-hide an agent whose content is unchanged since its snapshot. Hiding and
+        restoring both advance review_revision, so a restore based on an older
+        snapshot never undoes a newer retirement. Moderation is untouched."""
+        result = await self.db.execute(
+            "UPDATE agents SET hidden = false, review_revision = review_revision + 1 "
+            "WHERE id = $1 AND hidden = true AND review_revision = $2",
+            agent_id, expect_revision,
+        )
         return result == "UPDATE 1"
 
     async def set_category(self, agent_id: UUID, verdict: CardVerdict, expect_revision: int) -> bool:

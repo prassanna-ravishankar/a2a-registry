@@ -731,6 +731,55 @@ async def delete_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(defau
     return JSONResponse(status_code=204, content={})
 
 
+@router.post("/admin/agents/{agent_id}/restore")
+async def restore_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(default=None)):
+    """Un-hide an agent that was deleted or auto-hidden as dead (admin only).
+
+    The card must be reachable now, and it is reviewed like any refresh while
+    the agent is still hidden: unchanged content is restored as it was,
+    changed content is classified first and lands with its review in the same
+    statement that un-hides it, so a card that changed while hidden is never
+    published unreviewed. The fetch is recorded as a successful health check
+    so the dead-agent rule does not hide it again before the next worker check.
+    The final write is guarded by the snapshot's revision, so a retire in between wins.
+    """
+    _require_admin(x_admin_key)
+    agent_repo = AgentRepository(db)
+    snapshot = await agent_repo.get_hidden_snapshot(agent_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="No hidden agent with this id")
+    stored, state = snapshot
+    well_known_uri = str(stored.wellKnownURI)
+    budget = JevBudget(db)
+    await budget.ensure_available()
+
+    start = time.monotonic()
+    agent_card, error = await fetch_agent_card(well_known_uri)
+    if error or agent_card is None:
+        raise HTTPException(status_code=409, detail=f"The agent's card is not reachable, so it stays hidden: {error}")
+    elapsed_ms = int((time.monotonic() - start) * 1000)
+    agent_data = _agent_create_from_card(agent_card, well_known_uri, author_fallback=stored.author)
+    review = await assess(
+        state,
+        review_document(card_record(agent_data), agent_card),
+        budget=budget,
+        may_grandfather=False,
+        deadline=settings.jev_deadline_seconds,
+    )
+
+    await HealthCheckRepository(db).create(agent_id, 200, elapsed_ms, True, None, source="admin")
+    if review is None:
+        restored = await agent_repo.restore(agent_id, state["review_revision"])
+        status = state.get("review_status")
+    else:
+        restored = await agent_repo.update(agent_id, agent_data, review=review, unhide=True) is not None
+        status = review.status
+    if not restored:
+        raise HTTPException(status_code=409, detail="Agent changed while it was being restored; retry")
+    logger.info("admin_agent_restored", agent_id=str(agent_id), rescored=review is not None)
+    return {"id": str(agent_id), "hidden": False, "public": status not in HELD_STATUSES}
+
+
 # ============================================================================
 # Health Check Endpoints
 # ============================================================================
