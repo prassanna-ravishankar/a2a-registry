@@ -572,6 +572,32 @@ async def run_task_probes(agent_repo: AgentRepository, agents) -> int:
     return total
 
 
+# An agent is hidden once the worker has seen it fail throughout a whole week.
+# A dead agent is checked only daily (DEAD_AGENT_CHECK_INTERVAL), about 7 times
+# a week, so the rule asks for a week-long run of worker failures rather than a
+# fixed count: at least 5, spread over at least 4 days, the oldest over 6 days
+# ago and the latest within 2 days (still failing now). Any success in the
+# week, from the worker, a chat or an admin restore, vetoes.
+HIDE_DEAD_AGENTS_SQL = """
+    UPDATE agents SET hidden = true
+    WHERE hidden = false
+      AND id IN (
+        SELECT agent_id FROM health_checks
+        WHERE checked_at > NOW() - INTERVAL '7 days'
+        GROUP BY agent_id
+        HAVING COUNT(*) FILTER (WHERE success = true) = 0
+           AND COUNT(*) FILTER (WHERE source = 'worker') >= 5
+           AND COUNT(DISTINCT date_trunc('day', checked_at AT TIME ZONE 'UTC')) FILTER (WHERE source = 'worker') >= 4
+           AND MIN(checked_at) FILTER (WHERE source = 'worker') < NOW() - INTERVAL '6 days'
+           AND MAX(checked_at) FILTER (WHERE source = 'worker') > NOW() - INTERVAL '2 days'
+      )
+"""
+
+
+async def hide_dead_agents(db) -> str:
+    return await db.execute(HIDE_DEAD_AGENTS_SQL)
+
+
 async def health_check_cycle():
     """Run a single health check cycle for all agents"""
     global _cycle_count
@@ -674,25 +700,9 @@ async def health_check_cycle():
         except Exception as prune_err:
             logger.warning("health_check_prune_failed", error=str(prune_err))
 
-        # Auto-hide agents that have failed every health check for 7+ days
+        # Auto-hide agents that have failed every health check for a week
         try:
-            hidden = await db.execute("""
-                UPDATE agents SET hidden = true
-                WHERE hidden = false
-                  AND id IN (
-                    SELECT agent_id FROM (
-                        SELECT agent_id,
-                               COUNT(*) as total,
-                               COUNT(*) FILTER (WHERE success = true) as successes,
-                               MIN(checked_at) as earliest
-                        FROM health_checks
-                        WHERE checked_at > NOW() - INTERVAL '7 days'
-                        GROUP BY agent_id
-                        HAVING COUNT(*) >= 10
-                           AND COUNT(*) FILTER (WHERE success = true) = 0
-                    ) dead
-                  )
-            """)
+            hidden = await hide_dead_agents(db)
             if hidden and hidden != "UPDATE 0":
                 logger.info("auto_hidden_dead_agents", result=hidden)
         except Exception as hide_err:

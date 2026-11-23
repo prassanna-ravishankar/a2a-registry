@@ -387,6 +387,15 @@ async def test_restore_unhides_only_hidden_agents_and_keeps_moderation(db, repo)
     assert not await _publicly_visible(db, repo, held.id)
 
 
+async def _checks(db, agent_id, hours_ago: list[float], success=False, source="worker"):
+    for h in hours_ago:
+        await db.execute(
+            "INSERT INTO health_checks (agent_id, status_code, response_time_ms, success, error_message, source, checked_at) "
+            "VALUES ($1, $2, 10, $3, NULL, $4, NOW() - make_interval(secs => $5))",
+            agent_id, 200 if success else 503, success, source, h * 3600,
+        )
+
+
 async def _hidden(db, agent_id) -> bool:
     return await db.fetchval("SELECT hidden FROM agents WHERE id = $1", agent_id)
 
@@ -412,3 +421,63 @@ async def test_changed_content_is_written_with_its_review_and_unhidden_together(
     assert await repo.update(agent.id, changed, review=held, unhide=True) is not None
     assert not await _hidden(db, agent.id)
     assert not await _publicly_visible(db, repo, agent.id), "flagged changed content comes back held"
+
+
+async def test_dead_agent_auto_hide_works_at_the_daily_dead_check_cadence(db, repo):
+    """#234: an agent already marked dead is checked once a day, so a fixed 10-failure
+    threshold was never met and it stayed listed forever."""
+    from worker import hide_dead_agents
+
+    daily = await repo.create(_agent(101), review=_review(CLEAN, "sha-d1", None))
+    await _checks(db, daily.id, [6.5 * 24 - 24 * d for d in range(7)])        # 7 daily failures over 6.5 days
+
+    frequent = await repo.create(_agent(102), review=_review(CLEAN, "sha-d2", None))
+    await _checks(db, frequent.id, [h / 2 for h in range(0, 2 * 24 * 7 - 4)])  # every 30 min for ~7 days
+
+    new = await repo.create(_agent(103), review=_review(CLEAN, "sha-d3", None))
+    await _checks(db, new.id, [h / 2 for h in range(0, 2 * 24 * 3)])          # failing, but only for 3 days
+
+    recovering = await repo.create(_agent(104), review=_review(CLEAN, "sha-d4", None))
+    await _checks(db, recovering.id, [6.5 * 24 - 24 * d for d in range(7)])
+    await _checks(db, recovering.id, [2.0], success=True)                    # one success in the week
+
+    restored = await repo.create(_agent(105), review=_review(CLEAN, "sha-d5", None))
+    await _checks(db, restored.id, [6.5 * 24 - 24 * d for d in range(7)])
+    await _checks(db, restored.id, [0.01], success=True, source="admin")     # #233 restore records a success
+
+    await hide_dead_agents(db)
+    assert await _hidden(db, daily.id) and await _hidden(db, frequent.id)
+    assert not await _hidden(db, new.id), "a new agent gets the full week"
+    assert not await _hidden(db, recovering.id)
+    assert not await _hidden(db, restored.id), "an admin restore is not undone by the next pass"
+
+
+
+async def test_dead_agent_auto_hide_needs_a_current_sustained_run_of_worker_failures(db, repo):
+    """#236 review: sparse, stale or chat-only evidence is not a week of deadness."""
+    from worker import hide_dead_agents
+
+    stale_cluster = await repo.create(_agent(108), review=_review(CLEAN, "sha-e1", None))
+    await _checks(db, stale_cluster.id, [156, 155.9, 155.8, 155.7, 155.6])   # one old burst, nothing since
+
+    chat_mostly = await repo.create(_agent(109), review=_review(CLEAN, "sha-e2", None))
+    await _checks(db, chat_mostly.id, [156])                                  # one old worker failure
+    await _checks(db, chat_mostly.id, [24, 12, 6, 1], source="chat")          # chat failures are weaker evidence
+
+    four_daily = await repo.create(_agent(110), review=_review(CLEAN, "sha-e3", None))
+    await _checks(db, four_daily.id, [6.5 * 24, 4.5 * 24, 2.5 * 24, 0.5 * 24])  # only 4 worker checks
+
+    gone_quiet = await repo.create(_agent(111), review=_review(CLEAN, "sha-e4", None))
+    await _checks(db, gone_quiet.id, [6.8 * 24 - 12 * h for h in range(9)])  # failures stop 2.8 days ago
+
+    three_days = await repo.create(_agent(113), review=_review(CLEAN, "sha-e6", None))
+    # 5 checks, oldest 6.5 days and newest 1 h ago, but on only 3 UTC days.
+    await _checks(db, three_days.id, [6.5 * 24, 6.5 * 24 - 0.001, 3 * 24, 3 * 24 - 0.001, 1])
+
+    five_daily = await repo.create(_agent(112), review=_review(CLEAN, "sha-e5", None))
+    await _checks(db, five_daily.id, [6.5 * 24, 5 * 24, 3.5 * 24, 2 * 24, 0.5 * 24])
+
+    await hide_dead_agents(db)
+    for kept in (stale_cluster, chat_mostly, four_daily, gone_quiet, three_days):
+        assert not await _hidden(db, kept.id)
+    assert await _hidden(db, five_daily.id), "5 worker failures over 4+ days, still failing"
