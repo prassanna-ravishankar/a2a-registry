@@ -572,9 +572,12 @@ async def run_task_probes(agent_repo: AgentRepository, agents) -> int:
     return total
 
 
-# An agent is hidden once it has failed every check for a whole week. A dead
-# agent is checked only daily (DEAD_AGENT_CHECK_INTERVAL), about 7 times a week,
-# so the rule asks for a week-long run of failures rather than a fixed count.
+# An agent is hidden once the worker has seen it fail throughout a whole week.
+# A dead agent is checked only daily (DEAD_AGENT_CHECK_INTERVAL), about 7 times
+# a week, so the rule asks for a week-long run of worker failures rather than a
+# fixed count: at least 5, spread over at least 4 days, the oldest over 6 days
+# ago and the latest within 2 days (still failing now). Any success in the
+# week, from the worker, a chat or an admin restore, vetoes.
 HIDE_DEAD_AGENTS_SQL = """
     UPDATE agents SET hidden = true
     WHERE hidden = false
@@ -583,8 +586,10 @@ HIDE_DEAD_AGENTS_SQL = """
         WHERE checked_at > NOW() - INTERVAL '7 days'
         GROUP BY agent_id
         HAVING COUNT(*) FILTER (WHERE success = true) = 0
-           AND COUNT(*) >= 5
-           AND MIN(checked_at) < NOW() - INTERVAL '6 days'
+           AND COUNT(*) FILTER (WHERE source = 'worker') >= 5
+           AND COUNT(DISTINCT date_trunc('day', checked_at)) FILTER (WHERE source = 'worker') >= 4
+           AND MIN(checked_at) FILTER (WHERE source = 'worker') < NOW() - INTERVAL '6 days'
+           AND MAX(checked_at) FILTER (WHERE source = 'worker') > NOW() - INTERVAL '2 days'
       )
 """
 
