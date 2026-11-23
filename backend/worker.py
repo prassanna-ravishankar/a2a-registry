@@ -587,7 +587,7 @@ HIDE_DEAD_AGENTS_SQL = """
         GROUP BY agent_id
         HAVING COUNT(*) FILTER (WHERE success = true) = 0
            AND COUNT(*) FILTER (WHERE source = 'worker') >= 5
-           AND COUNT(DISTINCT date_trunc('day', checked_at)) FILTER (WHERE source = 'worker') >= 4
+           AND COUNT(DISTINCT date_trunc('day', checked_at AT TIME ZONE 'UTC')) FILTER (WHERE source = 'worker') >= 4
            AND MIN(checked_at) FILTER (WHERE source = 'worker') < NOW() - INTERVAL '6 days'
            AND MAX(checked_at) FILTER (WHERE source = 'worker') > NOW() - INTERVAL '2 days'
       )

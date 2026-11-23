@@ -468,12 +468,16 @@ async def test_dead_agent_auto_hide_needs_a_current_sustained_run_of_worker_fail
     await _checks(db, four_daily.id, [6.5 * 24, 4.5 * 24, 2.5 * 24, 0.5 * 24])  # only 4 worker checks
 
     gone_quiet = await repo.create(_agent(111), review=_review(CLEAN, "sha-e4", None))
-    await _checks(db, gone_quiet.id, [6.8 * 24 - 12 * h for h in range(9)])  # failures stop 2.3 days ago
+    await _checks(db, gone_quiet.id, [6.8 * 24 - 12 * h for h in range(9)])  # failures stop 2.8 days ago
+
+    three_days = await repo.create(_agent(113), review=_review(CLEAN, "sha-e6", None))
+    # 5 checks, oldest 6.5 days and newest 1 h ago, but on only 3 UTC days.
+    await _checks(db, three_days.id, [6.5 * 24, 6.5 * 24 - 0.001, 3 * 24, 3 * 24 - 0.001, 1])
 
     five_daily = await repo.create(_agent(112), review=_review(CLEAN, "sha-e5", None))
     await _checks(db, five_daily.id, [6.5 * 24, 5 * 24, 3.5 * 24, 2 * 24, 0.5 * 24])
 
     await hide_dead_agents(db)
-    for kept in (stale_cluster, chat_mostly, four_daily, gone_quiet):
+    for kept in (stale_cluster, chat_mostly, four_daily, gone_quiet, three_days):
         assert not await _hidden(db, kept.id)
     assert await _hidden(db, five_daily.id), "5 worker failures over 4+ days, still failing"
