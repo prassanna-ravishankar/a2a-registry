@@ -377,11 +377,38 @@ async def test_restore_unhides_only_hidden_agents_and_keeps_moderation(db, repo)
     """#233: restore flips hidden back; a held agent still stays out of public reads."""
     clean = await repo.create(_agent(98), review=_review(CLEAN, "sha-r1", None))
     held = await repo.create(_agent(99), review=_review(FLAGGED, "sha-r2", "pending"))
-    assert not await repo.restore(clean.id), "not hidden, nothing to restore"
+    assert await repo.get_hidden_snapshot(clean.id) is None, "not hidden, nothing to restore"
     for agent in (clean, held):
         await repo.delete(agent.id)
-        assert await repo.get_hidden_card_uri(agent.id) == str(agent.wellKnownURI)
-        assert await repo.restore(agent.id)
-        assert await repo.get_hidden_card_uri(agent.id) is None
+        _, state = await repo.get_hidden_snapshot(agent.id)
+        assert await repo.restore(agent.id, state["review_revision"])
+        assert await repo.get_hidden_snapshot(agent.id) is None
     assert await _publicly_visible(db, repo, clean.id)
     assert not await _publicly_visible(db, repo, held.id)
+
+
+async def _hidden(db, agent_id) -> bool:
+    return await db.fetchval("SELECT hidden FROM agents WHERE id = $1", agent_id)
+
+
+async def test_restore_is_guarded_against_a_newer_retirement(db, repo):
+    """#235 review P2 (ABA): hide and restore advance review_revision, so a restore based
+    on an older snapshot cannot undo a later retirement."""
+    agent = await repo.create(_agent(106), review=_review(CLEAN, "sha-aba", None))
+    await repo.delete(agent.id)
+    _, first = await repo.get_hidden_snapshot(agent.id)
+    assert await repo.restore(agent.id, first["review_revision"])
+    await repo.delete(agent.id)                                            # retired again
+    assert not await repo.restore(agent.id, first["review_revision"]), "stale restore refused"
+    assert await _hidden(db, agent.id)
+
+
+async def test_changed_content_is_written_with_its_review_and_unhidden_together(db, repo):
+    agent = await repo.create(_agent(107), review=_review(CLEAN, "sha-c1", None))
+    await repo.delete(agent.id)
+    stored, state = await repo.get_hidden_snapshot(agent.id)
+    changed = _agent(107, description="changed while hidden")
+    held = _review(FLAGGED, "sha-c2", "pending", expect_revision=state["review_revision"])
+    assert await repo.update(agent.id, changed, review=held, unhide=True) is not None
+    assert not await _hidden(db, agent.id)
+    assert not await _publicly_visible(db, repo, agent.id), "flagged changed content comes back held"
