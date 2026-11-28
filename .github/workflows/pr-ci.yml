@@ -56,3 +56,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Check nginx routes
+        run: ./scripts/check-nginx.sh
