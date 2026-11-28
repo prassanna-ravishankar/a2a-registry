@@ -1005,7 +1005,7 @@ class HealthCheckRepository:
         self, period_days: int = 30, history_limit: int = 100
     ) -> dict[UUID, UptimeSummary]:
         """get_uptime_metrics for every public agent at once: one grouped query for the
-        aggregates and one windowed query for each agent's latest checks. Agents with no
+        aggregates and one per-agent LATERAL LIMIT for each agent's latest checks. Agents with no
         checks in the period are absent, as the per-agent endpoint answers 404 for them."""
         cutoff = datetime.now() - timedelta(days=period_days)
         public = f"a.hidden = false AND {PUBLIC_REVIEW_SQL}"
@@ -1031,17 +1031,20 @@ class HealthCheckRepository:
             GROUP BY hc.agent_id
         """, cutoff)
 
+        # Per agent, walk idx_health_checks_agent_time and stop at history_limit rows:
+        # reads ~78k rows where a window over the whole period sorted ~1.1M.
         history_rows = await self.db.fetch(f"""
-            SELECT agent_id, checked_at, success FROM (
-                SELECT
-                    hc.agent_id, hc.checked_at, hc.success,
-                    ROW_NUMBER() OVER (PARTITION BY hc.agent_id ORDER BY hc.checked_at DESC) as n
+            SELECT a.id as agent_id, h.checked_at, h.success
+            FROM agents a
+            CROSS JOIN LATERAL (
+                SELECT hc.checked_at, hc.success
                 FROM health_checks hc
-                JOIN agents a ON a.id = hc.agent_id
-                WHERE hc.checked_at > $1 AND {public}
-            ) recent
-            WHERE n <= $2
-            ORDER BY agent_id, checked_at DESC
+                WHERE hc.agent_id = a.id AND hc.checked_at > $1
+                ORDER BY hc.checked_at DESC
+                LIMIT $2
+            ) h
+            WHERE {public}
+            ORDER BY a.id, h.checked_at DESC
         """, cutoff, history_limit)
 
         history: dict[UUID, list[UptimePoint]] = {}

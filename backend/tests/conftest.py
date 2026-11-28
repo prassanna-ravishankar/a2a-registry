@@ -67,6 +67,16 @@ def clean_jev_verdict():
         yield classify
 
 
+@pytest.fixture(autouse=True)
+def fresh_snapshot_cache():
+    """GET /snapshot caches its body for a minute; each test starts with nothing cached."""
+    from app import main
+    from app.single_flight import SingleFlightCache
+
+    with patch.object(main, "snapshot_cache", SingleFlightCache(main.SNAPSHOT_TTL_SECONDS)):
+        yield
+
+
 @pytest.fixture
 def mock_db():
     db = MagicMock()
