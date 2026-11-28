@@ -13,13 +13,15 @@ api:
   replicaCount: 1
   autoscaling:
     enabled: false
+  # Steady state is ~190Mi, and a cold GET /snapshot render adds ~45Mi on top.
+  # 256Mi OOMKilled it (2026-11-28); 512Mi leaves room for a render plus a burst.
   resources:
     requests:
       cpu: 50m
-      memory: 96Mi
+      memory: 192Mi
     limits:
       cpu: 500m
-      memory: 256Mi
+      memory: 512Mi
 
 worker:
   replicaCount: 1

@@ -17,8 +17,6 @@ from .models import (
     RegistryStats,
     TaskConformance,
     UptimeMetrics,
-    UptimePoint,
-    UptimeSummary,
 )
 
 
@@ -1003,10 +1001,13 @@ class HealthCheckRepository:
 
     async def get_public_uptime_summaries(
         self, period_days: int = 30, history_limit: int = 100
-    ) -> dict[UUID, UptimeSummary]:
-        """get_uptime_metrics for every public agent at once: one grouped query for the
-        aggregates and one per-agent LATERAL LIMIT for each agent's latest checks. Agents with no
-        checks in the period are absent, as the per-agent endpoint answers 404 for them."""
+    ) -> dict[str, dict]:
+        """get_uptime_metrics for every public agent at once, keyed by agent id and shaped as
+        UptimeSummary, but as plain dicts: this feeds one ~10 MB JSON render and ~80k pydantic
+        objects cost the API pod's memory headroom. One grouped query for the aggregates and one
+        per-agent LATERAL LIMIT for each agent's latest checks, returned as arrays (one row per
+        agent). Agents with no checks in the period are absent, as the per-agent endpoint answers
+        404 for them."""
         cutoff = datetime.now() - timedelta(days=period_days)
         public = f"a.hidden = false AND {PUBLIC_REVIEW_SQL}"
 
@@ -1034,7 +1035,10 @@ class HealthCheckRepository:
         # Per agent, walk idx_health_checks_agent_time and stop at history_limit rows:
         # reads ~78k rows where a window over the whole period sorted ~1.1M.
         history_rows = await self.db.fetch(f"""
-            SELECT a.id as agent_id, h.checked_at, h.success
+            SELECT
+                a.id as agent_id,
+                array_agg(h.checked_at ORDER BY h.checked_at DESC) as checked_at,
+                array_agg(h.success ORDER BY h.checked_at DESC) as success
             FROM agents a
             CROSS JOIN LATERAL (
                 SELECT hc.checked_at, hc.success
@@ -1044,26 +1048,27 @@ class HealthCheckRepository:
                 LIMIT $2
             ) h
             WHERE {public}
-            ORDER BY a.id, h.checked_at DESC
+            GROUP BY a.id
         """, cutoff, history_limit)
-
-        history: dict[UUID, list[UptimePoint]] = {}
-        for row in history_rows:
-            history.setdefault(row["agent_id"], []).append(
-                UptimePoint(checked_at=row["checked_at"], success=row["success"])
-            )
+        history = {
+            row["agent_id"]: [
+                {"checked_at": checked_at, "success": success}
+                for checked_at, success in zip(row["checked_at"], row["success"])
+            ]
+            for row in history_rows
+        }
 
         return {
-            row["agent_id"]: UptimeSummary(
-                period_days=period_days,
-                uptime_percentage=row["uptime_percentage"],
-                avg_response_time_ms=row["avg_response_time_ms"],
-                total_checks=row["total_checks"],
-                successful_checks=row["successful_checks"],
-                failed_checks=row["failed_checks"],
-                last_check=row["last_check"],
-                history=history.get(row["agent_id"], []),
-            )
+            str(row["agent_id"]): {
+                "period_days": period_days,
+                "uptime_percentage": row["uptime_percentage"],
+                "avg_response_time_ms": row["avg_response_time_ms"],
+                "total_checks": row["total_checks"],
+                "successful_checks": row["successful_checks"],
+                "failed_checks": row["failed_checks"],
+                "last_check": row["last_check"],
+                "history": history.get(row["agent_id"], []),
+            }
             for row in stats_rows
         }
 
