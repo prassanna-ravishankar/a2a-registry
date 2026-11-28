@@ -114,3 +114,16 @@ async def test_snapshot_is_gzipped_for_clients_that_accept_it(db, api):
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
     assert len(response.json()["agents"]) == 5
+
+
+async def test_snapshot_is_rendered_once_a_minute(db, api):
+    repo = AgentRepository(db)
+    await repo.create(_agent(1))
+
+    first = (await _snapshot(api))["agents"]
+    await repo.create(_agent(2))  # lands after the render
+    assert (await _snapshot(api))["agents"] == first
+
+    from app import main
+    main.snapshot_cache._expires_at = 0  # the minute is up
+    assert len((await _snapshot(api))["agents"]) == 2
