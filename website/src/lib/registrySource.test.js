@@ -34,7 +34,7 @@ async function renderEverything(source) {
 
 test('the build reads everything from one /snapshot request', async () => {
   const api = fakeApi({
-    '/snapshot': { total: 2, agents: AGENTS, uptime: { a1: UPTIME_A1 }, stats: STATS, categories: CATEGORIES },
+    '/snapshot': { generated_at: '2026-11-28T10:00:00Z', total: 2, agents: AGENTS, uptime: { a1: UPTIME_A1 }, stats: STATS, categories: CATEGORIES },
   });
 
   const { registry, stats, pages } = await renderEverything(createRegistrySource(api.fetchJson));
@@ -42,6 +42,7 @@ test('the build reads everything from one /snapshot request', async () => {
   assert.deepEqual(api.requests, ['/snapshot']);
   assert.deepEqual(registry.agents, AGENTS);
   assert.equal(registry.total, 2);
+  assert.equal(registry.generated_at, '2026-11-28T10:00:00Z'); // a cached snapshot keeps its own time
   assert.deepEqual(stats, STATS);
   assert.deepEqual(pages[0], { uptime: UPTIME_A1, categories: CATEGORIES });
   assert.deepEqual(pages[1], { uptime: null, categories: CATEGORIES }); // no checks yet, like the endpoint's 404

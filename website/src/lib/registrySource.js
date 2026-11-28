@@ -45,7 +45,8 @@ export function createRegistrySource(fetchJson, { warn = console.warn } = {}) {
       registryPromise ??= (async () => {
         const data = await snapshot();
         const { agents, total } = data ?? (await listAgentsPaged());
-        return { agents, total, generated_at: new Date().toISOString() };
+        // The edge may serve a snapshot up to a minute old; say when its data was read.
+        return { agents, total, generated_at: data?.generated_at ?? new Date().toISOString() };
       })();
       return registryPromise;
     },

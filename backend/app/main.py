@@ -20,8 +20,10 @@ from a2a.types import Message, Part, Role, SendMessageRequest, Task, TaskState
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from starlette.routing import Mount
 
 from .agent_card import agent_create_from_card, extract_agent_url
 from .card_classifier import HELD_STATUSES, assess, card_record, review_document
@@ -160,6 +162,9 @@ def _make_mcp_app():
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     _mcp = _make_mcp_app()
+    # Replace, not append: a mount left by an earlier lifespan (tests run several) would
+    # shadow this one with a session manager whose task group has stopped.
+    app.router.routes[:] = [r for r in app.router.routes if not (isinstance(r, Mount) and r.path == "/mcp")]
     app.mount("/mcp", _mcp)
     async with _mcp.lifespan(app):
         await db.connect()
@@ -211,6 +216,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Compress responses over 1 KB (GET /snapshot is ~9 MB of JSON). Starlette leaves
+# text/event-stream alone, so MCP's SSE replies still stream; nothing else streams.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Create router for all API endpoints
 logger = structlog.get_logger()
