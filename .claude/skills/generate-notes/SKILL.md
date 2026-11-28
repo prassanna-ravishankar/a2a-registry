@@ -74,6 +74,8 @@ Accept, as ruled by the owner:
 
 If a pattern is new and not covered here, ask the owner, then add the ruling to this list.
 
+Gray areas the policy doesn't settle: keep the listing held (don't reject, rejection is sticky) and escalate to the maintainer.
+
 ## 4. Act
 
 The decision must name the exact content that was scored, `jev_card_sha256` from the queue entry. If the card changed since, the API refuses with 409; pull the queue again.
