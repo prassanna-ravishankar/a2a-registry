@@ -317,10 +317,10 @@ def test_track_event_uses_the_posthog_keyword_api():
 
     client = MagicMock()
     with patch.object(utils, "posthog_client", client), patch.object(utils.settings, "posthog_enabled", True):
-        utils.track_api_query("GET /agents", limit=5)
+        utils.track_api_query("POST /agents/register", wellKnownURI="https://x.test")
 
     client.capture.assert_called_once_with(
-        "api_query", distinct_id="api_user", properties={"endpoint": "GET /agents", "limit": 5}
+        "api_query", distinct_id="api_user", properties={"endpoint": "POST /agents/register", "wellKnownURI": "https://x.test"}
     )
 
 
