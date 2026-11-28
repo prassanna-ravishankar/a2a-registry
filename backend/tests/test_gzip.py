@@ -36,3 +36,11 @@ def test_mcp_event_stream_is_never_compressed(mock_db):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "content-encoding" not in response.headers
+
+
+def test_gzip_runs_at_level_6():
+    """Level 9 cost ~317 ms of CPU per /snapshot response; 6 is ~half for ~3% more bytes."""
+    from fastapi.middleware.gzip import GZipMiddleware
+
+    (gzip,) = [m for m in app.user_middleware if m.cls is GZipMiddleware]
+    assert gzip.kwargs == {"minimum_size": 1000, "compresslevel": 6}
