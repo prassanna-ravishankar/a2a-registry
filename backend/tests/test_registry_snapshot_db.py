@@ -1,4 +1,4 @@
-"""GET /snapshot against a real Postgres: it must say exactly what the per-resource public
+"""GET /admin/snapshot against a real Postgres: it must say exactly what the per-resource public
 endpoints say, so the static build can read one response instead of ~800.
 
 Runs only when TEST_DATABASE_URL points at a disposable database (see tests/conftest.py).
@@ -19,9 +19,12 @@ from .test_review_visibility_db import FLAGGED, _agent, _review
 pytestmark = requires_postgres
 
 
+ADMIN = {"X-Admin-Key": "test-admin-key"}
+
+
 @pytest.fixture
 async def api(db):
-    with patch("app.main.db", db):
+    with patch("app.main.db", db), patch("app.main.settings.admin_api_key", "test-admin-key"):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test/api") as client:
             yield client
@@ -36,7 +39,7 @@ async def _check(db, agent_id, ago: timedelta, success: bool, ms: int | None = N
 
 
 async def _snapshot(api):
-    response = await api.get("/snapshot")
+    response = await api.get("/admin/snapshot", headers=ADMIN)
     assert response.status_code == 200
     return response.json()
 
@@ -110,7 +113,7 @@ async def test_snapshot_is_gzipped_for_clients_that_accept_it(db, api):
     for n in range(5):
         await repo.create(_agent(n))
 
-    response = await api.get("/snapshot", headers={"Accept-Encoding": "gzip"})
+    response = await api.get("/admin/snapshot", headers={**ADMIN, "Accept-Encoding": "gzip"})
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
     assert len(response.json()["agents"]) == 5
@@ -127,3 +130,8 @@ async def test_snapshot_is_rendered_once_a_minute(db, api):
     from app import main
     main.snapshot_cache._expires_at = 0  # the minute is up
     assert len((await _snapshot(api))["agents"]) == 2
+
+
+async def test_snapshot_is_never_stored_by_a_shared_cache(db, api):
+    response = await api.get("/admin/snapshot", headers=ADMIN)
+    assert response.headers["cache-control"] == "no-store"

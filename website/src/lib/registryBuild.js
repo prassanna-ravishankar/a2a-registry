@@ -1,3 +1,4 @@
+import { adminKey } from './adminKey.js';
 import { createPacedFetch } from './pacedFetch.js';
 import { createRegistrySource } from './registrySource.js';
 
@@ -16,11 +17,11 @@ const pacedFetch = createPacedFetch({
 // A 404 is a real answer (no uptime recorded yet, or a backend without that
 // route) and returns null. Anything else that is not ok fails the build, so a
 // page never ships with its data silently missing.
-async function fetchJson(path, { allowMissing = false } = {}) {
-  const response = await pacedFetch(`${API_BASE}${path}`);
+async function fetchJson(path, { allowMissing = false, headers } = {}) {
+  const response = await pacedFetch(`${API_BASE}${path}`, { headers });
   if (allowMissing && response.status === 404) return null;
   if (!response.ok) throw new Error(`${path} returned ${response.status}`);
   return await response.json();
 }
 
-export const { loadRegistry, loadRegistryStats, loadCategories, loadAgentUptime } = createRegistrySource(fetchJson);
+export const { loadRegistry, loadRegistryStats, loadCategories, loadAgentUptime } = createRegistrySource(fetchJson, { adminKey: adminKey() });

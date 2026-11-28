@@ -1525,3 +1525,27 @@ def test_flag_still_sends_analytics_event(client):
 
     assert response.status_code == 201
     track.assert_called_once_with("POST /agents/{id}/flag", agent_id=MOCK_UUID)
+
+
+
+# ============================================================================
+# Snapshot is admin-only (GET /admin/snapshot)
+# ============================================================================
+
+
+@pytest.mark.parametrize("headers", [{}, {"X-Admin-Key": "wrong"}])
+def test_snapshot_needs_the_admin_key(client, headers):
+    with patch("app.main.settings.admin_api_key", "test-admin-key"), \
+         patch("app.main._render_snapshot", new=AsyncMock(return_value=b"{}")) as render:
+        response = client.get("/api/admin/snapshot", headers=headers)
+    assert response.status_code == 403
+    render.assert_not_awaited()
+
+
+def test_snapshot_is_refused_when_no_admin_key_is_configured(client):
+    with patch("app.main.settings.admin_api_key", ""):
+        assert client.get("/api/admin/snapshot", headers={"X-Admin-Key": ""}).status_code == 403
+
+
+def test_the_public_snapshot_path_is_gone(client):
+    assert client.get("/api/snapshot").status_code == 404
