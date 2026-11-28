@@ -6,6 +6,7 @@ import ipaddress
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, Literal, Optional
 from urllib.parse import urlparse
@@ -36,6 +37,7 @@ from .models import (
     CategoryInfo,
     HealthStatus,
     PaginatedAgents,
+    RegistrySnapshot,
     RegistryStats,
     UptimeMetrics,
 )
@@ -577,11 +579,39 @@ async def list_categories():
 
     Defined in one place (app/categories.py); the website and Jev both use it.
     """
+    return await _category_infos()
+
+
+async def _category_infos() -> list[CategoryInfo]:
     counts = await AgentRepository(db).count_by_category()
     return [
         CategoryInfo(slug=c.slug, label=c.label, description=c.description, agent_count=counts.get(c.slug, 0))
         for c in CATEGORIES
     ]
+
+
+# Far above the registry's size; the build fails loudly if a snapshot ever holds fewer than `total`.
+SNAPSHOT_MAX_AGENTS = 10000
+
+
+@router.get("/snapshot", response_model=RegistrySnapshot)
+async def get_registry_snapshot():
+    """Everything the static site build reads, in one response.
+
+    `agents` are every public agent as GET /agents returns them (same visibility and order);
+    `uptime` maps agent id to its 30-day uptime as GET /agents/{id}/uptime reports it, with
+    history trimmed to checked_at and success (agents with no checks are absent); `stats` and
+    `categories` match GET /stats and GET /categories.
+    """
+    agents, total = await AgentRepository(db).list_agents(limit=SNAPSHOT_MAX_AGENTS, offset=0)
+    return RegistrySnapshot(
+        generated_at=datetime.now(timezone.utc),
+        total=total,
+        agents=agents,
+        uptime=await HealthCheckRepository(db).get_public_uptime_summaries(period_days=30),
+        stats=await StatsRepository(db).get_registry_stats(),
+        categories=await _category_infos(),
+    )
 
 
 @router.get("/agents/{agent_id}", response_model=AgentPublic)

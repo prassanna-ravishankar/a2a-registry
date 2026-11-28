@@ -1,58 +1,24 @@
 """Hidden-until-approved against a real Postgres: held agents are absent from every public read.
 
-Runs only when TEST_DATABASE_URL points at a disposable database; every migration is applied
-to a fresh schema first.
+Runs only when TEST_DATABASE_URL points at a disposable database (see tests/conftest.py).
 """
 
-import os
-from pathlib import Path
-
-import asyncpg
 import pytest
 
 from app.card_classifier import CardVerdict, ReviewWrite
 from app.models import AgentCreate
 from app.repositories import AgentRepository, StatsRepository
 
-DB_URL = os.environ.get("TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not DB_URL, reason="TEST_DATABASE_URL not set")
+from .conftest import requires_postgres
 
-MIGRATIONS = sorted((Path(__file__).parent.parent / "migrations" / "versions").glob("*.sql"))
+pytestmark = requires_postgres
+
 FLAGGED = CardVerdict(score=0.95, signals={"injection": 0.95}, model="jev-test")
 CLEAN = CardVerdict(score=0.02, signals={}, model="jev-test")
 
 
 def _review(verdict, sha, status, expect_revision=0):
     return ReviewWrite(verdict=verdict, sha=sha, status=status, expect_revision=expect_revision)
-
-
-class _Db:
-    """Minimal stand-in for app.database.Database over one connection."""
-
-    def __init__(self, conn):
-        self.conn = conn
-
-    async def execute(self, query, *args):
-        return await self.conn.execute(query, *args)
-
-    async def fetch(self, query, *args):
-        return await self.conn.fetch(query, *args)
-
-    async def fetchrow(self, query, *args):
-        return await self.conn.fetchrow(query, *args)
-
-    async def fetchval(self, query, *args):
-        return await self.conn.fetchval(query, *args)
-
-
-@pytest.fixture
-async def db():
-    conn = await asyncpg.connect(DB_URL)
-    await conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    for migration in MIGRATIONS:
-        await conn.execute(migration.read_text())
-    yield _Db(conn)
-    await conn.close()
 
 
 @pytest.fixture
