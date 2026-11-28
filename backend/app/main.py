@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel
+from pydantic_core import to_json
 from starlette.routing import Mount
 
 from .agent_card import agent_create_from_card, extract_agent_url
@@ -611,16 +612,21 @@ snapshot_cache: SingleFlightCache[bytes] = SingleFlightCache(SNAPSHOT_TTL_SECOND
 
 
 async def _render_snapshot() -> bytes:
+    """The RegistrySnapshot document as JSON bytes, serialized once from the repositories'
+    results (no intermediate RegistrySnapshot model or str copy) to keep the render's peak
+    memory low on a small pod."""
     agents, total = await AgentRepository(db).list_agents(limit=SNAPSHOT_MAX_AGENTS, offset=0)
-    snapshot = RegistrySnapshot(
-        generated_at=datetime.now(timezone.utc),
-        total=total,
-        agents=agents,
-        uptime=await HealthCheckRepository(db).get_public_uptime_summaries(period_days=30),
-        stats=await StatsRepository(db).get_registry_stats(),
-        categories=await _category_infos(),
+    return to_json(
+        {
+            "generated_at": datetime.now(timezone.utc),
+            "total": total,
+            "agents": agents,
+            "uptime": await HealthCheckRepository(db).get_public_uptime_summaries(period_days=30),
+            "stats": await StatsRepository(db).get_registry_stats(),
+            "categories": await _category_infos(),
+        },
+        by_alias=True,
     )
-    return snapshot.model_dump_json().encode()
 
 
 @router.get("/snapshot", response_model=RegistrySnapshot)
