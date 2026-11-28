@@ -96,6 +96,25 @@ jobs:
             type=registry,ref=gcr.io/${{ env.GCP_PROJECT_ID }}/a2a-registry-hello-world:latest
           cache-to: type=gha,mode=max
 
+      - uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      - name: Load admin credential for the snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          admin_api_key="$(kubectl get secret a2aregistry-secrets \
+            --namespace a2aregistry \
+            --output jsonpath='{.data.ADMIN_API_KEY}' | base64 --decode)"
+          if [[ -z "$admin_api_key" ]]; then
+            echo "ADMIN_API_KEY is missing from the production secret" >&2
+            exit 1
+          fi
+          echo "::add-mask::$admin_api_key"
+          echo "ADMIN_API_KEY=$admin_api_key" >> "$GITHUB_ENV"
+
       - name: Build and push frontend
         uses: docker/build-push-action@v7
         with:
@@ -103,6 +122,8 @@ jobs:
           file: website/Dockerfile
           push: true
           provenance: false
+          secrets: |
+            registry_admin_key=${{ env.ADMIN_API_KEY }}
           build-args: |
             PUBLIC_API_URL=https://a2aregistry.org/api
             PUBLIC_POSTHOG_HOST=https://eu.posthog.com

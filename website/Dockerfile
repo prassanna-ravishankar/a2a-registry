@@ -30,8 +30,11 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL} \
 # a cached layer.
 ARG REGISTRY_REFRESH=""
 
-# Build the Astro site; outputs to ./dist inside the image
-RUN npm run build
+# Build the Astro site; outputs to ./dist inside the image. The admin key for
+# GET /admin/snapshot is a BuildKit secret mounted for this step only, so it is
+# never in a layer, the image history or an ENV; postbuild fails the build if it
+# shows up in the output. Without the secret the build uses the paced public API.
+RUN --mount=type=secret,id=registry_admin_key npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

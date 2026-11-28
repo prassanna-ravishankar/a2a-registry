@@ -629,9 +629,10 @@ async def _render_snapshot() -> bytes:
     )
 
 
-@router.get("/snapshot", response_model=RegistrySnapshot)
-async def get_registry_snapshot():
-    """Everything the static site build reads, in one response.
+@router.get("/admin/snapshot", response_model=RegistrySnapshot)
+async def get_registry_snapshot(x_admin_key: Optional[str] = Header(default=None)):
+    """Everything the static site build reads, in one response. Admin only (X-Admin-Key):
+    it is the API's heaviest read, so bots get the paginated public endpoints instead.
 
     `agents` are every public agent as GET /agents returns them (same visibility and order);
     `uptime` maps agent id to its 30-day uptime as GET /agents/{id}/uptime reports it, with
@@ -639,7 +640,12 @@ async def get_registry_snapshot():
     `categories` match GET /stats and GET /categories. Rendered at most once a minute;
     `generated_at` says when.
     """
-    return Response(content=await snapshot_cache.get(_render_snapshot), media_type="application/json")
+    _require_admin(x_admin_key)
+    return Response(
+        content=await snapshot_cache.get(_render_snapshot),
+        media_type="application/json",
+        headers={"Cache-Control": "no-store"},  # an admin response must never sit in a shared cache
+    )
 
 
 @router.get("/agents/{agent_id}", response_model=AgentPublic)

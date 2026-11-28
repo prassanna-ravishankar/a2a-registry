@@ -1,27 +1,36 @@
-// What the static build reads from the registry API. Normally that is one
-// GET /snapshot (every public agent, each one's 30-day uptime, stats and
-// categories). The per-resource endpoints are only a fallback while a backend
-// without /snapshot is live: CI builds the frontend before the backend deploys.
+// What the static build reads from the registry API. With the admin key that is
+// one GET /admin/snapshot (every public agent, each one's 30-day uptime, stats and
+// categories). Without a key (PR CI, local builds), or while a backend without
+// /admin/snapshot is live (CI builds the frontend before the backend deploys), the
+// build uses the paced per-resource endpoints instead. A key the API rejects fails
+// the build.
 //
-// fetchJson(path, { allowMissing }) returns parsed JSON, or null for a 404 when
-// allowMissing is set, and throws on anything else.
+// fetchJson(path, { allowMissing, headers }) returns parsed JSON, or null for a 404
+// when allowMissing is set, and throws on anything else.
 
-export function createRegistrySource(fetchJson, { warn = console.warn } = {}) {
+export function createRegistrySource(fetchJson, { adminKey, warn = console.warn } = {}) {
   let snapshotPromise;
   let registryPromise;
   let categoriesPromise;
 
+  async function fetchSnapshot() {
+    if (!adminKey) {
+      warn('[registry] no admin key; using the per-agent endpoints');
+      return null;
+    }
+    const data = await fetchJson('/admin/snapshot', { allowMissing: true, headers: { 'X-Admin-Key': adminKey } });
+    if (!data) {
+      warn('[registry] GET /admin/snapshot is not deployed; using the per-agent endpoints');
+      return null;
+    }
+    if (data.agents.length !== data.total) {
+      throw new Error(`/admin/snapshot holds ${data.agents.length} of ${data.total} agents`);
+    }
+    return data;
+  }
+
   function snapshot() {
-    snapshotPromise ??= fetchJson('/snapshot', { allowMissing: true }).then((data) => {
-      if (!data) {
-        warn('[registry] GET /snapshot is not deployed; falling back to per-agent endpoints');
-        return null;
-      }
-      if (data.agents.length !== data.total) {
-        throw new Error(`/snapshot holds ${data.agents.length} of ${data.total} agents`);
-      }
-      return data;
-    });
+    snapshotPromise ??= fetchSnapshot();
     return snapshotPromise;
   }
 

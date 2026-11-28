@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "postbuild": "node scripts/check-no-admin-key.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "test": "node --test src/lib/*.test.js"
