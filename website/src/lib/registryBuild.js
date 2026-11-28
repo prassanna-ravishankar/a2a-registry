@@ -1,18 +1,22 @@
+import { createPacedFetch } from './pacedFetch.js';
+
 const SITE = (import.meta.env.SITE || 'https://a2aregistry.org').replace(/\/+$/, '');
 const API_BASE = (import.meta.env.PUBLIC_API_URL || `${SITE}/api`).replace(/\/+$/, '');
 
 let registryPromise;
 
-async function fetchJson(path) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
-  try {
-    const response = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
-    if (!response.ok) throw new Error(`${path} returned ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
-  }
+// One shared pacer for the whole build: about 800 prerendered pages each fetch
+// uptime, and an unpaced burst trips the edge rate limit on /api.
+const pacedFetch = createPacedFetch();
+
+// A 404 is a real answer (no uptime recorded yet, or a backend without that
+// route) and returns null. Anything else that is not ok fails the build, so a
+// page never ships with its data silently missing.
+async function fetchJson(path, { allowMissing = false } = {}) {
+  const response = await pacedFetch(`${API_BASE}${path}`);
+  if (allowMissing && response.status === 404) return null;
+  if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+  return await response.json();
 }
 
 export function loadRegistry() {
@@ -42,9 +46,9 @@ let categoriesPromise;
 export function loadCategories() {
   // CI builds the frontend before the backend deploys, so a backend without
   // /categories must not fail the build; the page fills them in live.
-  if (!categoriesPromise) categoriesPromise = fetchJson('/categories').catch(() => []);
+  if (!categoriesPromise) categoriesPromise = fetchJson('/categories', { allowMissing: true }).then((c) => c ?? []);
   return categoriesPromise;
 }
 export function loadAgentUptime(agentId) {
-  return fetchJson(`/agents/${agentId}/uptime?period_days=30`).catch(() => null);
+  return fetchJson(`/agents/${agentId}/uptime?period_days=30`, { allowMissing: true });
 }
