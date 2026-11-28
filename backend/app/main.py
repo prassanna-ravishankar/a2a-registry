@@ -538,20 +538,6 @@ async def list_agents(
     - limit: Max results to return (default: 50, max: 100)
     - offset: Pagination offset (default: 0)
     """
-    track_api_query(
-        "GET /agents",
-        skill=skill,
-        capability=capability,
-        author=author,
-        search=search,
-        conformance=conformance,
-        healthy=healthy,
-        task_verified=task_verified,
-        category=category,
-        limit=limit,
-        offset=offset,
-    )
-
     # Validate limit
     if limit > 100:
         limit = 100
@@ -591,7 +577,6 @@ async def list_categories():
 
     Defined in one place (app/categories.py); the website and Jev both use it.
     """
-    track_api_query("GET /categories")
     counts = await AgentRepository(db).count_by_category()
     return [
         CategoryInfo(slug=c.slug, label=c.label, description=c.description, agent_count=counts.get(c.slug, 0))
@@ -602,8 +587,6 @@ async def list_categories():
 @router.get("/agents/{agent_id}", response_model=AgentPublic)
 async def get_agent(agent_id: UUID):
     """Get a single agent by ID with health metrics"""
-    track_api_query("GET /agents/{id}", agent_id=str(agent_id))
-
     agent_repo = AgentRepository(db)
     agent = await agent_repo.get_by_id(agent_id)
 
@@ -788,8 +771,6 @@ async def restore_agent(agent_id: UUID, x_admin_key: Optional[str] = Header(defa
 @router.get("/agents/{agent_id}/health", response_model=HealthStatus)
 async def get_agent_health(agent_id: UUID):
     """Get current health status for an agent (last 24 hours)"""
-    track_api_query("GET /agents/{id}/health", agent_id=str(agent_id))
-
     health_repo = HealthCheckRepository(db)
     status = await health_repo.get_health_status(agent_id)
 
@@ -802,8 +783,6 @@ async def get_agent_health(agent_id: UUID):
 @router.get("/agents/{agent_id}/uptime", response_model=UptimeMetrics)
 async def get_agent_uptime(agent_id: UUID, period_days: int = 30):
     """Get historical uptime metrics for an agent"""
-    track_api_query("GET /agents/{id}/uptime", agent_id=str(agent_id), period_days=period_days)
-
     # Validate period
     if period_days > 90:
         period_days = 90
@@ -825,8 +804,6 @@ async def get_agent_uptime(agent_id: UUID, period_days: int = 30):
 @router.get("/stats", response_model=RegistryStats)
 async def get_registry_stats():
     """Get registry-wide statistics"""
-    track_api_query("GET /stats")
-
     stats_repo = StatsRepository(db)
     return await stats_repo.get_registry_stats()
 

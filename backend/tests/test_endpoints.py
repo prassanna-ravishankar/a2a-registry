@@ -1490,3 +1490,38 @@ def test_admin_refresh_sets_author_from_the_card_provider(client, provider, expe
         response = client.put(f"/agents/{MOCK_UUID}", headers={"X-Admin-Key": "k"})
     assert response.status_code == 200
     assert repo.update.await_args.args[1].author == expected
+
+
+# ============================================================================
+# Analytics: only writes and intent send a PostHog event
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/agents?search=weather",
+        "/categories",
+        f"/agents/{MOCK_UUID}",
+        f"/agents/{MOCK_UUID}/health",
+        f"/agents/{MOCK_UUID}/uptime",
+        "/stats",
+    ],
+)
+def test_reads_send_no_analytics_event(client, path):
+    """Reads are mostly scrapers and pollers; counting them cost ~1M PostHog events a month."""
+    with patch("app.main.track_api_query") as track:
+        client.get(path)
+    track.assert_not_called()
+
+
+def test_flag_still_sends_analytics_event(client):
+    with patch("app.main.FlagRepository") as mock_flag_repo, \
+         patch("app.main.AgentRepository") as mock_agent_repo, \
+         patch("app.main.track_api_query") as track:
+        mock_flag_repo.return_value.create_flag = AsyncMock(return_value=None)
+        mock_agent_repo.return_value.increment_flag_count = AsyncMock(return_value=None)
+        response = client.post(f"/agents/{MOCK_UUID}/flag", json={"agent_id": MOCK_UUID, "reason": "spam"})
+
+    assert response.status_code == 201
+    track.assert_called_once_with("POST /agents/{id}/flag", agent_id=MOCK_UUID)
