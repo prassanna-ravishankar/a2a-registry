@@ -24,6 +24,22 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Disposable Postgres for the tests that need real SQL (tests/conftest.py `db`).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: a2a_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d a2a_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/a2a_test
     steps:
       - uses: actions/checkout@v6
 

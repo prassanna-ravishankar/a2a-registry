@@ -214,6 +214,34 @@ class CategoryInfo(BaseModel):
     agent_count: int
 
 
+class UptimePoint(BaseModel):
+    """One health check, reduced to what the agent page charts."""
+    checked_at: datetime
+    success: bool
+
+
+class UptimeSummary(BaseModel):
+    """An agent's uptime as GET /agents/{id}/uptime reports it, with history trimmed to UptimePoint."""
+    period_days: int
+    uptime_percentage: float
+    avg_response_time_ms: int
+    total_checks: int
+    successful_checks: int
+    failed_checks: int
+    last_check: datetime
+    history: list[UptimePoint] = Field(default_factory=list)
+
+
+class RegistrySnapshot(BaseModel):
+    """Everything the static site build reads, in one response."""
+    generated_at: datetime
+    total: int
+    agents: list[AgentPublic]
+    uptime: dict[UUID, UptimeSummary]
+    stats: RegistryStats
+    categories: list[CategoryInfo]
+
+
 class PaginatedAgents(BaseModel):
     """Paginated list of agents"""
     agents: list[AgentPublic]

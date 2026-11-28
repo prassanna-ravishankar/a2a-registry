@@ -4,6 +4,14 @@ import sitemap from '@astrojs/sitemap';
 
 const outDir = process.env.ASTRO_OUT_DIR || '../docs';
 
+// src/lib/registryBuild.js counts every request it sends to the registry API.
+const registryRequestCount = {
+  name: 'registry-request-count',
+  hooks: {
+    'astro:build:done': ({ logger }) => logger.info(`${globalThis.__registryApiRequests ?? 0} registry API requests`),
+  },
+};
+
 export default defineConfig({
   site: 'https://a2aregistry.org',
   outDir,
@@ -11,6 +19,7 @@ export default defineConfig({
   integrations: [
     react(),
     sitemap({ filter: (page) => !page.includes('/admin') }),
+    registryRequestCount,
   ],
   build: {
     assets: 'assets',

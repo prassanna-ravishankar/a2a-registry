@@ -17,6 +17,8 @@ from .models import (
     RegistryStats,
     TaskConformance,
     UptimeMetrics,
+    UptimePoint,
+    UptimeSummary,
 )
 
 
@@ -997,6 +999,70 @@ class HealthCheckRepository:
             last_check=stats_row["last_check"],
             history=history,
         )
+
+
+    async def get_public_uptime_summaries(
+        self, period_days: int = 30, history_limit: int = 100
+    ) -> dict[UUID, UptimeSummary]:
+        """get_uptime_metrics for every public agent at once: one grouped query for the
+        aggregates and one windowed query for each agent's latest checks. Agents with no
+        checks in the period are absent, as the per-agent endpoint answers 404 for them."""
+        cutoff = datetime.now() - timedelta(days=period_days)
+        public = f"a.hidden = false AND {PUBLIC_REVIEW_SQL}"
+
+        stats_rows = await self.db.fetch(f"""
+            SELECT
+                hc.agent_id,
+                COALESCE(
+                    COUNT(*) FILTER (WHERE hc.success = true)::float / NULLIF(COUNT(*), 0) * 100,
+                    0
+                ) as uptime_percentage,
+                COALESCE(
+                    AVG(hc.response_time_ms) FILTER (WHERE hc.success = true)::int,
+                    0
+                ) as avg_response_time_ms,
+                COUNT(*) as total_checks,
+                COUNT(*) FILTER (WHERE hc.success = true) as successful_checks,
+                COUNT(*) FILTER (WHERE hc.success = false) as failed_checks,
+                MAX(hc.checked_at) as last_check
+            FROM health_checks hc
+            JOIN agents a ON a.id = hc.agent_id
+            WHERE hc.checked_at > $1 AND {public}
+            GROUP BY hc.agent_id
+        """, cutoff)
+
+        history_rows = await self.db.fetch(f"""
+            SELECT agent_id, checked_at, success FROM (
+                SELECT
+                    hc.agent_id, hc.checked_at, hc.success,
+                    ROW_NUMBER() OVER (PARTITION BY hc.agent_id ORDER BY hc.checked_at DESC) as n
+                FROM health_checks hc
+                JOIN agents a ON a.id = hc.agent_id
+                WHERE hc.checked_at > $1 AND {public}
+            ) recent
+            WHERE n <= $2
+            ORDER BY agent_id, checked_at DESC
+        """, cutoff, history_limit)
+
+        history: dict[UUID, list[UptimePoint]] = {}
+        for row in history_rows:
+            history.setdefault(row["agent_id"], []).append(
+                UptimePoint(checked_at=row["checked_at"], success=row["success"])
+            )
+
+        return {
+            row["agent_id"]: UptimeSummary(
+                period_days=period_days,
+                uptime_percentage=row["uptime_percentage"],
+                avg_response_time_ms=row["avg_response_time_ms"],
+                total_checks=row["total_checks"],
+                successful_checks=row["successful_checks"],
+                failed_checks=row["failed_checks"],
+                last_check=row["last_check"],
+                history=history.get(row["agent_id"], []),
+            )
+            for row in stats_rows
+        }
 
 
 class StatsRepository:

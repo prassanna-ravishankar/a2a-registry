@@ -1,7 +1,16 @@
+import os
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncpg
 import pytest
 from fastapi.testclient import TestClient
+
+# Real-Postgres tests (the `db` fixture) run only when TEST_DATABASE_URL points at a
+# disposable database; every migration is applied to a fresh schema first.
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+requires_postgres = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
+MIGRATIONS = sorted((Path(__file__).parent.parent / "migrations" / "versions").glob("*.sql"))
 
 MOCK_AGENT_ROW = {
     "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -77,3 +86,32 @@ def client(mock_db):
         from app.main import app
         with TestClient(app, raise_server_exceptions=False) as c:
             yield c
+
+
+class _PostgresDb:
+    """Minimal stand-in for app.database.Database over one connection."""
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    async def execute(self, query, *args):
+        return await self.conn.execute(query, *args)
+
+    async def fetch(self, query, *args):
+        return await self.conn.fetch(query, *args)
+
+    async def fetchrow(self, query, *args):
+        return await self.conn.fetchrow(query, *args)
+
+    async def fetchval(self, query, *args):
+        return await self.conn.fetchval(query, *args)
+
+
+@pytest.fixture
+async def db():
+    conn = await asyncpg.connect(TEST_DATABASE_URL)
+    await conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+    for migration in MIGRATIONS:
+        await conn.execute(migration.read_text())
+    yield _PostgresDb(conn)
+    await conn.close()
